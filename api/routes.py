@@ -1,0 +1,539 @@
+"""
+api/routes.py
+=============
+FastAPI router that serves energy technology data from the /data directory.
+
+Two JSON formats are supported:
+
+  1. CATALOGUE format  (new) – one file per domain, contains a `metadata` block
+     and a `technologies` array with flat numeric fields per instance.
+     Fields: technology_id, technology_name, domain, carrier, oeo_class,
+             description, instances[{instance_id, capex_usd_per_kw, ...}]
+
+  2. INDIVIDUAL format (legacy) – one file per technology, uses Pydantic-native
+     nested ParameterValue objects. Detected by the absence of a `technologies`
+     array at the root level.
+
+Endpoints
+---------
+GET /technologies                  → list all technologies (summary)
+GET /technologies/{tech_id}        → full technology detail
+GET /technologies/category/{cat}   → technologies by category
+GET /technologies/{tech_id}/instances → all equipment instances for a tech
+GET /technologies/{tech_id}/instances/{instance_id} → a specific instance
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+import uuid
+from pathlib import Path
+from functools import lru_cache
+from typing import Annotated
+
+logger = logging.getLogger(__name__)
+
+from fastapi import APIRouter, HTTPException, Query, Path as FPath
+from fastapi.responses import ORJSONResponse
+
+from schemas.models import (
+    Technology,
+    PowerPlant,
+    VREPlant,
+    EnergyStorage,
+    TransmissionLine,
+    ConversionTechnology,
+    TechnologyCategory,
+    EnergyCarrier,
+    TechnologySummary,
+    TechnologyCatalogue,
+    EquipmentInstance,
+)
+
+router        = APIRouter(prefix="/technologies", tags=["Technologies"])
+debug_router  = APIRouter(prefix="/debug",        tags=["Debug"])
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+
+# Namespace UUID for deterministic IDs derived from technology_id strings
+_UUID_NS = uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+# Carriers that mark a generation technology as variable (non-dispatchable)
+_VRE_CARRIERS = {"solar", "wind", "marine"}
+# technology_id substrings that also flag VRE
+_VRE_ID_HINTS  = {"pv", "wind", "solar", "run_of_river", "marine"}
+
+# Map catalogue `carrier` strings → EnergyCarrier enum values (best fit)
+_CARRIER_MAP: dict[str, str] = {
+    "solar":                 "solar_irradiance",
+    "wind":                  "wind",
+    "hydro":                 "electricity",
+    "natural_gas":           "natural_gas",
+    "coal":                  "coal",
+    "uranium":               "nuclear_fuel",
+    "biomass":               "biomass",
+    "biogas":                "biomass",
+    "municipal_solid_waste": "biomass",
+    "marine":                "electricity",
+    "electricity":           "electricity",
+    "hydrogen":              "hydrogen",
+    "heat":                  "heat",
+    "geothermal":            "electricity",
+    "co2":                   "electricity",
+}
+
+_CATEGORY_MODEL_MAP: dict[TechnologyCategory, type[Technology]] = {
+    TechnologyCategory.GENERATION:   PowerPlant,
+    TechnologyCategory.STORAGE:      EnergyStorage,
+    TechnologyCategory.TRANSMISSION: TransmissionLine,
+    TechnologyCategory.CONVERSION:   ConversionTechnology,
+}
+
+# Legacy individual-file renewable detection
+_LEGACY_VRE_TYPES = {"pv_utility", "onshore_wind", "offshore_wind", "run_of_river", "geothermal_vre"}
+
+
+# ---------------------------------------------------------------------------
+# Helpers – shared
+# ---------------------------------------------------------------------------
+
+def _load_json_file(path: Path) -> dict:
+    with path.open(encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _pv(value, unit: str, source: str | None = None) -> dict | None:
+    """Build a ParameterValue dict if value is not None."""
+    if value is None:
+        return None
+    return {"value": float(value), "unit": unit, "source": source}
+
+
+def _detect_lifecycle(instance_name: str) -> str:
+    """Infer life-cycle stage from the instance name string."""
+    name_lower = instance_name.lower()
+    if "future" in name_lower or re.search(r"20(3[0-9]|4[0-9]|5[0-9])", name_lower):
+        return "projection"
+    if "demonstr" in name_lower or "pilot" in name_lower:
+        return "demonstration"
+    return "commercial"
+
+
+def _map_carrier(raw_carrier: str | None) -> str | None:
+    """Map a catalogue carrier string to an EnergyCarrier enum value string."""
+    if raw_carrier is None:
+        return None
+    return _CARRIER_MAP.get(raw_carrier.lower(), "electricity")
+
+
+# ---------------------------------------------------------------------------
+# Helpers – CATALOGUE format loader
+# ---------------------------------------------------------------------------
+
+def _is_catalogue(raw: dict) -> bool:
+    """True if the JSON follows the catalogue format (has metadata + technologies[])."""
+    return "metadata" in raw and "technologies" in raw and isinstance(raw["technologies"], list)
+
+
+def _map_catalogue_instance(inst: dict, source: str | None) -> dict:
+    """
+    Convert one flat catalogue instance dict into a dict that matches
+    the EquipmentInstance Pydantic schema (nested ParameterValue objects).
+    """
+    cap_mw      = inst.get("typical_capacity_mw")
+    eff_pct     = inst.get("efficiency_percent")
+    co2_g_kwh   = inst.get("co2_emission_factor_operational_g_per_kwh")
+    ramp        = inst.get("ramping_rate_percent_per_min")
+    ref         = inst.get("reference_source") or source
+
+    # g CO2 / kWh  →  t CO2 / MWh  (same ratio: 1 g/kWh = 0.001 t/MWh)
+    co2_t_mwh = co2_g_kwh / 1000 if co2_g_kwh is not None else None
+
+    # efficiency: for heat pumps efficiency_percent can be COP×100 (>100).
+    # Store as-is divided by 100 regardless; the unit string signals COP if >1.
+    eff_fraction = eff_pct / 100 if eff_pct is not None else None
+
+    label = inst.get("instance_name") or inst.get("instance_id", "Unknown")
+
+    return {
+        "id":   str(uuid.uuid5(_UUID_NS, inst.get("instance_id", label))),
+        "label": label,
+        "manufacturer": None,
+        "reference_year": None,
+        "life_cycle_stage": _detect_lifecycle(label),
+
+        # Economic
+        "capex_per_kw":          _pv(inst.get("capex_usd_per_kw"),         "USD/kW",     ref),
+        "opex_fixed_per_kw_yr":  _pv(inst.get("opex_fixed_usd_per_kw_yr"), "USD/kW/yr",  ref),
+        "opex_variable_per_mwh": _pv(inst.get("opex_var_usd_per_mwh"),     "USD/MWh",    ref),
+        "economic_lifetime_yr":  _pv(inst.get("lifetime_years"),            "years",      ref),
+
+        # Technical
+        "electrical_efficiency": _pv(eff_fraction, "fraction", ref),
+        "capacity_kw":           _pv(cap_mw * 1000 if cap_mw else None, "kW", ref),
+
+        # Environmental
+        "co2_emission_factor":   _pv(co2_t_mwh, "tCO2/MWh_fuel", ref),
+
+        # Flexibility
+        "ramp_up_rate":          _pv(ramp, "%capacity/min", ref),
+        "ramp_down_rate":        _pv(ramp, "%capacity/min", ref),
+
+        # Pass-through extras
+        "extra": {
+            "instance_id":                   inst.get("instance_id"),
+            "scale":                         inst.get("scale"),
+            "degradation_rate_percent_per_yr": inst.get("degradation_rate_percent_per_yr"),
+            "construction_time_years":         inst.get("construction_time_years"),
+            **({"energy_capacity_mwh": inst["energy_capacity_mwh"]}
+               if "energy_capacity_mwh" in inst else {}),
+            **({"duration_hours": inst["duration_hours"]}
+               if "duration_hours" in inst else {}),
+            **({"corridor_length_km": inst["corridor_length_km"]}
+               if "corridor_length_km" in inst else {}),
+        },
+    }
+
+
+def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
+    """
+    Parse a catalogue-format JSON into a list of Technology objects
+    (one Technology per entry in the `technologies` array).
+    """
+    domain_str = raw["metadata"].get("domain", "generation")
+    results: list[Technology] = []
+
+    for tech_raw in raw["technologies"]:
+        try:
+            tech_id_str  = tech_raw.get("technology_id", "")
+            tech_name    = tech_raw.get("technology_name", tech_id_str)
+            domain       = tech_raw.get("domain", domain_str)
+            oeo_uri_full = tech_raw.get("oeo_class")   # full URI in the new format
+            description  = tech_raw.get("description")
+
+            # Derive short OEO class name from URI (last path segment)
+            oeo_class_short = oeo_uri_full.rstrip("/").split("/")[-1] if oeo_uri_full else None
+
+            # Carrier handling
+            raw_carrier     = tech_raw.get("carrier")
+            raw_in_carrier  = tech_raw.get("input_carrier",  raw_carrier)
+            raw_out_carrier = tech_raw.get("output_carrier", "electricity")
+
+            in_carrier_val  = _map_carrier(raw_in_carrier)
+            out_carrier_val = _map_carrier(raw_out_carrier)
+
+            in_carriers  = [in_carrier_val]  if in_carrier_val  else []
+            out_carriers = [out_carrier_val] if out_carrier_val else []
+
+            # Category → model class
+            try:
+                cat = TechnologyCategory(domain)
+            except ValueError:
+                cat = TechnologyCategory.GENERATION
+
+            # Generation: decide between PowerPlant / VREPlant
+            if cat == TechnologyCategory.GENERATION:
+                is_vre = (
+                    (raw_carrier or "").lower() in _VRE_CARRIERS
+                    or any(hint in tech_id_str.lower() for hint in _VRE_ID_HINTS)
+                )
+                model_cls = VREPlant if is_vre else PowerPlant
+            else:
+                model_cls = _CATEGORY_MODEL_MAP[cat]
+
+            # Map instances
+            instances = [
+                _map_catalogue_instance(inst, tech_raw.get("technology_name"))
+                for inst in tech_raw.get("instances", [])
+            ]
+
+            # Build base dict for Pydantic
+            tech_dict: dict = {
+                "id":              str(uuid.uuid5(_UUID_NS, tech_id_str)),
+                "name":            tech_name,
+                "category":        cat.value,
+                "description":     description,
+                "tags":            [domain, raw_carrier or ""],
+                "oeo_class":       oeo_class_short,
+                "oeo_uri":         oeo_uri_full,
+                "input_carriers":  in_carriers,
+                "output_carriers": out_carriers,
+                "instances":       instances,
+            }
+
+            # Category-specific extra fields
+            if cat == TechnologyCategory.GENERATION:
+                tech_dict["technology_type"] = tech_id_str
+                tech_dict["primary_fuel"]    = in_carrier_val
+                tech_dict["is_dispatchable"] = not (is_vre if cat == TechnologyCategory.GENERATION else False)
+                tech_dict["is_renewable"]    = (raw_carrier or "").lower() in {
+                    "solar", "wind", "hydro", "marine", "geothermal", "biomass", "biogas"
+                }
+            elif cat == TechnologyCategory.STORAGE:
+                tech_dict["storage_type"]    = tech_id_str
+                tech_dict["stored_carrier"]  = in_carrier_val
+            elif cat == TechnologyCategory.TRANSMISSION:
+                tech_dict["transmission_type"] = tech_id_str
+            elif cat == TechnologyCategory.CONVERSION:
+                tech_dict["conversion_type"] = tech_id_str
+
+            tech = model_cls.model_validate(tech_dict)
+            results.append(tech)
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("  FAIL catalogue entry '%s' in %s → %s: %s",
+                         tech_raw.get("technology_id", "?"), path.name, type(exc).__name__, exc)
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Helpers – LEGACY individual format loader
+# ---------------------------------------------------------------------------
+
+def _pick_legacy_model(raw: dict) -> type[Technology]:
+    cat = TechnologyCategory(raw.get("category", "generation"))
+    if cat == TechnologyCategory.GENERATION:
+        tech_type = str(raw.get("technology_type", "")).lower()
+        if tech_type in _LEGACY_VRE_TYPES or raw.get("is_renewable"):
+            return VREPlant
+    return _CATEGORY_MODEL_MAP.get(cat, Technology)
+
+
+# ---------------------------------------------------------------------------
+# Main loader  (cached for the process lifetime – restart to reload)
+# ---------------------------------------------------------------------------
+
+@lru_cache(maxsize=1)
+def _load_all_technologies() -> dict[str, Technology]:
+    logger.info("DATA_DIR resolved to: %s (exists=%s)", DATA_DIR, DATA_DIR.exists())
+    techs: dict[str, Technology] = {}
+    json_files = list(DATA_DIR.rglob("*.json"))
+    logger.info("Found %d JSON file(s) under data/", len(json_files))
+
+    for json_file in json_files:
+        try:
+            raw = _load_json_file(json_file)
+
+            if _is_catalogue(raw):
+                # --- Catalogue format: one file → many technologies ---
+                entries = _load_catalogue_file(json_file, raw)
+                for tech in entries:
+                    techs[str(tech.id)] = tech
+                logger.info("  OK  [catalogue] %d techs from %s", len(entries), json_file.name)
+            else:
+                # --- Legacy individual format: one file → one technology ---
+                model_cls = _pick_legacy_model(raw)
+                tech = model_cls.model_validate(raw)
+                techs[str(tech.id)] = tech
+                logger.info("  OK  [legacy/%s] %s (%s)", model_cls.__name__, tech.name, json_file.name)
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("  FAIL %s → %s: %s", json_file.name, type(exc).__name__, exc)
+
+    logger.info("Total technologies loaded: %d", len(techs))
+    return techs
+
+
+def _get_all() -> dict[str, Technology]:
+    return _load_all_technologies()
+
+
+# ---------------------------------------------------------------------------
+# Debug router – shows data-loading diagnostics
+# ---------------------------------------------------------------------------
+
+@debug_router.get("/data", summary="Diagnose data loading")
+def debug_data():
+    """
+    Shows DATA_DIR path, every JSON file found, and whether it loaded
+    successfully (with full error message on failure).
+    Handles both catalogue and legacy individual JSON formats.
+    """
+    from pydantic import ValidationError
+
+    result = {
+        "data_dir":       str(DATA_DIR),
+        "data_dir_exists": DATA_DIR.exists(),
+        "files":          [],
+        "loaded_technologies": [],
+    }
+
+    for json_file in DATA_DIR.rglob("*.json"):
+        entry: dict = {
+            "file":   str(json_file),
+            "format": None,
+            "status": None,
+            "error":  None,
+            "technologies": [],
+        }
+        try:
+            raw = _load_json_file(json_file)
+            if _is_catalogue(raw):
+                entry["format"] = "catalogue"
+                techs = _load_catalogue_file(json_file, raw)
+                entry["status"] = "ok"
+                entry["technologies"] = [
+                    {"name": t.name, "category": t.category.value, "n_instances": len(t.instances)}
+                    for t in techs
+                ]
+            else:
+                entry["format"] = "legacy"
+                model_cls = _pick_legacy_model(raw)
+                tech = model_cls.model_validate(raw)
+                entry["status"] = "ok"
+                entry["technologies"] = [
+                    {"name": tech.name, "category": tech.category.value, "n_instances": len(tech.instances)}
+                ]
+        except ValidationError as exc:
+            entry["status"] = "validation_error"
+            entry["error"]  = exc.errors(include_url=False)
+        except Exception as exc:
+            entry["status"] = "error"
+            entry["error"]  = f"{type(exc).__name__}: {exc}"
+        result["files"].append(entry)
+
+    cached = _get_all()
+    result["loaded_technologies"] = [
+        {"id": k, "name": v.name, "category": v.category.value}
+        for k, v in cached.items()
+    ]
+    result["cache_total"] = len(cached)
+    return result
+
+
+@debug_router.post("/reload", summary="Clear the technology cache and reload from disk")
+def reload_cache():
+    """Force a full reload of all JSON files without restarting the server."""
+    _load_all_technologies.cache_clear()
+    techs = _get_all()
+    return {"status": "reloaded", "total": len(techs)}
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "",
+    response_model=TechnologyCatalogue,
+    summary="List all technologies",
+    response_description="Paginated catalogue of all available technologies.",
+)
+def list_technologies(
+    skip: Annotated[int, Query(ge=0, description="Offset for pagination.")] = 0,
+    limit: Annotated[int, Query(ge=1, le=200, description="Max items to return.")] = 50,
+    tag: Annotated[str | None, Query(description="Filter by tag.")] = None,
+) -> TechnologyCatalogue:
+    all_techs = list(_get_all().values())
+
+    if tag:
+        all_techs = [t for t in all_techs if tag.lower() in [x.lower() for x in t.tags]]
+
+    total = len(all_techs)
+    page  = all_techs[skip : skip + limit]
+
+    summaries = [
+        TechnologySummary(
+            id=t.id,
+            name=t.name,
+            category=t.category,
+            oeo_class=t.oeo_class,
+            oeo_uri=t.oeo_uri,
+            n_instances=len(t.instances),
+        )
+        for t in page
+    ]
+    return TechnologyCatalogue(total=total, technologies=summaries)
+
+
+@router.get(
+    "/category/{category}",
+    response_model=TechnologyCatalogue,
+    summary="List technologies by category",
+)
+def list_by_category(
+    category: TechnologyCategory,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> TechnologyCatalogue:
+    filtered = [t for t in _get_all().values() if t.category == category]
+    total    = len(filtered)
+    page     = filtered[skip : skip + limit]
+    summaries = [
+        TechnologySummary(
+            id=t.id,
+            name=t.name,
+            category=t.category,
+            oeo_class=t.oeo_class,
+            oeo_uri=t.oeo_uri,
+            n_instances=len(t.instances),
+        )
+        for t in page
+    ]
+    return TechnologyCatalogue(total=total, technologies=summaries)
+
+
+@router.get(
+    "/{tech_id}",
+    response_model=Technology,
+    summary="Get a technology by ID",
+)
+def get_technology(
+    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+) -> Technology:
+    tech = _get_all().get(tech_id)
+    if not tech:
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
+    return tech
+
+
+@router.get(
+    "/{tech_id}/instances",
+    response_model=list[EquipmentInstance],
+    summary="List all equipment instances for a technology",
+)
+def list_instances(
+    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    lifecycle: Annotated[
+        str | None,
+        Query(description="Filter by life-cycle stage (e.g. 'commercial', 'projection')."),
+    ] = None,
+) -> list[EquipmentInstance]:
+    tech = _get_all().get(tech_id)
+    if not tech:
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
+
+    instances = tech.instances
+    if lifecycle:
+        instances = [i for i in instances if i.life_cycle_stage.value == lifecycle.lower()]
+    return instances
+
+
+@router.get(
+    "/{tech_id}/instances/{instance_id}",
+    response_model=EquipmentInstance,
+    summary="Get a specific equipment instance",
+)
+def get_instance(
+    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    instance_id: Annotated[str, FPath(description="UUID of the instance.")],
+) -> EquipmentInstance:
+    tech = _get_all().get(tech_id)
+    if not tech:
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
+
+    for inst in tech.instances:
+        if str(inst.id) == instance_id:
+            return inst
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Instance '{instance_id}' not found in technology '{tech_id}'.",
+    )

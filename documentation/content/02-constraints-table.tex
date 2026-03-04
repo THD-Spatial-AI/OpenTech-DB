@@ -1,0 +1,26 @@
+\vfill
+\begin{table}[h!]
+    \centering
+    \caption{External and organizational constrains.}
+    \begin{tabular}{c l} 
+        \toprule
+        Nr. & Constraint \\ [0.5ex] 
+        \midrule
+        TC-01 & Python 3.11 or higher required (Pydantic v2 dependency). \\ [1ex]
+        TC-02 & All technology parameters must carry an explicit unit string. \\ [1ex]
+        TC-03 & Every \texttt{ParameterValue} must include a bibliographic source and reference year. \\ [1ex]
+        TC-04 & Technology identifiers (UUIDs) must be stable across reloads. \\ [1ex]
+        TC-05 & OEO class labels and URIs must resolve to the Open Energy Platform ontology. \\ [1ex]
+        TC-06 & JSON data files are the sole persistence layer; no relational database. \\ [1ex]
+        TC-07 & The REST API must remain stateless; no sessions or per-client state. \\ [1ex]
+        TC-08 & Adapter output must be a plain Python dict consumable without this project's dependencies. \\ [1ex]
+        OC-01 & Data curation follows the Open Energy Ontology (OEO) vocabulary and naming conventions. \\ [1ex]
+        OC-02 & All cost data must cite a publicly accessible primary source (e.g. NREL ATB, IRENA, IEA). \\ [1ex]
+        OC-03 & The project is licensed under Creative Commons Attribution 4.0 (CC BY 4.0). \\ [1ex]
+        OC-04 & Code changes are managed via Git; data files are version-controlled alongside code. \\ [1ex]
+        OC-05 & Adding a new technology requires only a JSON file drop and a cache reload — no code change. \\ [1ex] 
+        \bottomrule
+    \end{tabular}
+    \label{table:2}
+\end{table}
+\vfill

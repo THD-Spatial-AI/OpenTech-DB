@@ -1,0 +1,604 @@
+# OpenTech-db
+
+> An **Open Energy Ontology (OEO)-aligned** repository and REST API that stores, manages, and distributes
+> technical and economic parameters for energy **generation, storage, transmission, and conversion**
+> technologies. Designed to feed real, traceable data into energy modelling frameworks:
+> **Calliope**, **PyPSA**, **OSeMOSYS**, and **ADOPTNet0**.
+
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688)](https://fastapi.tiangolo.com/)
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![OEO](https://img.shields.io/badge/ontology-OEO-green)](https://openenergy-platform.org/ontology/oeo/)
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Technology Coverage](#technology-coverage)
+- [Project Structure](#project-structure)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+- [Data Model](#data-model)
+- [JSON Data Formats](#json-data-formats)
+- [Adding a New Technology](#adding-a-new-technology)
+- [Framework Adapters](#framework-adapters)
+- [OEO Alignment](#oeo-alignment)
+- [Data Sources](#data-sources)
+- [Architecture Documentation](#architecture-documentation)
+- [License](#license)
+
+---
+
+## Overview
+
+`techs_database` is a domain-specific data repository and REST API that provides **standardised, source-traced technical and economic parameters** for energy system components. It serves as a single source of truth that multiple energy modelling frameworks can query programmatically — eliminating the scattered spreadsheet-per-model workflow.
+
+Key design principles:
+
+- **OEO Alignment** — every technology record carries `oeo_class` and `oeo_uri` fields linking directly to [Open Energy Ontology](https://openenergy-platform.org/ontology/oeo/) concepts.
+- **Multi-instance** — a single technology (e.g. Gas Turbine) stores multiple `EquipmentInstance` rows: different manufacturers, vintages, or projection scenarios.
+- **Uncertainty-aware** — every parameter is a `ParameterValue` object with `value`, `unit`, `min`, `max`, `source`, and `year`.
+- **Framework-agnostic** — built-in adapter modules translate OEO records into PyPSA and Calliope parameter dicts.
+
+---
+
+## Technology Coverage
+
+### Generation (19 technologies)
+| Technology | Carrier | Type |
+|---|---|---|
+| Solar PV Utility-scale | solar | VRE |
+| Solar PV Distributed | solar | VRE |
+| Concentrated Solar Power (CSP) | solar | Dispatchable |
+| Onshore Wind | wind | VRE |
+| Offshore Wind Fixed-bottom | wind | VRE |
+| Offshore Wind Floating | wind | VRE |
+| Hydroelectric Run-of-River | hydro | VRE |
+| Hydroelectric Reservoir | hydro | Dispatchable |
+| Combined Cycle Gas Turbine (CCGT) | natural_gas | Dispatchable |
+| Open Cycle Gas Turbine (OCGT) | natural_gas | Dispatchable |
+| Internal Combustion Engine | natural_gas | Dispatchable |
+| Coal Power Plant | coal | Dispatchable |
+| Nuclear Power Conventional | nuclear_fuel | Dispatchable |
+| Small Modular Reactors (SMR) | nuclear_fuel | Dispatchable |
+| Geothermal Power | geothermal | Dispatchable |
+| Biomass Power Plant | biomass | Dispatchable |
+| Biogas Power Plant | biomass | Dispatchable |
+| Waste-to-Energy | biomass | Dispatchable |
+| Marine Energy | marine | VRE |
+
+### Storage (12 technologies)
+Lithium-ion BESS · Redox Flow Batteries · Sodium-Sulfur Batteries · Lead-Acid Batteries · Pumped Hydro Storage · CAES · LAES · Flywheels · Sensible Thermal Storage · Latent Thermal Storage · Hydrogen Storage Tanks · Hydrogen Underground Storage
+
+### Conversion & Sector Coupling (15 technologies)
+Alkaline Electrolyzer (AWE) · PEM Electrolyzer · Solid Oxide Electrolyzer (SOEC) · PEM Fuel Cell · Solid Oxide Fuel Cell (SOFC) · Air-Source Heat Pump · Ground-Source Heat Pump · Electric Boilers · CHP · Biomass CHP · Methanation · Fischer-Tropsch Synthesis · Haber-Bosch Process · Direct Air Capture (DAC) · Carbon Capture Systems
+
+### Transmission & Distribution (9 technologies)
+HVAC Overhead Lines · HVDC Overhead Lines · HVAC Underground Cables · HVDC Subsea Cables · Electrical Transformers · Natural Gas Pipelines · Hydrogen Pipelines · CO₂ Pipelines · District Heating Networks
+
+---
+
+## Project Structure
+
+```
+techs_database/
+│
+├── main.py                        # FastAPI application entry point
+├── requirements.txt
+│
+├── data/                          # Technology data (JSON)
+│   ├── generation/
+│   │   ├── generation_technologies.json   # Catalogue format – 19 technologies
+│   │   ├── gas_turbine_ccgt.json          # Legacy individual format
+│   │   └── utility_pv.json
+│   ├── storage/
+│   │   ├── storage_technologies.json      # Catalogue format – 12 technologies
+│   │   └── lithium_ion_bess.json
+│   ├── transmission/
+│   │   ├── transmission_technologies.json # Catalogue format – 9 technologies
+│   │   └── hvdc_submarine_cable.json
+│   └── conversion/
+│       ├── conversion_technologies.json   # Catalogue format – 15 technologies
+│       └── pem_electrolyzer.json
+│
+├── schemas/
+│   └── models.py                  # Pydantic models (OEO-aligned)
+│
+├── api/
+│   └── routes.py                  # FastAPI router + dual-format data loader
+│
+├── adapters/
+│   ├── pypsa_adapter.py           # OEO Technology → PyPSA component dict
+│   └── calliope_adapter.py        # OEO Technology → Calliope YAML-ready dict
+│
+└── documentation/                 # arc42 architecture documentation (LaTeX)
+    ├── main.tex
+    ├── references.bib
+    └── content/
+        ├── 01-introduction-goals.md
+        ├── 02-constraints.md
+        ├── 03-context-scope.md
+        ├── ...
+        └── 12-glossary.md
+```
+
+---
+
+## Quick Start
+
+```bash
+# 1 – Clone the repository
+git clone <repo-url>
+cd techs_database
+
+# 2 – Create and activate a virtual environment
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Linux / macOS
+source .venv/bin/activate
+
+# 3 – Install dependencies
+pip install -r requirements.txt
+
+# 4 – Start the API server (hot-reload enabled)
+uvicorn main:app --reload --port 8000
+```
+
+Interactive docs available at:
+- **Swagger UI** → http://127.0.0.1:8000/docs
+- **ReDoc** → http://127.0.0.1:8000/redoc
+- **OpenAPI JSON** → http://127.0.0.1:8000/openapi.json
+
+---
+
+## API Reference
+
+### Technology Catalogue
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/technologies` | List all technologies (paginated) |
+| `GET` | `/api/v1/technologies/{id}` | Full technology detail |
+| `GET` | `/api/v1/technologies/category/{cat}` | Filter by category |
+| `GET` | `/api/v1/technologies/{id}/instances` | All equipment instances for a technology |
+| `GET` | `/api/v1/technologies/{id}/instances/{iid}` | One specific equipment instance |
+
+**Query parameters:**
+
+| Parameter | Endpoint | Description |
+|---|---|---|
+| `skip` | list endpoints | Pagination offset (default: `0`) |
+| `limit` | list endpoints | Max results (default: `50`, max: `200`) |
+| `tag` | `/technologies` | Filter by tag string |
+| `lifecycle` | `/instances` | Filter by stage: `commercial`, `projection`, `demonstration` |
+
+**Valid category values:** `generation` · `storage` · `transmission` · `conversion`
+
+### Framework Adapters
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/adapt/pypsa/{id}` | PyPSA-ready parameter dict |
+| `GET` | `/api/v1/adapt/calliope/{id}` | Calliope-ready config dict |
+
+Adapter query parameters: `instance_index` (int, default `0`), `discount_rate` (float, PyPSA only), `cost_class` (str, Calliope only).
+
+### Diagnostics
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/debug/data` | Inspect loading status of all JSON files |
+| `POST` | `/api/v1/debug/reload` | Clear cache and reload all files from disk |
+| `GET` | `/health` | Service health check + version |
+
+---
+
+## Data Model
+
+```
+Technology  ← oeo:EnergyConversionDevice
+│  id (UUID)  name  category  description  tags
+│  oeo_class  oeo_uri             ← OEO linkage
+│  input_carriers  output_carriers
+│  instances: list[EquipmentInstance]
+│
+├── PowerPlant    ← oeo:PowerGeneratingUnit
+│     technology_type  primary_fuel  is_dispatchable  is_renewable
+│     fleet_capex_per_kw  fleet_opex_fixed_per_kw_yr
+│     fleet_electrical_efficiency  fleet_co2_emission_factor
+│
+├── VREPlant      ← oeo:RenewableEnergyPlant  (extends PowerPlant)
+│     profile_key  ← reference to hourly capacity-factor series
+│
+├── EnergyStorage ← oeo:ElectricEnergyStorageUnit
+│     storage_type  stored_carrier
+│     fleet_roundtrip_efficiency  fleet_energy_to_power_ratio
+│     fleet_self_discharge_rate  fleet_dod_max  fleet_cycle_lifetime
+│
+├── TransmissionLine ← oeo:TransmissionLine
+│     transmission_type  voltage_kv  length_km
+│     loss_per_km  max_capacity_mw
+│
+└── ConversionTechnology ← oeo:EnergyConversionDevice
+      conversion_type  fleet_conversion_efficiency
+
+EquipmentInstance          ← one manufacturer / vintage / scenario
+  id  label  manufacturer  reference_year  life_cycle_stage
+  capex_per_kw               ← oeo:CapitalExpenditure
+  opex_fixed_per_kw_yr       ← oeo:OperationAndMaintenanceCost
+  opex_variable_per_mwh
+  electrical_efficiency      ← oeo:ElectricalEfficiency
+  capacity_kw  capacity_factor
+  co2_emission_factor        ← oeo:CO2EmissionFactor
+  ramp_up_rate  ramp_down_rate   ← oeo:RampingRate
+  min_stable_generation  economic_lifetime_yr
+  extra: dict                ← model-specific extensions
+
+ParameterValue             ← oeo:MeasuredValue
+  value  unit  min  max  source  year
+```
+
+Every `ParameterValue` carries uncertainty bounds (`min`/`max`) and a bibliographic `source` with reference `year`, enabling **full parameter provenance**.
+
+---
+
+## JSON Data Formats
+
+The loader supports two formats automatically detected at runtime:
+
+### 1. Catalogue format (recommended for new data)
+
+One file covers all technologies in a domain. Contains a `metadata` block and a `technologies` array with flat numeric fields per instance. Used by the main catalogue files.
+
+```json
+{
+  "metadata": {
+    "domain": "generation",
+    "version": "1.0.0",
+    "description": "...",
+    "primary_sources": ["NREL ATB 2023", "IRENA ..."]
+  },
+  "technologies": [
+    {
+      "technology_id": "ccgt",
+      "technology_name": "Combined Cycle Gas Turbine (CCGT)",
+      "domain": "generation",
+      "carrier": "natural_gas",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000044",
+      "description": "...",
+      "instances": [
+        {
+          "instance_id": "ccgt_800mw_current",
+          "instance_name": "CCGT – 800 MW (Current, 2024)",
+          "typical_capacity_mw": 800,
+          "capex_usd_per_kw": 900,
+          "opex_fixed_usd_per_kw_yr": 20.0,
+          "opex_var_usd_per_mwh": 3.5,
+          "efficiency_percent": 58.0,
+          "lifetime_years": 30,
+          "co2_emission_factor_operational_g_per_kwh": 202,
+          "ramping_rate_percent_per_min": 8.0,
+          "reference_source": "NREL ATB 2023"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Field mapping** (catalogue → internal model):
+
+| Catalogue field | Internal field | Conversion |
+|---|---|---|
+| `capex_usd_per_kw` | `capex_per_kw.value` | direct |
+| `efficiency_percent` | `electrical_efficiency.value` | ÷ 100 |
+| `typical_capacity_mw` | `capacity_kw.value` | × 1000 |
+| `co2_emission_factor_operational_g_per_kwh` | `co2_emission_factor.value` | ÷ 1000 → tCO₂/MWh |
+| `ramping_rate_percent_per_min` | `ramp_up_rate.value` + `ramp_down_rate.value` | direct |
+| `oeo_class` (full URI) | `oeo_uri` + `oeo_class` (last segment) | split |
+
+### 2. Individual format (legacy, fully supported)
+
+One JSON file per technology using nested `ParameterValue` objects. See `data/generation/gas_turbine_ccgt.json` for a reference example.
+
+---
+
+## Adding a New Technology
+
+### Using the catalogue format (preferred)
+Add an entry to the appropriate `data/<category>/<category>_technologies.json` under the `technologies` array, then call:
+```
+POST http://127.0.0.1:8000/api/v1/debug/reload
+```
+
+### Using the individual format
+1. Create `data/<category>/<tech_id>.json` following the nested `ParameterValue` schema.
+2. The `id` field must be a valid UUID (any version).
+3. Add at least one entry in `instances`.
+4. Reload via the debug endpoint above.
+
+---
+
+## Framework Adapters
+
+### PyPSA adapter
+
+```python
+from schemas.models import PowerPlant
+from adapters.pypsa_adapter import to_pypsa
+import json, pathlib
+
+raw   = json.loads(pathlib.Path("data/generation/gas_turbine_ccgt.json").read_text())
+plant = PowerPlant.model_validate(raw)
+
+# Translate instance 0 (Siemens SGT-800) with 7 % discount rate
+params = to_pypsa(plant, instance_index=0, discount_rate=0.07)
+# → returns dict ready for: network.add("Generator", name, **params)
+```
+
+**PyPSA component mapping:**
+
+| Technology category | PyPSA component |
+|---|---|
+| `generation` | `Generator` |
+| `storage` | `StorageUnit` |
+| `transmission` | `Link` |
+| `conversion` | `Link` |
+
+CAPEX is annualised using the Capital Recovery Factor (CRF):
+$$\text{CRF} = \frac{r(1+r)^n}{(1+r)^n - 1}$$
+
+### Calliope adapter
+
+```python
+from adapters.calliope_adapter import to_calliope
+import yaml
+
+calliope_cfg = to_calliope(plant, instance_index=0, cost_class="monetary")
+print(yaml.dump(calliope_cfg, sort_keys=False))
+# → {essentials: {...}, constraints: {...}, costs: {monetary: {...}}}
+```
+
+**Calliope tech type mapping:**
+
+| Technology category | Calliope type |
+|---|---|
+| `generation` (dispatchable) | `supply` |
+| `generation` (VRE) | `supply_plus` |
+| `storage` | `storage` |
+| `transmission` | `transmission` |
+| `conversion` | `conversion` |
+
+---
+
+## OEO Alignment
+
+All records carry direct links to [Open Energy Ontology](https://openenergy-platform.org/ontology/oeo/) concepts:
+
+| OEO concept | Field in record |
+|---|---|
+| `oeo:PowerGeneratingUnit` | `oeo_class` + `oeo_uri` on `PowerPlant` |
+| `oeo:ElectricEnergyStorageUnit` | `oeo_class` + `oeo_uri` on `EnergyStorage` |
+| `oeo:TransmissionLine` | `oeo_class` + `oeo_uri` on `TransmissionLine` |
+| `oeo:EnergyConversionDevice` | `oeo_class` + `oeo_uri` on `ConversionTechnology` |
+| `oeo:CapitalExpenditure` | `capex_per_kw` |
+| `oeo:OperationAndMaintenanceCost` | `opex_fixed_per_kw_yr` |
+| `oeo:ElectricalEfficiency` | `electrical_efficiency` |
+| `oeo:CO2EmissionFactor` | `co2_emission_factor` |
+| `oeo:RampingRate` | `ramp_up_rate`, `ramp_down_rate` |
+| `oeo:InstalledCapacity` | `capacity_kw` |
+| `oeo:MeasuredValue` | `ParameterValue` (value + unit + uncertainty) |
+
+OEO browser: <https://openenergy-platform.org/ontology/oeo/>
+
+---
+
+## Data Sources
+
+| Source | Used for |
+|---|---|
+| NREL Annual Technology Baseline (ATB) 2023 | Generation & storage cost/performance |
+| IRENA Renewable Power Generation Costs 2023 | Generation CAPEX & LCOE |
+| Lazard LCOE Analysis v16.0 (2023) | Cost benchmarking |
+| IEA World Energy Outlook 2023 | Projections, gas & nuclear |
+| ENTSO-E TYNDP 2022 | Transmission costs |
+| CIGRE Technical Brochure TB 812 | HVDC economics |
+| IEA Global Hydrogen Review 2023 | Electrolyzers, H₂ storage |
+| BloombergNEF Energy Storage Outlook 2023 | BESS costs |
+| PNNL Grid Energy Storage Assessment 2022 | Storage benchmarks |
+| EU Hydrogen Backbone Study 2021 | H₂ pipelines |
+| IPCC AR6 | CO₂ emission factors |
+
+---
+
+## Architecture Documentation
+
+A full **arc42** architecture document is maintained in `documentation/`. It covers system context, building-block decomposition, runtime behaviour, deployment, crosscutting concepts, architectural decisions, quality requirements, and a glossary.
+
+To compile (requires a LaTeX distribution with `markdown` package):
+
+```bash
+cd documentation
+make pdf     # or: pdflatex main.tex
+```
+
+---
+
+## License
+
+Data and code are released under **Creative Commons Attribution 4.0 International (CC BY 4.0)**.
+See <https://creativecommons.org/licenses/by/4.0/>.
+
+When using this database in publications or models, please cite the primary sources listed in each technology record's `reference_source` field.
+
+│
+├── data/                          # Technology data files (JSON)
+│   ├── generation/
+│   │   ├── gas_turbine_ccgt.json  # CCGT – Siemens, GE, EU projection 2030
+│   │   └── utility_pv.json        # Utility-scale PV – First Solar, EU 2030
+│   ├── storage/
+│   │   └── lithium_ion_bess.json  # Li-Ion BESS – Tesla, CATL, EU 2030
+│   ├── transmission/
+│   │   └── hvdc_submarine_cable.json
+│   └── conversion/
+│       └── pem_electrolyzer.json  # PEM / AWE – Nel, tkN, EU 2030
+│
+├── schemas/
+│   └── models.py                  # Pydantic models (OEO-aligned)
+│
+├── api/
+│   └── routes.py                  # FastAPI router
+│
+├── adapters/
+│   ├── pypsa_adapter.py           # Technology → PyPSA component dict
+│   └── calliope_adapter.py        # Technology → Calliope tech YAML dict
+│
+├── main.py                        # FastAPI application entry point
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## Quick Start
+
+```bash
+# 1 – Create and activate a virtual environment
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Linux / macOS
+source .venv/bin/activate
+
+# 2 – Install dependencies
+pip install -r requirements.txt
+
+# 3 – Start the API server (hot-reload enabled)
+uvicorn main:app --reload --port 8000
+```
+
+Open **http://127.0.0.1:8000/docs** for the interactive Swagger UI.
+
+---
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/technologies` | List all technologies (paginated) |
+| `GET` | `/api/v1/technologies/{id}` | Full detail for a technology |
+| `GET` | `/api/v1/technologies/category/{cat}` | Technologies by category |
+| `GET` | `/api/v1/technologies/{id}/instances` | All equipment instances |
+| `GET` | `/api/v1/technologies/{id}/instances/{iid}` | One equipment instance |
+| `GET` | `/api/v1/adapt/pypsa/{id}` | PyPSA parameter dict for a technology |
+| `GET` | `/api/v1/adapt/calliope/{id}` | Calliope config dict for a technology |
+| `GET` | `/health` | Service health check |
+
+### Query parameters
+
+- `skip`, `limit` – pagination on list endpoints
+- `tag` – filter by tag string on `/technologies`
+- `lifecycle` – filter instances by stage (`commercial`, `projection`, …)
+- `instance_index` – which instance to translate on adapter endpoints
+- `discount_rate` – override CRF discount rate on the PyPSA adapter
+- `cost_class` – Calliope cost class name on the Calliope adapter
+
+---
+
+## Data Model (OEO alignment)
+
+```
+Technology  (oeo:EnergyConversionDevice)
+│  id, name, category, oeo_class, oeo_uri
+│  input_carriers, output_carriers, tags
+│  instances: list[EquipmentInstance]
+│
+├── PowerPlant    (oeo:PowerGeneratingUnit)
+│     fleet_capex_per_kw, fleet_electrical_efficiency,
+│     fleet_co2_emission_factor, is_dispatchable, ...
+│
+├── VREPlant      (oeo:RenewableEnergyPlant)
+│     profile_key  ← link to hourly capacity-factor series
+│
+├── EnergyStorage (oeo:ElectricEnergyStorageUnit)
+│     fleet_roundtrip_efficiency, fleet_energy_to_power_ratio,
+│     fleet_cycle_lifetime, fleet_dod_max, ...
+│
+├── TransmissionLine (oeo:TransmissionLine)
+│     transmission_type, voltage_kv, length_km, loss_per_km, ...
+│
+└── ConversionTechnology (oeo:EnergyConversionDevice)
+      conversion_type, fleet_conversion_efficiency, ...
+
+EquipmentInstance
+  id, label, manufacturer, reference_year, life_cycle_stage
+  capex_per_kw, opex_fixed_per_kw_yr, opex_variable_per_mwh
+  electrical_efficiency, capacity_kw, capacity_factor
+  co2_emission_factor, ramp_up_rate, ramp_down_rate
+  min_stable_generation, economic_lifetime_yr, discount_rate
+  extra: dict  ← model-specific extensions
+
+ParameterValue
+  value, unit, min, max, source, year
+```
+
+Each `ParameterValue` carries uncertainty bounds (`min`/`max`) and a
+bibliographic `source` reference, enabling auditable parameter provenance.
+
+---
+
+## Adding a New Technology
+
+1. Create a JSON file in the appropriate `data/<category>/` subfolder.
+2. Use the schema above; the `id` field must be a valid UUID v4.
+3. Add at least one `instances` entry (even a generic projection).
+4. Restart the server (or call `_load_all_technologies.cache_clear()` during tests).
+
+---
+
+## Adapter Usage (Python)
+
+```python
+import json, pathlib
+from schemas.models import PowerPlant
+from adapters.pypsa_adapter    import to_pypsa
+from adapters.calliope_adapter import to_calliope
+
+raw   = json.loads(pathlib.Path("data/generation/gas_turbine_ccgt.json").read_text())
+plant = PowerPlant.model_validate(raw)
+
+# Instance 0 = Siemens SGT-800 (2024)
+pypsa_params    = to_pypsa(plant, instance_index=0, discount_rate=0.07)
+calliope_params = to_calliope(plant, instance_index=0)
+
+print(pypsa_params)
+import yaml; print(yaml.dump(calliope_params))
+```
+
+---
+
+## OEO References
+
+| Concept | OEO class/property |
+|---|---|
+| Capital expenditure | `oeo:CapitalExpenditure` |
+| O&M cost | `oeo:OperationAndMaintenanceCost` |
+| Electrical efficiency | `oeo:ElectricalEfficiency` |
+| CO₂ emission factor | `oeo:CO2EmissionFactor` |
+| Ramping rate | `oeo:RampingRate` |
+| Installed capacity | `oeo:InstalledCapacity` |
+| Power generating unit | `oeo:PowerGeneratingUnit` |
+| Storage unit | `oeo:ElectricEnergyStorageUnit` |
+| Transmission line | `oeo:TransmissionLine` |
+| Conversion device | `oeo:EnergyConversionDevice` |
+
+Full ontology browser: <https://openenergy-platform.org/ontology/oeo/>
+
+---
+
+## License
+
+Data and code released under **CC BY 4.0** – please cite your primary data
+sources as recorded in the `source` field of each `ParameterValue`.

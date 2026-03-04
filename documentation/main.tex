@@ -1,0 +1,98 @@
+\documentclass[12pt,twoside]{report}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Definitions for the title page
+% Edit these to provide the correct information
+% e.g. \newcommand{\reportauthor}{Timothy Kimber}
+
+\newcommand{\reporttitle}{Software/Hardware Architecture}
+\newcommand{\reportauthor}{Ricardo Miranda}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% load some definitions and default packages
+\input{styles/includes}
+
+% load some macros
+\input{styles/extentions}
+
+\date{\today}
+
+\begin{document}
+
+% load title page
+\input{styles/titlepage}
+
+
+% page numbering etc.
+\pagenumbering{roman}
+\clearpage{\pagestyle{empty}\cleardoublepage}
+\setcounter{page}{1}
+\pagestyle{fancy}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%--- table of contents
+\fancyhead[RE,LO]{\sffamily {Table of Contents}}
+\tableofcontents 
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\fancyhead[LE,RO]{\slshape \rightmark}
+\fancyhead[LO,RE]{\slshape \leftmark}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Introduction & Goals
+\markdownInput{content/01-introduction-goals.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Constraints
+\markdownInput{content/02-constraints.md}
+\input{content/02-constraints-table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Context & Scope
+\markdownInput{content/03-context-scope.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Solution Strategy
+\markdownInput{content/04-solution-strategy.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Building Block View
+\markdownInput{content/05-building-block-view.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Runtime View
+\markdownInput{content/06-runtime-view.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Deployment View
+\markdownInput{content/07-deployment-view.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Crosscutting Concepts
+\markdownInput{content/08-crosscutting-concepts.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Architectural Decisions
+\markdownInput{content/09-architectural-decisions.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Quality Requirements
+\markdownInput{content/10-quality-requirements.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Risks \& Technical Debt
+\markdownInput{content/11-risks-technical-debt.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Glossary
+\markdownInput{content/12-glossary.md}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% References
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+
+\end{document}

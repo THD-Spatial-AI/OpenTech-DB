@@ -1,0 +1,19 @@
+services:
+  opentech-db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: opentech-db:latest
+    container_name: opentech-db
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Number of uvicorn worker processes (adjust to available CPU cores)
+      WORKERS: "2"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

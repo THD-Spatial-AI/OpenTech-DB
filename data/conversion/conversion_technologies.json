@@ -33,7 +33,7 @@
       "domain": "conversion",
       "input_carrier": "electricity",
       "output_carrier": "hydrogen",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000101",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010021",
       "description": "Electrolysis using a liquid KOH electrolyte in nickel-based electrodes. Most mature and lowest-cost electrolyzer technology. Lower current density than PEM but robust and well-proven at MW-scale. Efficiency = electrical-to-H2 (LHV). Requires 20–45 bar output pressure.",
       "instances": [
         {
@@ -92,7 +92,7 @@
       "domain": "conversion",
       "input_carrier": "electricity",
       "output_carrier": "hydrogen",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000102",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010021",
       "description": "Electrolysis using a solid polymer membrane as electrolyte. Higher current density, faster dynamic response (0–100% within seconds), and purer H2 output than AWE. Preferred for coupling with variable renewables. Efficiency = electrical-to-H2 (LHV). Output pressure: 30–80 bar.",
       "instances": [
         {
@@ -151,7 +151,7 @@
       "domain": "conversion",
       "input_carrier": "electricity",
       "output_carrier": "hydrogen",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000103",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010021",
       "description": "High-temperature (700–850 °C) solid oxide electrolysis cells consuming both electricity and heat, achieving the highest electrical efficiency of all electrolyzer types. Can co-electrolyze H2O and CO2 to produce syngas. Best coupled with industrial waste heat. Efficiency = electrical-to-H2 (LHV); includes heat credit.",
       "instances": [
         {
@@ -210,7 +210,7 @@
       "domain": "conversion",
       "input_carrier": "hydrogen",
       "output_carrier": "electricity",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000104",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00140134",
       "description": "Proton Exchange Membrane (PEM) fuel cells converting H2 to electricity via electrochemical reaction at low temperatures (60–80 °C). Fast start-up, high power density. Used in vehicles, portable power, stationary backup, and grid balancing. efficiency_percent = net AC electrical efficiency (LHV).",
       "instances": [
         {
@@ -269,7 +269,7 @@
       "domain": "conversion",
       "input_carrier": "hydrogen",
       "output_carrier": "electricity",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000105",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000016",
       "description": "High-temperature (600–1000 °C) solid oxide fuel cells with the highest electrical efficiency among fuel cell types. Fuel-flexible (H2, natural gas, biogas, syngas). Slow start-up. Used in distributed CHP, data centres, and industrial power. efficiency_percent = net electrical efficiency (LHV).",
       "instances": [
         {
@@ -328,7 +328,7 @@
       "domain": "conversion",
       "input_carrier": "electricity",
       "output_carrier": "heat",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000106",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000009",
       "description": "Heat pumps extracting thermal energy from outdoor air for space heating and domestic hot water. efficiency_percent = COP expressed as percentage (seasonal COP × 100). Covers residential air-to-air/air-to-water and large industrial air-to-water types. capex_usd_per_kw refers to thermal output capacity.",
       "instances": [
         {
@@ -387,7 +387,7 @@
       "domain": "conversion",
       "input_carrier": "electricity",
       "output_carrier": "heat",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000107",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000009",
       "description": "Geothermal heat pumps extracting heat from stable ground or groundwater temperatures (10–15 °C), enabling a higher COP than air-source alternatives. Includes horizontal ground loops, vertical borehole systems, and groundwater heat exchangers. efficiency_percent = COP as percentage.",
       "instances": [
         {
@@ -446,7 +446,7 @@
       "domain": "conversion",
       "input_carrier": "electricity",
       "output_carrier": "heat",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000108",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00310015",
       "description": "Resistance or electrode boilers converting electricity directly to heat at near-100% efficiency. Used for power-to-heat flexibility, district heating, and industrial steam. Low CAPEX but high operational cost at normal electricity prices. efficiency_percent = thermal conversion efficiency.",
       "instances": [
         {
@@ -505,7 +505,7 @@
       "domain": "conversion",
       "input_carrier": "natural_gas",
       "output_carrier": "electricity_heat",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000109",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00240011",
       "description": "Also known as cogeneration. Gas-fired plants simultaneously producing electricity and useful heat, achieving total fuel utilisation efficiencies of 75–90%. Includes gas engine CHP (< 10 MW) and gas turbine CHP (> 10 MW). efficiency_percent = total efficiency (electrical + thermal, LHV basis).",
       "instances": [
         {
@@ -564,7 +564,7 @@
       "domain": "conversion",
       "input_carrier": "biomass",
       "output_carrier": "electricity_heat",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000110",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00240011",
       "description": "Combined heat and power from solid biomass (wood chips, pellets, agricultural residues) or biogas combustion. Contributes to renewable heating and power with biogenic (net-zero) CO2 accounting. efficiency_percent = total efficiency (electrical + thermal, LHV).",
       "instances": [
         {
@@ -623,7 +623,7 @@
       "domain": "conversion",
       "input_carrier": "hydrogen_co2",
       "output_carrier": "methane",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000111",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000269",
       "description": "Catalytic (Sabatier) or biological methanation reactors converting H2 and CO2 into synthetic methane (SNG). Enables Power-to-Gas (P2G) and carbon utilisation. Efficiency = H2+CO2 energy-to-CH4 (LHV basis). Exothermic process; waste heat recovery improves overall efficiency.",
       "instances": [
         {
@@ -682,7 +682,7 @@
       "domain": "conversion",
       "input_carrier": "hydrogen_co",
       "output_carrier": "liquid_synthetic_fuel",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000112",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010020",
       "description": "Catalytic process converting syngas (H2 + CO) into liquid synthetic hydrocarbons (e-diesel, e-kerosene, waxes). Central to Power-to-Liquid (PtL) and e-fuel production chains. efficiency_percent = syngas-to-liquid fuel (LHV). Requires upstream WGS and H2/CO2 sources.",
       "instances": [
         {
@@ -741,7 +741,7 @@
       "domain": "conversion",
       "input_carrier": "hydrogen_nitrogen",
       "output_carrier": "ammonia",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000113",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00330010",
       "description": "Industrial catalytic process synthesising ammonia (NH3) from hydrogen and nitrogen at 150–300 bar and 400–500 °C. Ammonia is a key fertiliser feedstock and emerging green hydrogen carrier. Green ammonia integrates renewable H2. efficiency_percent = H2-to-NH3 (LHV).",
       "instances": [
         {
@@ -800,7 +800,7 @@
       "domain": "conversion",
       "input_carrier": "electricity_heat",
       "output_carrier": "co2",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000114",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010139",
       "description": "Technology capturing CO2 directly from ambient air (currently ~420 ppm) using solid-sorbent (DACS) or liquid-solvent (DACL) systems. Highly energy-intensive. efficiency_percent = CO2 capture rate (%). capex_usd_per_kw refers to electrical input capacity (preferred unit is USD/tCO2/year).",
       "instances": [
         {
@@ -862,7 +862,7 @@
       "domain": "conversion",
       "input_carrier": "flue_gas_electricity",
       "output_carrier": "co2",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000115",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010141",
       "description": "Post-combustion, pre-combustion (IGCC), and oxy-fuel carbon capture systems installed on power plants and industrial facilities (cement, steel, refining). Typical post-combustion solvent (MEA) systems. efficiency_percent = CO2 capture rate (% of flue gas CO2 captured). Significant energy penalty reduces net plant efficiency.",
       "instances": [
         {

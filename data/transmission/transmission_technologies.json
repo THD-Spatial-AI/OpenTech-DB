@@ -30,7 +30,7 @@
       "domain": "transmission",
       "carrier": "electricity",
       "voltage_class": "220–400 kV AC",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000121",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000047",
       "description": "High-voltage alternating current (HVAC) overhead transmission lines on lattice steel towers. Operating at 220–400 kV (Europe) or 230–765 kV (North America). Dominant technology for bulk power transmission up to ~600 km. Reactive power compensation required at longer distances.",
       "instances": [
         {
@@ -95,7 +95,7 @@
       "domain": "transmission",
       "carrier": "electricity",
       "voltage_class": "±320–±800 kV DC",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000122",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000127",
       "description": "High-voltage direct current (HVDC) overhead transmission lines using VSC or LCC converter technology. Lower line losses than HVAC at distances > ~600 km. Enables asynchronous grid interconnection and precise power flow control. Converter stations are significant cost items.",
       "instances": [
         {
@@ -163,7 +163,7 @@
       "domain": "transmission",
       "carrier": "electricity",
       "voltage_class": "132–400 kV AC",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000123",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000047",
       "description": "High-voltage AC underground XLPE cables installed in direct-buried or ducted trenches. Used in dense urban areas, protected landscapes, and short sub-sea crossings where overhead lines are not feasible. Significantly higher cost than overhead lines; shorter practical lengths due to reactive power issues.",
       "instances": [
         {
@@ -228,7 +228,7 @@
       "domain": "transmission",
       "carrier": "electricity",
       "voltage_class": "±200–±525 kV DC",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000124",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000127",
       "description": "HVDC cables installed on the seabed for international power interconnection and offshore wind grid connection. VSC technology dominates new projects. High installation costs (cable-laying vessels) but suitable for 50–1000+ km offshore routes.",
       "instances": [
         {
@@ -296,7 +296,7 @@
       "domain": "transmission",
       "carrier": "electricity",
       "voltage_class": "33–400 kV",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000125",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000420",
       "description": "Power transformers stepping voltage up or down between transmission and distribution levels. Core infrastructure at every substation. FACTS transformers (e.g., phase-shifting PSTs) provide additional power flow control.",
       "instances": [
         {
@@ -354,7 +354,7 @@
       "technology_name": "Natural Gas Pipelines",
       "domain": "transmission",
       "carrier": "natural_gas",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000126",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00020007",
       "description": "High-pressure (50–100 bar) steel pipelines transporting natural gas over long distances. Compressor stations every 100–150 km maintain pressure. efficiency_percent reflects pipeline transport efficiency including compressor parasitic load. capex_usd_per_kw normalised over a stated corridor.",
       "instances": [
         {
@@ -418,7 +418,7 @@
       "technology_name": "Hydrogen Pipelines",
       "domain": "transmission",
       "carrier": "hydrogen",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000127",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00020006",
       "description": "New-build or repurposed steel pipelines transporting pure hydrogen gas at 30–100 bar. Higher compressor energy requirements than CH4 (different molecular weight and viscosity). European Hydrogen Backbone initiative targets 4000 km of H2 pipelines by 2030 and 28,000 km by 2040.",
       "instances": [
         {
@@ -482,7 +482,7 @@
       "technology_name": "CO2 Pipelines",
       "domain": "transmission",
       "carrier": "co2",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000128",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00020006",
       "description": "Carbon dioxide transport pipelines for CCS/CCU value chains, typically operating in supercritical dense-phase (above 73 bar) to minimise pipeline diameter. Connect capture sites to geological storage locations. efficiency_percent = pipeline transport efficiency (fraction of CO2 delivered). capex normalised per kW of associated capture input.",
       "instances": [
         {
@@ -549,7 +549,7 @@
       "technology_name": "District Heating Networks",
       "domain": "transmission",
       "carrier": "heat",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000129",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00020005",
       "description": "Insulated pipe networks distributing hot water (3rd gen: 70–90 °C; 4th gen: 40–60 °C) from centralised heat sources to buildings. Efficiency depends on pipe insulation quality, supply temperature, and network length. Includes distribution pumps and heat substations.",
       "instances": [
         {

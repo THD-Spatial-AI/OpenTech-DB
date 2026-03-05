@@ -21,7 +21,7 @@
       "technology_name": "Lithium-ion BESS",
       "domain": "storage",
       "carrier": "electricity",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000071",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000248",
       "description": "Battery energy storage systems using lithium-ion chemistry (NMC, LFP, NCA). LFP (lithium iron phosphate) dominates grid-scale applications due to safety and cycle life. Includes inverter, BMS, HVAC, and balance-of-plant.",
       "instances": [
         {
@@ -85,7 +85,7 @@
       "technology_name": "Redox Flow Batteries",
       "domain": "storage",
       "carrier": "electricity",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000072",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000169",
       "description": "Electrochemical storage systems where energy is stored in liquid electrolytes circulated through a cell stack. Vanadium redox flow batteries (VRFB) are the dominant commercial variant. Power and energy are independently scalable. Well-suited for 4–12 hour storage.",
       "instances": [
         {
@@ -149,7 +149,7 @@
       "technology_name": "Sodium-Sulfur Batteries",
       "domain": "storage",
       "carrier": "electricity",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000073",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000377",
       "description": "High-temperature (300–350 °C) sodium-sulfur (NaS) batteries used for daily load-leveling and peak-shaving. Typically 6–8 hour discharge duration. Primarily manufactured by NGK Insulators (Japan). Long cycle life but requires thermal management.",
       "instances": [
         {
@@ -213,7 +213,7 @@
       "technology_name": "Lead-Acid Batteries",
       "domain": "storage",
       "carrier": "electricity",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000074",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00280014",
       "description": "Mature electrochemical energy storage using lead electrodes and sulfuric acid electrolyte. Advanced VRLA (valve-regulated) and flooded variants used for telecom backup, UPS, and small-grid applications. Low cost but limited cycle life and lower energy density than lithium-ion.",
       "instances": [
         {
@@ -277,7 +277,7 @@
       "technology_name": "Pumped Hydro Storage",
       "domain": "storage",
       "carrier": "electricity",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000075",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010089",
       "description": "Pumps water from a lower to an upper reservoir during low-cost electricity periods and generates electricity by reversing flow through turbines. The dominant form of bulk, long-duration grid storage globally. Variable speed (adjustable speed) units provide additional grid services.",
       "instances": [
         {
@@ -341,7 +341,7 @@
       "technology_name": "Compressed Air Energy Storage (CAES)",
       "domain": "storage",
       "carrier": "electricity",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000076",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00020250",
       "description": "Stores energy by compressing air into underground caverns or pressure vessels. During discharge, compressed air is expanded through turbines. Diabatic CAES requires supplemental gas heating. Advanced adiabatic CAES (A-CAES) stores compression heat to eliminate fuel use.",
       "instances": [
         {
@@ -405,7 +405,7 @@
       "technology_name": "Liquid Air Energy Storage (LAES)",
       "domain": "storage",
       "carrier": "electricity",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000077",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000399",
       "description": "Cryogenic energy storage system that liquefies air (−196 °C) using off-peak electricity and re-gasifies it to drive a turbine on discharge. Also known as Cryogenic Energy Storage (CES). Highview Power is the primary commercial developer.",
       "instances": [
         {
@@ -469,7 +469,7 @@
       "technology_name": "Flywheels",
       "domain": "storage",
       "carrier": "electricity",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000078",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000399",
       "description": "Kinetic energy storage using a rotating mass (rotor) in a vacuum enclosure with magnetic bearings. Extremely high power-to-energy ratio, fast response (millisecond), very high cycle life. Used for frequency regulation, UPS, and short-duration grid services.",
       "instances": [
         {
@@ -533,7 +533,7 @@
       "technology_name": "Sensible Thermal Storage",
       "domain": "storage",
       "carrier": "heat",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000079",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00310037",
       "description": "Thermal energy storage using the heat capacity of a medium (water, molten salt, rock, concrete, oil) without phase change. Includes hot water tanks, molten-salt two-tank systems (CSP integration), and pit thermal energy storage (PTES) for district heating.",
       "instances": [
         {
@@ -597,7 +597,7 @@
       "technology_name": "Latent Thermal Storage",
       "domain": "storage",
       "carrier": "heat",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000080",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00310043",
       "description": "Thermal energy storage exploiting the latent heat of phase-change materials (PCMs) at constant temperature. High energy density. Applications include building thermal management, industrial process heat, and solar thermal systems. Materials range from paraffin waxes to salt hydrates.",
       "instances": [
         {
@@ -661,7 +661,7 @@
       "technology_name": "Hydrogen Storage Tanks",
       "domain": "storage",
       "carrier": "hydrogen",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000081",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00020363",
       "description": "Above-ground compressed hydrogen storage at high pressure (350–700 bar) in steel or composite Type IV cylinders/vessels. Used in hydrogen refuelling stations, industrial H2 buffer storage, and energy storage systems. efficiency_percent represents round-trip compressor/decompressor efficiency.",
       "instances": [
         {
@@ -725,7 +725,7 @@
       "technology_name": "Hydrogen Underground Storage",
       "domain": "storage",
       "carrier": "hydrogen",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000082",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000429",
       "description": "Large-scale, long-duration hydrogen storage in geological formations: salt caverns (most mature), depleted gas fields, and aquifers. Enables seasonal balancing of hydrogen supply and demand at TWh scale. efficiency_percent covers compressor energy costs.",
       "instances": [
         {

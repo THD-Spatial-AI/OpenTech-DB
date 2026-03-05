@@ -20,7 +20,7 @@
       "technology_name": "Solar PV Utility-scale",
       "domain": "generation",
       "carrier": "solar",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000051",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000165",
       "description": "Large-scale ground-mounted photovoltaic power plants connected directly to transmission networks, typically >1 MW. Includes single-axis tracking systems.",
       "instances": [
         {
@@ -78,7 +78,7 @@
       "technology_name": "Solar PV Distributed",
       "domain": "generation",
       "carrier": "solar",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000051",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000361",
       "description": "Small to medium-scale rooftop or ground-mounted PV systems connected to distribution networks. Covers residential (<20 kW), commercial (20–500 kW), and industrial (0.5–5 MW) segments.",
       "instances": [
         {
@@ -136,7 +136,7 @@
       "technology_name": "Concentrated Solar Power (CSP)",
       "domain": "generation",
       "carrier": "solar",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000052",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000389",
       "description": "Concentrating solar thermal power plants using mirrors or lenses to focus sunlight, generating steam for a turbine. Includes parabolic trough and central tower configurations, typically with thermal energy storage.",
       "instances": [
         {
@@ -194,7 +194,7 @@
       "technology_name": "Onshore Wind",
       "domain": "generation",
       "carrier": "wind",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000443",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000311",
       "description": "Land-based wind turbines grouped into wind farms. Modern turbines are typically 3–7 MW per turbine with hub heights of 100–160 m.",
       "instances": [
         {
@@ -252,7 +252,7 @@
       "technology_name": "Offshore Wind Fixed-bottom",
       "domain": "generation",
       "carrier": "wind",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000444",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000308",
       "description": "Offshore wind turbines on fixed-bottom foundations (monopile, jacket, tripod) in water depths up to ~60 m. Turbines are typically 8–15 MW.",
       "instances": [
         {
@@ -310,7 +310,7 @@
       "technology_name": "Offshore Wind Floating",
       "domain": "generation",
       "carrier": "wind",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000444",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000308",
       "description": "Offshore wind turbines on floating sub-structures (spar-buoy, semi-submersible, tension-leg) for water depths >60 m. Enables access to deep-water, high-wind resources.",
       "instances": [
         {
@@ -368,7 +368,7 @@
       "technology_name": "Hydroelectric Run-of-River",
       "domain": "generation",
       "carrier": "hydro",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000437",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010087",
       "description": "Hydropower plants that use the natural flow of a river without significant water storage. Output depends on river discharge, providing relatively stable baseload with seasonal variation.",
       "instances": [
         {
@@ -426,7 +426,7 @@
       "technology_name": "Hydroelectric Reservoir",
       "domain": "generation",
       "carrier": "hydro",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000438",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010094",
       "description": "Hydropower plants with a large upstream reservoir for water storage, enabling dispatchable generation independent of instantaneous river flow. Provides peaking, balancing, and long-duration storage services.",
       "instances": [
         {
@@ -484,7 +484,7 @@
       "technology_name": "Combined Cycle Gas Turbine (CCGT)",
       "domain": "generation",
       "carrier": "natural_gas",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000044",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000184",
       "description": "Combined-cycle power plants burning natural gas in a gas turbine and recovering exhaust heat in a heat recovery steam generator (HRSG) to drive a steam turbine. Highest thermal efficiency among gas-fired plants.",
       "instances": [
         {
@@ -542,7 +542,7 @@
       "technology_name": "Open Cycle Gas Turbine (OCGT)",
       "domain": "generation",
       "carrier": "natural_gas",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000041",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000184",
       "description": "Simple-cycle combustion turbines burning natural gas, used primarily for peaking power and grid balancing due to their fast-start capability. Lower efficiency than CCGT but lower capital cost.",
       "instances": [
         {
@@ -600,7 +600,7 @@
       "technology_name": "Internal Combustion Engine",
       "domain": "generation",
       "carrier": "natural_gas",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000045",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000184",
       "description": "Reciprocating internal combustion engines (diesel or gas) used for distributed power generation, backup power, and island-grid applications. Fast-start and highly flexible. Can also run on biogas.",
       "instances": [
         {
@@ -658,7 +658,7 @@
       "technology_name": "Coal Power Plant",
       "domain": "generation",
       "carrier": "coal",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000036",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000089",
       "description": "Steam turbine power plants fuelled by coal. Includes pulverised coal combustion (PCC) at sub-critical, supercritical, and ultra-supercritical steam conditions. Higher steam parameters improve efficiency and reduce emissions.",
       "instances": [
         {
@@ -716,7 +716,7 @@
       "technology_name": "Nuclear Power Conventional",
       "domain": "generation",
       "carrier": "uranium",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000068",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000303",
       "description": "Large-scale nuclear fission power plants producing baseload electricity. Includes Generation II (PWR, BWR) and Generation III/III+ reactors (AP1000, EPR). Very low operational CO2 emissions.",
       "instances": [
         {
@@ -774,7 +774,7 @@
       "technology_name": "Small Modular Reactors (SMR)",
       "domain": "generation",
       "carrier": "uranium",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000068",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000303",
       "description": "Nuclear reactors with electrical output typically below 300 MW. Factory-fabricated modules intended to reduce construction time and cost. Examples include NuScale, BWRX-300, and Rolls-Royce SMR.",
       "instances": [
         {
@@ -832,7 +832,7 @@
       "technology_name": "Geothermal Power",
       "domain": "generation",
       "carrier": "geothermal",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000069",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000192",
       "description": "Power generation using heat from the Earth's interior. Includes dry steam, flash steam, and binary cycle plants. Enhanced Geothermal Systems (EGS) are an emerging deep-resource technology.",
       "instances": [
         {
@@ -890,7 +890,7 @@
       "technology_name": "Biomass Power Plant",
       "domain": "generation",
       "carrier": "biomass",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000033",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000036",
       "description": "Power plants combusting solid biomass fuels (wood pellets, agricultural residues, energy crops) in dedicated steam turbine plants. CO2 emissions are considered biogenic and net-zero under accounting rules when sustainably sourced.",
       "instances": [
         {
@@ -948,7 +948,7 @@
       "technology_name": "Biogas Power Plant",
       "domain": "generation",
       "carrier": "biogas",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000033",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000004",
       "description": "Power plants using biogas from anaerobic digestion (AD) of organic waste (manure, food waste, sewage sludge) or landfill gas. Gas is combusted in ICE or microturbine generators.",
       "instances": [
         {
@@ -1006,7 +1006,7 @@
       "technology_name": "Waste-to-Energy",
       "domain": "generation",
       "carrier": "municipal_solid_waste",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000034",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000440",
       "description": "Power plants combusting municipal solid waste (MSW) in purpose-built mass-burn boilers with steam turbine generators. Also includes gasification and refuse-derived fuel (RDF) variants. CO2 emissions include biogenic and fossil fractions.",
       "instances": [
         {
@@ -1064,7 +1064,7 @@
       "technology_name": "Marine Energy",
       "domain": "generation",
       "carrier": "marine",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000446",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010086",
       "description": "Electricity generation from ocean energy resources including tidal stream turbines, tidal barrages, wave energy converters (WECs), and ocean thermal energy conversion (OTEC). All at early commercial or pre-commercial stage.",
       "instances": [
         {

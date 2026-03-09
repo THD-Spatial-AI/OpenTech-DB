@@ -16,11 +16,19 @@ Two JSON formats are supported:
 
 Endpoints
 ---------
-GET /technologies                  → list all technologies (summary)
-GET /technologies/{tech_id}        → full technology detail
-GET /technologies/category/{cat}   → technologies by category
-GET /technologies/{tech_id}/instances → all equipment instances for a tech
-GET /technologies/{tech_id}/instances/{instance_id} → a specific instance
+GET  /technologies                                 → list all technologies (summary)
+GET  /technologies/{tech_id}                       → full OEO technology detail
+GET  /technologies/category/{cat}                  → technologies by category
+GET  /technologies/{tech_id}/instances             → all equipment instances
+GET  /technologies/{tech_id}/instances/{iid}       → a specific instance
+
+Calliope adapter endpoints
+--------------------------
+GET  /technologies/calliope                        → ALL techs as Calliope techs: block
+GET  /technologies/calliope?category=generation    → filtered by category
+GET  /technologies/{tech_id}/calliope              → single tech, Calliope format
+GET  /technologies/{tech_id}/calliope?instance_index=1  → specific instance
+POST /technologies/{tech_id}/calliope              → single tech + constraint overrides
 """
 
 from __future__ import annotations
@@ -31,12 +39,15 @@ import re
 import uuid
 from pathlib import Path
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Any
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, HTTPException, Query, Path as FPath
+from fastapi import APIRouter, Body, HTTPException, Query, Path as FPath
 from fastapi.responses import ORJSONResponse
+from pydantic import BaseModel, Field
+
+from adapters.calliope_adapter import to_calliope
 
 from schemas.models import (
     Technology,
@@ -417,6 +428,45 @@ def reload_cache():
 
 
 # ---------------------------------------------------------------------------
+# Calliope integration – request / response models
+# ---------------------------------------------------------------------------
+
+class CalliopeOverrides(BaseModel):
+    """
+    User-supplied overrides applied on top of the Calliope adapter output.
+
+    Keys in ``constraints`` and ``costs`` are deep-merged into the result,
+    so a downstream application can customise specific parameters without
+    touching the database.
+    """
+    instance_index: int            = Field(0, ge=0, description="Which equipment instance to use (0-based).")
+    cost_class:     str            = Field("monetary", description="Calliope cost class name (default: monetary).")
+    constraints:    dict[str, Any] = Field(
+        default_factory=dict,
+        description="Calliope constraint overrides merged into the constraints block.",
+    )
+    costs:          dict[str, Any] = Field(
+        default_factory=dict,
+        description="Cost overrides nested by cost class, "
+                    'e.g. {"monetary": {"energy_cap": 800}, "co2": {"om_prod": 0.00015}}.',
+    )
+
+
+def _apply_calliope_overrides(result: dict, overrides: CalliopeOverrides) -> dict:
+    """Deep-merge user constraint and cost overrides into a to_calliope() result dict."""
+    for key, val in overrides.constraints.items():
+        result["constraints"][key] = val
+    for cost_cls, cost_vals in overrides.costs.items():
+        if cost_cls not in result["costs"]:
+            result["costs"][cost_cls] = {}
+        if isinstance(cost_vals, dict):
+            result["costs"][cost_cls].update(cost_vals)
+        else:
+            result["costs"][cost_cls] = cost_vals
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -478,6 +528,150 @@ def list_by_category(
         for t in page
     ]
     return TechnologyCatalogue(total=total, technologies=summaries)
+
+
+@router.get(
+    "/calliope",
+    summary="All technologies in Calliope format",
+    response_description="Calliope-ready techs: configuration block for all loaded technologies.",
+)
+def get_all_calliope(
+    category: Annotated[
+        TechnologyCategory | None,
+        Query(description="Filter by category (generation | storage | transmission | conversion)."),
+    ] = None,
+    cost_class: Annotated[
+        str,
+        Query(description="Calliope cost class name."),
+    ] = "monetary",
+    instance_index: Annotated[
+        int,
+        Query(ge=0, description="Which equipment instance to use for every technology (0-based)."),
+    ] = 0,
+) -> dict[str, Any]:
+    """
+    Return **all** technologies formatted as a Calliope ``techs:`` configuration block.
+
+    The response is ready to be serialised directly to YAML and included in a
+    Calliope model configuration file::
+
+        import yaml, requests
+        resp = requests.get(".../technologies/calliope?category=generation")
+        with open("techs.yaml", "w") as f:
+            yaml.dump({"techs": resp.json()["techs"]}, f, sort_keys=False)
+
+    Each key in ``techs`` is a sanitised snake_case version of the technology name.
+    ``meta.errors`` lists any technologies that failed to translate (with reasons).
+    """
+    all_techs = list(_get_all().values())
+    if category:
+        all_techs = [t for t in all_techs if t.category == category]
+
+    techs_block: dict[str, Any] = {}
+    errors: list[dict] = []
+
+    for tech in all_techs:
+        try:
+            idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
+            result = to_calliope(tech, instance_index=idx, cost_class=cost_class)
+            key = re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
+            techs_block[key] = result
+        except Exception as exc:  # noqa: BLE001
+            errors.append({"tech": tech.name, "error": str(exc)})
+
+    return {
+        "techs": techs_block,
+        "meta":  {
+            "total":          len(techs_block),
+            "cost_class":     cost_class,
+            "instance_index": instance_index,
+            "errors":         errors,
+        },
+    }
+
+
+@router.get(
+    "/{tech_id}/calliope",
+    summary="Single technology in Calliope format",
+    response_description="Calliope tech config dict (essentials / constraints / costs).",
+)
+def get_calliope(
+    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    instance_index: Annotated[
+        int,
+        Query(ge=0, description="Which equipment instance to use (0-based)."),
+    ] = 0,
+    cost_class: Annotated[
+        str,
+        Query(description="Calliope cost class name."),
+    ] = "monetary",
+) -> dict[str, Any]:
+    """
+    Return one technology formatted as a Calliope ``techs.<name>:`` block.
+
+    The ``essentials``, ``constraints``, and ``costs`` keys map directly to
+    Calliope\'s YAML structure and can be serialised without modification::
+
+        import yaml, requests
+        data = requests.get(f".../technologies/{tech_id}/calliope").json()
+        print(yaml.dump(data, sort_keys=False))
+
+    Use ``?instance_index=1`` to select a different equipment model / year.
+    """
+    tech = _get_all().get(tech_id)
+    if not tech:
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
+    try:
+        idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
+        return to_calliope(tech, instance_index=idx, cost_class=cost_class)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post(
+    "/{tech_id}/calliope",
+    summary="Technology in Calliope format with constraint overrides",
+    response_description="Calliope tech config with user-supplied overrides merged in.",
+)
+def post_calliope_with_overrides(
+    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    overrides: CalliopeOverrides = Body(...),
+) -> dict[str, Any]:
+    """
+    Return a Calliope tech config with user-supplied overrides merged on top.
+
+    Any ``constraints`` or ``costs`` key can be overridden or extended
+    without modifying the database.  New keys not present in the stored data
+    can also be added freely.
+
+    Request body example::
+
+        {
+          "instance_index": 0,
+          "cost_class": "monetary",
+          "constraints": {
+            "energy_cap_max": 5000,
+            "energy_ramping": 0.5,
+            "force_resource": true
+          },
+          "costs": {
+            "monetary": {"energy_cap": 800, "om_annual": 12},
+            "co2":      {"om_prod": 0.00015}
+          }
+        }
+
+    All ``constraints`` keys are merged with ``dict.update()``; cost keys are
+    nested by cost-class name before merging.
+    """
+    tech = _get_all().get(tech_id)
+    if not tech:
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
+    try:
+        idx = min(overrides.instance_index, len(tech.instances) - 1) if tech.instances else None
+        result = to_calliope(tech, instance_index=idx, cost_class=overrides.cost_class)
+        return _apply_calliope_overrides(result, overrides)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get(

@@ -129,6 +129,24 @@ class EquipmentInstance(BaseModel):
     min_stable_generation:  ParameterValue | None = Field(None, description="Minimum stable generation [fraction of capacity].")
     start_up_cost:          ParameterValue | None = Field(None, description="Start-up cost [EUR/MW or USD/MW].")
 
+    # --- Storage / conversion instance-level parameters ---
+    # These map to Calliope constraint / cost keys that have no generic equivalent.
+    capex_per_kwh:     ParameterValue | None = Field(
+        None,
+        description="Storage energy capacity CAPEX [EUR/kWh or USD/kWh]. "
+                    "Maps to Calliope costs.{cost_class}.storage_cap [EUR/kWh].",
+    )
+    fuel_cost_per_mwh: ParameterValue | None = Field(
+        None,
+        description="Input carrier / fuel cost [EUR/MWh]. "
+                    "Maps to Calliope costs.{cost_class}.om_con [EUR/kWh after ÷1000].",
+    )
+    initial_soc:       ParameterValue | None = Field(
+        None,
+        description="Initial state of charge at the first model timestep [fraction 0–1]. "
+                    "Maps to Calliope constraints.storage_initial.",
+    )
+
     # --- Arbitrary extra parameters for model-specific needs ---
     extra: dict[str, Any] = Field(default_factory=dict, description="Model-specific or extended parameters.")
 
@@ -214,6 +232,33 @@ class VREPlant(PowerPlant):
     profile_key: str | None = Field(
         None,
         description="Key referencing hourly/sub-hourly capacity factor profile data.",
+    )
+
+    # --- VRE-specific Calliope constraints ---
+    force_resource:       bool               = Field(
+        False,
+        description="Force all available resource to be consumed each timestep (must-run). "
+                    "Maps to Calliope constraints.force_resource.",
+    )
+    resource_efficiency:  ParameterValue | None = Field(
+        None,
+        description="Resource capture efficiency, e.g. CSP collector reflectivity [fraction]. "
+                    "Maps to Calliope constraints.resource_eff.",
+    )
+    parasitic_efficiency: ParameterValue | None = Field(
+        None,
+        description="Post-conversion internal loss, e.g. PV DC\u2192AC inverter [fraction]. "
+                    "Maps to Calliope constraints.parasitic_eff.",
+    )
+    resource_area_max_m2: ParameterValue | None = Field(
+        None,
+        description="Maximum deployable resource capture area [m\u00b2]. "
+                    "Maps to Calliope constraints.resource_area_max.",
+    )
+    resource_area_per_kw: ParameterValue | None = Field(
+        None,
+        description="Resource area required per kW of installed capacity [m\u00b2/kW]. "
+                    "Maps to Calliope constraints.resource_area_per_energy_cap.",
     )
 
 

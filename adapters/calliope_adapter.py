@@ -39,12 +39,27 @@ inst.discount_rate         [frac]        costs.monetary.interest_rate[frac]   Di
 
 Storage-specific
 -----------------------------
-inst.electrical_efficiency        [frac] constraints.energy_eff        [frac] One-way (charge or discharge) eff.
-tech.fleet_roundtrip_efficiency   [frac] constraints.energy_eff        [frac] √rt_eff when no inst eff available
-tech.fleet_energy_to_power_ratio  [h]    constraints.energy_cap_per_storage_cap_max [h⁻¹]  1 / E2P
-tech.fleet_self_discharge_rate    [frac/h] constraints.storage_loss   [frac/h] Direct 1:1
-tech.fleet_dod_max                [frac] constraints.storage_discharge_depth  1 − dod_max
-inst.capacity_kw × E2P_ratio      [kWh]  constraints.storage_cap_max  [kWh]   Derived kWh capacity
+inst.electrical_efficiency        [frac]    constraints.energy_eff                    [frac]    One-way (charge or discharge)
+tech.fleet_roundtrip_efficiency   [frac]    constraints.energy_eff                    [frac]    √rt_eff fallback
+tech.fleet_energy_to_power_ratio  [h]       constraints.energy_cap_per_storage_cap_max[h⁻¹]    1 / E2P
+tech.fleet_self_discharge_rate    [frac/h]  constraints.storage_loss                  [frac/h]  Direct 1:1
+tech.fleet_dod_max                [frac]    constraints.storage_discharge_depth       [frac]    1 − dod_max
+inst.capacity_kw × E2P_ratio      [kWh]     constraints.storage_cap_max               [kWh]     Derived
+inst.initial_soc                  [frac]    constraints.storage_initial               [frac]    Direct 1:1
+inst.capex_per_kwh                [EUR/kWh] costs.monetary.storage_cap                [EUR/kWh] Direct 1:1
+inst.fuel_cost_per_mwh            [EUR/MWh] costs.monetary.om_con                     [EUR/kWh] ÷1000
+
+VRE-specific (supply_plus)
+-----------------------------
+tech.force_resource               [bool]    constraints.force_resource                [bool]    Direct 1:1
+tech.resource_efficiency          [frac]    constraints.resource_eff                  [frac]    Direct 1:1
+tech.parasitic_efficiency         [frac]    constraints.parasitic_eff                 [frac]    Direct 1:1
+tech.resource_area_max_m2         [m²]      constraints.resource_area_max             [m²]      Direct 1:1
+tech.resource_area_per_kw         [m²/kW]   constraints.resource_area_per_energy_cap  [m²/kW]   Direct 1:1
+
+Conversion-specific
+-----------------------------
+inst.fuel_cost_per_mwh            [EUR/MWh] costs.monetary.om_con                     [EUR/kWh] ÷1000
 
 Usage example
 -------------
@@ -273,7 +288,29 @@ def _supply_tech(
         # Time-series capacity-factor profile
         if getattr(tech, "profile_key", None):
             constraints["resource"]      = f"file=profiles/{tech.profile_key}.csv"  # type: ignore[attr-defined]
-            constraints["resource_unit"] = "energy_per_cap"    # kWh/kW per timestep
+            constraints["resource_unit"] = "energy_per_cap"                          # kWh/kW per timestep
+
+        # Must-run: all available resource must be consumed each timestep
+        if getattr(tech, "force_resource", False):
+            constraints["force_resource"] = True
+
+        # Resource capture efficiency (e.g. CSP collector mirror reflectivity)
+        res_eff = _val(getattr(tech, "resource_efficiency", None))
+        if res_eff is not None:
+            constraints["resource_eff"] = res_eff                                    # fraction
+
+        # Parasitic efficiency: post-conversion internal loss (e.g. PV DC→AC inverter)
+        par_eff = _val(getattr(tech, "parasitic_efficiency", None))
+        if par_eff is not None:
+            constraints["parasitic_eff"] = par_eff                                   # fraction
+
+        # Land / rooftop area constraints
+        area_max = _val(getattr(tech, "resource_area_max_m2", None))
+        if area_max is not None:
+            constraints["resource_area_max"] = area_max                              # m²
+        area_per_cap = _val(getattr(tech, "resource_area_per_kw", None))
+        if area_per_cap is not None:
+            constraints["resource_area_per_energy_cap"] = area_per_cap              # m²/kW
 
     # --- costs ----------------------------------------------------------------
     monetary: dict[str, Any] = {}
@@ -335,12 +372,15 @@ def _storage_tech(
     inst_eff    = _val(inst.electrical_efficiency) if inst else None
     one_way_eff = inst_eff or (rt_eff ** 0.5 if rt_eff is not None else None)
 
-    capex  = _val(inst.capex_per_kw)          if inst else None
-    opex_f = _val(inst.opex_fixed_per_kw_yr)  if inst else None
-    opex_v = _val(inst.opex_variable_per_mwh) if inst else None
-    cap_kw = _val(inst.capacity_kw)           if inst else None
-    life   = _val(inst.economic_lifetime_yr)  if inst else None
-    disc   = _val(inst.discount_rate)         if inst else None
+    capex     = _val(inst.capex_per_kw)          if inst else None
+    opex_f    = _val(inst.opex_fixed_per_kw_yr)  if inst else None
+    opex_v    = _val(inst.opex_variable_per_mwh) if inst else None
+    cap_kw    = _val(inst.capacity_kw)           if inst else None
+    life      = _val(inst.economic_lifetime_yr)  if inst else None
+    disc      = _val(inst.discount_rate)         if inst else None
+    capex_kwh = _val(inst.capex_per_kwh)         if inst else None   # EUR/kWh, storage energy CAPEX
+    fuel_cost = _val(inst.fuel_cost_per_mwh)     if inst else None   # EUR/MWh, input carrier cost
+    init_soc  = _val(inst.initial_soc)           if inst else None   # fraction, SOC at t=0
 
     # --- essentials -----------------------------------------------------------
     essentials: dict[str, Any] = {
@@ -379,6 +419,10 @@ def _storage_tech(
     if dod is not None:
         constraints["storage_discharge_depth"] = 1.0 - dod     # fraction
 
+    # Initial state of charge at the first model timestep
+    if init_soc is not None:
+        constraints["storage_initial"] = init_soc              # fraction [0–1]
+
     if life is not None:
         constraints["lifetime"] = life                         # years
 
@@ -393,6 +437,10 @@ def _storage_tech(
         monetary["om_prod"]    = _opex_var_eur_per_kwh(opex_v) # EUR/kWh
     if disc is not None:
         monetary["interest_rate"] = disc                       # fraction
+    if capex_kwh is not None:
+        monetary["storage_cap"] = capex_kwh                    # EUR/kWh (energy capacity CAPEX)
+    if fuel_cost is not None:
+        monetary["om_con"] = _opex_var_eur_per_kwh(fuel_cost)  # EUR/kWh (input carrier cost)
 
     costs: dict[str, Any] = {}
     if monetary:
@@ -514,15 +562,16 @@ def _conversion_tech(
     * ``energy_ramping``  is mapped from ramp_up/down_rate when available.
     * ``om_prod``  covers variable O&M on the output carrier [EUR/kWh].
     """
-    eff    = (_val(inst.electrical_efficiency)    if inst else None) \
-             or _val(getattr(tech, "fleet_conversion_efficiency", None))
-    capex  = _val(inst.capex_per_kw)          if inst else None
-    opex_f = _val(inst.opex_fixed_per_kw_yr)  if inst else None
-    opex_v = _val(inst.opex_variable_per_mwh) if inst else None
-    cap_kw = _val(inst.capacity_kw)           if inst else None
-    life   = _val(inst.economic_lifetime_yr)  if inst else None
-    disc   = _val(inst.discount_rate)         if inst else None
-    co2    = _val(inst.co2_emission_factor)   if inst else None
+    eff       = (_val(inst.electrical_efficiency)    if inst else None) \
+                or _val(getattr(tech, "fleet_conversion_efficiency", None))
+    capex     = _val(inst.capex_per_kw)          if inst else None
+    opex_f    = _val(inst.opex_fixed_per_kw_yr)  if inst else None
+    opex_v    = _val(inst.opex_variable_per_mwh) if inst else None
+    cap_kw    = _val(inst.capacity_kw)           if inst else None
+    life      = _val(inst.economic_lifetime_yr)  if inst else None
+    disc      = _val(inst.discount_rate)         if inst else None
+    co2       = _val(inst.co2_emission_factor)   if inst else None
+    fuel_cost = _val(inst.fuel_cost_per_mwh)     if inst else None   # EUR/MWh input carrier cost
 
     # Ramp rate -> Calliope energy_ramping [frac/h]
     ramp_up   = _val(inst.ramp_up_rate)   if inst else None
@@ -580,6 +629,8 @@ def _conversion_tech(
         monetary["om_prod"]    = _opex_var_eur_per_kwh(opex_v) # EUR/kWh (output carrier)
     if disc is not None:
         monetary["interest_rate"] = disc                       # fraction
+    if fuel_cost is not None:
+        monetary["om_con"] = _opex_var_eur_per_kwh(fuel_cost)  # EUR/kWh (input carrier cost)
 
     costs: dict[str, Any] = {}
     if monetary:

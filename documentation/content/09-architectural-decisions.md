@@ -85,3 +85,26 @@ maintainable. Adding a new framework means adding a new file with no changes to 
 modules.
 
 **Consequences:** Translation logic must be kept in sync when framework APIs change.
+
+---
+
+## ADR-006: Docker containerisation
+
+**Status:** Accepted
+
+**Context:** The system must be runnable on different developer machines and potentially
+deployed on shared research infrastructure without requiring a local Python environment
+to be set up manually.
+
+**Decision:** Provide a `Dockerfile` (single-stage, `python:3.11-slim` base) and a
+`docker-compose.yml` that mounts the `data/` directory as a volume.
+
+**Rationale:** Container packaging eliminates environment discrepancies between developer
+machines and CI/deployment targets. Mounting `data/` as a volume decouples the catalogue
+JSON files from the image, so curators can update data without rebuilding the image.
+Docker Compose gives a one-command start (`docker compose up --build`) that mirrors the
+local development workflow.
+
+**Consequences:** Docker must be installed on the target machine. The image does not
+bundle the data directory, so the volume mount must be configured correctly in production.
+`--reload` mode is disabled in the container `CMD` (production-safe default).

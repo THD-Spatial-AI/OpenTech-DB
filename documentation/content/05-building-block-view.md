@@ -3,10 +3,12 @@
 ## Level 1 — System Decomposition
 
 ```
-techs_database
+opentech-db
 |
 +-- main.py              Application entry point; creates FastAPI app,
 |                        registers routers, configures logging.
++-- Dockerfile           Container image definition (python:3.11-slim).
++-- docker-compose.yml   Compose stack; mounts data/ as a volume.
 |
 +-- schemas/
 |   +-- models.py        All Pydantic data models (Technology hierarchy,

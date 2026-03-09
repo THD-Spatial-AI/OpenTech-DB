@@ -1,9 +1,9 @@
 # Deployment View
 
-## Current: Local Development
+## Option A — Local Development (Python / conda)
 
 ```
-Developer workstation (Windows)
+Developer workstation (Windows / Linux / macOS)
 +----------------------------------------------+
 |  Anaconda / venv  Python 3.11                |
 |                                              |
@@ -11,7 +11,7 @@ Developer workstation (Windows)
 |     |                                        |
 |     | HTTP :8000                             |
 |     v                                        |
-|  FastAPI / techs_database process            |
+|  FastAPI / opentech-db process               |
 |     |                                        |
 |     | reads                                  |
 |     v                                        |
@@ -28,11 +28,56 @@ Developer workstation (Windows)
 
 ```bash
 conda activate base        # or activate your project venv
-cd techs_database
+cd opentech-db
 uvicorn main:app --reload --port 8000
 ```
 
-## Future: Containerised Deployment
+## Option B — Containerised Deployment (Docker)
+
+A `Dockerfile` and `docker-compose.yml` are included in the repository root.
+
+```
+Host machine
++--------------------------------------------------+
+|  Docker Engine                                   |
+|                                                  |
+|  +--------------------------------------------+  |
+|  | opentech-db container  (python:3.11-slim)  |  |
+|  |   uvicorn main:app --host 0.0.0.0 --port 8000  |
+|  |                                            |  |
+|  |   /app/data  ← volume mount (./data)       |  |
+|  +--------------------------------------------+  |
+|         | port 8000 exposed                    |  |
++--------------------------------------------------+
+        |
+        | HTTP :8000
+        v
+  Clients (browser, model scripts, CI pipelines)
+```
+
+### Quick start with Docker Compose (recommended)
+
+```bash
+# Build image and start the service
+docker compose up --build
+
+# Rebuild after dependency changes
+docker compose up --build --force-recreate
+
+# Run in detached mode
+docker compose up -d
+```
+
+### Without Docker Compose
+
+```bash
+docker build -t opentech-db .
+docker run -p 8000:8000 -v ./data:/app/data opentech-db
+```
+
+> Mounting `data/` as a volume allows updating JSON files without rebuilding the image.
+
+### Dockerfile summary
 
 ```dockerfile
 FROM python:3.11-slim
@@ -42,13 +87,6 @@ RUN pip install -r requirements.txt
 COPY . .
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
-
-```bash
-docker build -t techs-database .
-docker run -p 8000:8000 -v ./data:/app/data techs-database
-```
-
-Mounting `data/` as a volume allows updating JSON files without rebuilding the image.
 
 ## Infrastructure Requirements
 
@@ -66,3 +104,4 @@ Mounting `data/` as a volume allows updating JSON files without rebuilding the i
 - No database, message broker, or external cache is required.
 - For public deployment, place uvicorn behind **nginx** or **Caddy** with TLS.
 - The `--reload` flag is for development only; remove it in production.
+- The Docker image mounts `data/` as a volume so JSON catalogue files can be edited without rebuilding.

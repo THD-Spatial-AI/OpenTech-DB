@@ -32,7 +32,7 @@
 
 ## Overview
 
-`techs_database` is a domain-specific data repository and REST API that provides **standardised, source-traced technical and economic parameters** for energy system components. It serves as a single source of truth that multiple energy modelling frameworks can query programmatically — eliminating the scattered spreadsheet-per-model workflow.
+`opentech-db` is a domain-specific data repository and REST API that provides **standardised, source-traced technical and economic parameters** for energy system components. It serves as a single source of truth that multiple energy modelling frameworks can query programmatically — eliminating the scattered spreadsheet-per-model workflow.
 
 Key design principles:
 
@@ -82,25 +82,22 @@ HVAC Overhead Lines · HVDC Overhead Lines · HVAC Underground Cables · HVDC Su
 ## Project Structure
 
 ```
-techs_database/
+opentech-db/
 │
 ├── main.py                        # FastAPI application entry point
 ├── requirements.txt
+├── Dockerfile                     # Container image definition
+├── docker-compose.yml             # Compose stack (API + volume mount)
 │
-├── data/                          # Technology data (JSON)
+├── data/                          # Technology data (JSON – catalogue format)
 │   ├── generation/
-│   │   ├── generation_technologies.json   # Catalogue format – 19 technologies
-│   │   ├── gas_turbine_ccgt.json          # Legacy individual format
-│   │   └── utility_pv.json
+│   │   └── generation_technologies.json    # 19 technologies
 │   ├── storage/
-│   │   ├── storage_technologies.json      # Catalogue format – 12 technologies
-│   │   └── lithium_ion_bess.json
+│   │   └── storage_technologies.json       # 12 technologies
 │   ├── transmission/
-│   │   ├── transmission_technologies.json # Catalogue format – 9 technologies
-│   │   └── hvdc_submarine_cable.json
+│   │   └── transmission_technologies.json  # 9 technologies
 │   └── conversion/
-│       ├── conversion_technologies.json   # Catalogue format – 15 technologies
-│       └── pem_electrolyzer.json
+│       └── conversion_technologies.json    # 15 technologies
 │
 ├── schemas/
 │   └── models.py                  # Pydantic models (OEO-aligned)
@@ -127,10 +124,12 @@ techs_database/
 
 ## Quick Start
 
+### Option A — Local (Python / conda)
+
 ```bash
 # 1 – Clone the repository
-git clone <repo-url>
-cd techs_database
+git clone https://mygit.th-deg.de/thd-spatial-ai/opentech-db.git
+cd opentech-db
 
 # 2 – Create and activate a virtual environment
 python -m venv .venv
@@ -145,6 +144,19 @@ pip install -r requirements.txt
 # 4 – Start the API server (hot-reload enabled)
 uvicorn main:app --reload --port 8000
 ```
+
+### Option B — Docker
+
+```bash
+# Build and start the container
+docker compose up --build
+
+# Or without docker-compose
+docker build -t opentech-db .
+docker run -p 8000:8000 -v ./data:/app/data opentech-db
+```
+
+> Mounting `data/` as a volume allows updating JSON files without rebuilding the image.
 
 Interactive docs available at:
 - **Swagger UI** → http://127.0.0.1:8000/docs
@@ -175,6 +187,17 @@ Interactive docs available at:
 | `lifecycle` | `/instances` | Filter by stage: `commercial`, `projection`, `demonstration` |
 
 **Valid category values:** `generation` · `storage` · `transmission` · `conversion`
+
+### Calliope Adapter Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/technologies/calliope` | All technologies as a Calliope `techs:` block |
+| `GET` | `/api/v1/technologies/calliope?category=generation` | Filtered by category |
+| `GET` | `/api/v1/technologies/{id}/calliope` | Single technology in Calliope format |
+| `POST` | `/api/v1/technologies/{id}/calliope` | Single technology + constraint/cost overrides |
+
+Calliope query parameters: `instance_index` (int, default `0`), `cost_class` (str, default `"monetary"`).
 
 ### Framework Adapters
 
@@ -301,7 +324,7 @@ One file covers all technologies in a domain. Contains a `metadata` block and a 
 
 ### 2. Individual format (legacy, fully supported)
 
-One JSON file per technology using nested `ParameterValue` objects. See `data/generation/gas_turbine_ccgt.json` for a reference example.
+One JSON file per technology using nested `ParameterValue` objects. Detected automatically by the absence of a `metadata`/`technologies` root structure. This format is available for backward compatibility and can coexist with catalogue files in the same `data/` directory.
 
 ---
 
@@ -326,15 +349,14 @@ POST http://127.0.0.1:8000/api/v1/debug/reload
 ### PyPSA adapter
 
 ```python
-from schemas.models import PowerPlant
 from adapters.pypsa_adapter import to_pypsa
-import json, pathlib
+from api.routes import _get_all
 
-raw   = json.loads(pathlib.Path("data/generation/gas_turbine_ccgt.json").read_text())
-plant = PowerPlant.model_validate(raw)
+# Get a technology by ID and translate it
+techs = _get_all()
+tech  = next(t for t in techs.values() if "CCGT" in t.name)
 
-# Translate instance 0 (Siemens SGT-800) with 7 % discount rate
-params = to_pypsa(plant, instance_index=0, discount_rate=0.07)
+params = to_pypsa(tech, instance_index=0, discount_rate=0.07)
 # → returns dict ready for: network.add("Generator", name, **params)
 ```
 
@@ -354,11 +376,17 @@ $$\text{CRF} = \frac{r(1+r)^n}{(1+r)^n - 1}$$
 
 ```python
 from adapters.calliope_adapter import to_calliope
-import yaml
+import yaml, requests
 
-calliope_cfg = to_calliope(plant, instance_index=0, cost_class="monetary")
+# Via Python directly
+calliope_cfg = to_calliope(tech, instance_index=0, cost_class="monetary")
 print(yaml.dump(calliope_cfg, sort_keys=False))
 # → {essentials: {...}, constraints: {...}, costs: {monetary: {...}}}
+
+# Or generate a full techs: block for all generation technologies via the API
+resp = requests.get("http://localhost:8000/api/v1/technologies/calliope?category=generation")
+with open("techs.yaml", "w") as f:
+    yaml.dump({"techs": resp.json()["techs"]}, f, sort_keys=False)
 ```
 
 **Calliope tech type mapping:**
@@ -432,173 +460,3 @@ Data and code are released under **Creative Commons Attribution 4.0 Internationa
 See <https://creativecommons.org/licenses/by/4.0/>.
 
 When using this database in publications or models, please cite the primary sources listed in each technology record's `reference_source` field.
-
-│
-├── data/                          # Technology data files (JSON)
-│   ├── generation/
-│   │   ├── gas_turbine_ccgt.json  # CCGT – Siemens, GE, EU projection 2030
-│   │   └── utility_pv.json        # Utility-scale PV – First Solar, EU 2030
-│   ├── storage/
-│   │   └── lithium_ion_bess.json  # Li-Ion BESS – Tesla, CATL, EU 2030
-│   ├── transmission/
-│   │   └── hvdc_submarine_cable.json
-│   └── conversion/
-│       └── pem_electrolyzer.json  # PEM / AWE – Nel, tkN, EU 2030
-│
-├── schemas/
-│   └── models.py                  # Pydantic models (OEO-aligned)
-│
-├── api/
-│   └── routes.py                  # FastAPI router
-│
-├── adapters/
-│   ├── pypsa_adapter.py           # Technology → PyPSA component dict
-│   └── calliope_adapter.py        # Technology → Calliope tech YAML dict
-│
-├── main.py                        # FastAPI application entry point
-├── requirements.txt
-└── README.md
-```
-
----
-
-## Quick Start
-
-```bash
-# 1 – Create and activate a virtual environment
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# Linux / macOS
-source .venv/bin/activate
-
-# 2 – Install dependencies
-pip install -r requirements.txt
-
-# 3 – Start the API server (hot-reload enabled)
-uvicorn main:app --reload --port 8000
-```
-
-Open **http://127.0.0.1:8000/docs** for the interactive Swagger UI.
-
----
-
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/v1/technologies` | List all technologies (paginated) |
-| `GET` | `/api/v1/technologies/{id}` | Full detail for a technology |
-| `GET` | `/api/v1/technologies/category/{cat}` | Technologies by category |
-| `GET` | `/api/v1/technologies/{id}/instances` | All equipment instances |
-| `GET` | `/api/v1/technologies/{id}/instances/{iid}` | One equipment instance |
-| `GET` | `/api/v1/adapt/pypsa/{id}` | PyPSA parameter dict for a technology |
-| `GET` | `/api/v1/adapt/calliope/{id}` | Calliope config dict for a technology |
-| `GET` | `/health` | Service health check |
-
-### Query parameters
-
-- `skip`, `limit` – pagination on list endpoints
-- `tag` – filter by tag string on `/technologies`
-- `lifecycle` – filter instances by stage (`commercial`, `projection`, …)
-- `instance_index` – which instance to translate on adapter endpoints
-- `discount_rate` – override CRF discount rate on the PyPSA adapter
-- `cost_class` – Calliope cost class name on the Calliope adapter
-
----
-
-## Data Model (OEO alignment)
-
-```
-Technology  (oeo:EnergyConversionDevice)
-│  id, name, category, oeo_class, oeo_uri
-│  input_carriers, output_carriers, tags
-│  instances: list[EquipmentInstance]
-│
-├── PowerPlant    (oeo:PowerGeneratingUnit)
-│     fleet_capex_per_kw, fleet_electrical_efficiency,
-│     fleet_co2_emission_factor, is_dispatchable, ...
-│
-├── VREPlant      (oeo:RenewableEnergyPlant)
-│     profile_key  ← link to hourly capacity-factor series
-│
-├── EnergyStorage (oeo:ElectricEnergyStorageUnit)
-│     fleet_roundtrip_efficiency, fleet_energy_to_power_ratio,
-│     fleet_cycle_lifetime, fleet_dod_max, ...
-│
-├── TransmissionLine (oeo:TransmissionLine)
-│     transmission_type, voltage_kv, length_km, loss_per_km, ...
-│
-└── ConversionTechnology (oeo:EnergyConversionDevice)
-      conversion_type, fleet_conversion_efficiency, ...
-
-EquipmentInstance
-  id, label, manufacturer, reference_year, life_cycle_stage
-  capex_per_kw, opex_fixed_per_kw_yr, opex_variable_per_mwh
-  electrical_efficiency, capacity_kw, capacity_factor
-  co2_emission_factor, ramp_up_rate, ramp_down_rate
-  min_stable_generation, economic_lifetime_yr, discount_rate
-  extra: dict  ← model-specific extensions
-
-ParameterValue
-  value, unit, min, max, source, year
-```
-
-Each `ParameterValue` carries uncertainty bounds (`min`/`max`) and a
-bibliographic `source` reference, enabling auditable parameter provenance.
-
----
-
-## Adding a New Technology
-
-1. Create a JSON file in the appropriate `data/<category>/` subfolder.
-2. Use the schema above; the `id` field must be a valid UUID v4.
-3. Add at least one `instances` entry (even a generic projection).
-4. Restart the server (or call `_load_all_technologies.cache_clear()` during tests).
-
----
-
-## Adapter Usage (Python)
-
-```python
-import json, pathlib
-from schemas.models import PowerPlant
-from adapters.pypsa_adapter    import to_pypsa
-from adapters.calliope_adapter import to_calliope
-
-raw   = json.loads(pathlib.Path("data/generation/gas_turbine_ccgt.json").read_text())
-plant = PowerPlant.model_validate(raw)
-
-# Instance 0 = Siemens SGT-800 (2024)
-pypsa_params    = to_pypsa(plant, instance_index=0, discount_rate=0.07)
-calliope_params = to_calliope(plant, instance_index=0)
-
-print(pypsa_params)
-import yaml; print(yaml.dump(calliope_params))
-```
-
----
-
-## OEO References
-
-| Concept | OEO class/property |
-|---|---|
-| Capital expenditure | `oeo:CapitalExpenditure` |
-| O&M cost | `oeo:OperationAndMaintenanceCost` |
-| Electrical efficiency | `oeo:ElectricalEfficiency` |
-| CO₂ emission factor | `oeo:CO2EmissionFactor` |
-| Ramping rate | `oeo:RampingRate` |
-| Installed capacity | `oeo:InstalledCapacity` |
-| Power generating unit | `oeo:PowerGeneratingUnit` |
-| Storage unit | `oeo:ElectricEnergyStorageUnit` |
-| Transmission line | `oeo:TransmissionLine` |
-| Conversion device | `oeo:EnergyConversionDevice` |
-
-Full ontology browser: <https://openenergy-platform.org/ontology/oeo/>
-
----
-
-## License
-
-Data and code released under **CC BY 4.0** – please cite your primary data
-sources as recorded in the `source` field of each `ParameterValue`.

@@ -1,13 +1,13 @@
 # Context & Scope
 ## Business Context
 
-The `techs_database` system sits at the centre of an energy modelling workflow. It receives data inputs from **curators** (researchers who maintain JSON files) and exposes a REST API consumed by **modelling framework clients**.
+The `opentech-db` system sits at the centre of an energy modelling workflow. It receives data inputs from **curators** (researchers who maintain JSON files) and exposes a REST API consumed by **modelling framework clients**.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        External Actors                          │
 │                                                                 │
-│  [Data Curator]──JSON files──►[techs_database API]             │
+│  [Data Curator]──JSON files──►[opentech-db API]                 │
 │                                        │                        │
 │                           ┌────────────┼────────────┐           │
 │                           ▼            ▼            ▼           │
@@ -20,19 +20,19 @@ The `techs_database` system sits at the centre of an energy modelling workflow. 
 
 | Partner System | Direction | Interface | Description |
 |---|---|---|---|
-| Data Curator (human) | → techs_database | JSON files on disk | Creates/updates technology JSON files in `data/<category>/`. |
-| PyPSA model scripts | ← techs_database | HTTP REST + `/adapt/pypsa/{id}` | Retrieves PyPSA-ready parameter dicts. |
-| Calliope model scripts | ← techs_database | HTTP REST + `/adapt/calliope/{id}` | Retrieves Calliope YAML-ready dicts. |
-| OSeMOSYS / ADOPTNet0 | ← techs_database | HTTP REST `/technologies/{id}` | Retrieves raw OEO-aligned records; adapters to be implemented. |
+| Data Curator (human) | → opentech-db | JSON files on disk | Creates/updates technology JSON files in `data/<category>/`. |
+| PyPSA model scripts | ← opentech-db | HTTP REST + `/adapt/pypsa/{id}` | Retrieves PyPSA-ready parameter dicts. |
+| Calliope model scripts | ← opentech-db | HTTP REST + `/adapt/calliope/{id}` and `/technologies/{id}/calliope` | Retrieves Calliope YAML-ready dicts. |
+| OSeMOSYS / ADOPTNet0 | ← opentech-db | HTTP REST `/technologies/{id}` | Retrieves raw OEO-aligned records; adapters to be implemented. |
 | Open Energy Platform (OEP) | ↔ link | `oeo_uri` hyperlinks | Records reference OEO concept URIs for semantic interoperability. |
 
 ## Technical Context
 
-The system is a single Python process exposing an HTTP API. All data lives in the filesystem (`data/` directory). There is no runtime external dependency (no database, no message queue).
+The system is a single Python process exposing an HTTP API. All data lives in the filesystem (`data/` directory). There is no runtime external dependency (no database, no message queue). A `Dockerfile` and `docker-compose.yml` are provided for containerised operation.
 
 ```
 ┌───────────────────────────────────────┐
-│          techs_database process       │
+│          opentech-db process        │
 │                                       │
 │  ┌─────────┐   ┌───────────────────┐  │
 │  │ main.py │──►│ FastAPI router    │  │

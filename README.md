@@ -19,6 +19,7 @@
 - [Project Structure](#project-structure)
 - [Quick Start](#quick-start)
 - [API Reference](#api-reference)
+- [Integration Guide](#integration-guide)
 - [Data Model](#data-model)
 - [JSON Data Formats](#json-data-formats)
 - [Adding a New Technology](#adding-a-new-technology)
@@ -45,15 +46,16 @@ Key design principles:
 
 ## Technology Coverage
 
-### Generation (19 technologies)
+### Generation (21 technologies)
 | Technology | Carrier | Type |
 |---|---|---|
 | Solar PV Utility-scale | solar | VRE |
-| Solar PV Distributed | solar | VRE |
+| Solar PV Distributed (16 instances: 1 kW – 1 MW) | solar | VRE |
+| Solar PV Balcony / Balkonkraftwerk (6 instances: 300 Wp – 2 kWp) | solar | VRE |
 | Concentrated Solar Power (CSP) | solar | Dispatchable |
-| Onshore Wind | wind | VRE |
-| Offshore Wind Fixed-bottom | wind | VRE |
-| Offshore Wind Floating | wind | VRE |
+| Onshore Wind (12 instances: 3 MW community – 600 MW US Plains) | wind | VRE |
+| Offshore Wind Fixed-bottom (10 instances: Baltic nearshore – 1.5 GW gigafarm) | wind | VRE |
+| Offshore Wind Floating (8 instances: Hywind spar – 1 GW next-gen) | wind | VRE |
 | Hydroelectric Run-of-River | hydro | VRE |
 | Hydroelectric Reservoir | hydro | Dispatchable |
 | Combined Cycle Gas Turbine (CCGT) | natural_gas | Dispatchable |
@@ -215,6 +217,216 @@ Adapter query parameters: `instance_index` (int, default `0`), `discount_rate` (
 | `GET` | `/api/v1/debug/data` | Inspect loading status of all JSON files |
 | `POST` | `/api/v1/debug/reload` | Clear cache and reload all files from disk |
 | `GET` | `/health` | Service health check + version |
+
+---
+
+## Integration Guide
+
+This section shows how external tools — scripts, notebooks, modelling frameworks — can retrieve technology data from `opentech-db` at runtime. The API is plain HTTP + JSON; **no special client library is needed**.
+
+> Base URL for a local instance: `http://localhost:8000`
+> Replace with your server hostname or Docker host as appropriate.
+
+---
+
+### HTTP / curl
+
+```bash
+# --- List all technologies ---
+curl http://localhost:8000/api/v1/technologies
+
+# --- Get one technology by ID ---
+curl http://localhost:8000/api/v1/technologies/onshore_wind
+
+# --- Filter by category ---
+curl "http://localhost:8000/api/v1/technologies/category/generation"
+
+# --- Get all instances of a technology ---
+curl http://localhost:8000/api/v1/technologies/onshore_wind/instances
+
+# --- Get a specific instance ---
+curl http://localhost:8000/api/v1/technologies/solar_pv_distributed/instances/solar_pv_3kw_residential_topcon
+
+# --- Get all generation technologies as a Calliope techs: block ---
+curl "http://localhost:8000/api/v1/technologies/calliope?category=generation"
+
+# --- PyPSA-ready dict for instance 0 ---
+curl "http://localhost:8000/api/v1/adapt/pypsa/ccgt?instance_index=0&discount_rate=0.07"
+```
+
+---
+
+### Python — `requests`
+
+```python
+import requests
+
+BASE = "http://localhost:8000/api/v1"
+
+# 1 – Browse all generation technologies
+resp = requests.get(f"{BASE}/technologies/category/generation")
+resp.raise_for_status()
+catalogue = resp.json()            # {"total": N, "technologies": [...]}
+
+for tech in catalogue["technologies"]:
+    print(tech["technology_id"], "–", tech["technology_name"])
+
+# 2 – Fetch one technology and inspect its instances
+resp = requests.get(f"{BASE}/technologies/onshore_wind")
+resp.raise_for_status()
+tech = resp.json()
+
+for inst in tech["instances"]:
+    print(
+        inst["instance_id"],
+        f"| {inst['typical_capacity_mw']} MW",
+        f"| CAPEX {inst['capex_usd_per_kw']} USD/kW",
+        f"| CF {inst['efficiency_percent']} %",
+    )
+
+# 3 – Fetch a PyPSA-ready parameter dict
+resp = requests.get(
+    f"{BASE}/adapt/pypsa/ccgt",
+    params={"instance_index": 0, "discount_rate": 0.07},
+)
+params = resp.json()["parameters"]
+# → {'carrier': 'natural_gas', 'efficiency': 0.58, 'capital_cost': ..., ...}
+```
+
+---
+
+### Python — `pandas` (bulk exploration)
+
+```python
+import pandas as pd
+import requests
+
+BASE = "http://localhost:8000/api/v1"
+
+def fetch_all_instances(category: str) -> pd.DataFrame:
+    """Return a flat DataFrame of every technology instance in a category."""
+    resp = requests.get(f"{BASE}/technologies/category/{category}")
+    resp.raise_for_status()
+    rows = []
+    for tech in resp.json()["technologies"]:
+        detail = requests.get(f"{BASE}/technologies/{tech['technology_id']}").json()
+        for inst in detail.get("instances", []):
+            rows.append({
+                "technology_id": tech["technology_id"],
+                "technology_name": tech["technology_name"],
+                **inst,
+            })
+    return pd.DataFrame(rows)
+
+gen = fetch_all_instances("generation")
+print(gen[["technology_id", "instance_id", "typical_capacity_mw",
+           "capex_usd_per_kw", "efficiency_percent"]].to_string())
+```
+
+---
+
+### PyPSA — building a network from the API
+
+```python
+import pypsa
+import requests
+
+BASE  = "http://localhost:8000/api/v1"
+n     = pypsa.Network()
+n.set_snapshots(pd.date_range("2030-01-01", periods=8760, freq="1h"))
+
+TECHS = [
+    ("ccgt",          0, "CCGT plant"),
+    ("onshore_wind",  4, "Onshore 150 MW medium-wind"),   # instance_index 4
+    ("solar_pv_distributed", 5, "Rooftop 10 kW HJT"),     # instance_index 5
+]
+
+for tech_id, idx, label in TECHS:
+    resp = requests.get(
+        f"{BASE}/adapt/pypsa/{tech_id}",
+        params={"instance_index": idx, "discount_rate": 0.07},
+    )
+    resp.raise_for_status()
+    p = resp.json()["parameters"]
+    n.add("Generator", label, bus="bus0", **p)
+
+n.optimize()
+```
+
+The `instance_index` maps directly to the `instances` array in the JSON file.  
+Use `GET /api/v1/technologies/{id}/instances` to list all available indices.
+
+---
+
+### Calliope — auto-populating `techs.yaml`
+
+```python
+import requests
+import yaml
+from pathlib import Path
+
+BASE = "http://localhost:8000/api/v1"
+
+# Fetch the complete Calliope techs block for all generation technologies
+resp = requests.get(f"{BASE}/technologies/calliope", params={"category": "generation"})
+resp.raise_for_status()
+
+techs_block = {"techs": resp.json()["techs"]}
+Path("model/techs_generation.yaml").write_text(
+    yaml.dump(techs_block, sort_keys=False, allow_unicode=True)
+)
+print(f"Wrote {len(techs_block['techs'])} techs to model/techs_generation.yaml")
+```
+
+Then reference this file in your Calliope model config:
+
+```yaml
+# model.yaml
+model:
+  name: My Energy Model
+  calliope_version: 0.7
+  timeseries_data_path: "./timeseries"
+
+import:
+  - "techs_generation.yaml"     # ← auto-generated from opentech-db
+  - "techs_storage.yaml"
+  - "locations.yaml"
+  - "links.yaml"
+```
+
+---
+
+### OSeMOSYS / ADOPTNet0 — raw JSON fetch
+
+These frameworks currently consume raw JSON records. Retrieve them and parse the fields directly:
+
+```python
+import requests, json
+
+BASE = "http://localhost:8000/api/v1"
+
+# Fetch all storage technologies as raw catalogue records
+resp = requests.get(f"{BASE}/technologies/category/storage")
+resp.raise_for_status()
+
+for tech in resp.json()["technologies"]:
+    detail = requests.get(f"{BASE}/technologies/{tech['technology_id']}").json()
+    inst   = detail["instances"][0]   # pick first (current) instance
+    print(f"{tech['technology_id']}: CAPEX={inst['capex_usd_per_kw']} USD/kW, "
+          f"lifetime={inst['lifetime_years']} yr")
+```
+
+---
+
+### Health check & reload
+
+```bash
+# Check that the service is alive and see catalogue size
+curl http://localhost:8000/health
+
+# Force reload of all JSON files (e.g. after adding a new technology)
+curl -X POST http://localhost:8000/api/v1/debug/reload
+```
 
 ---
 

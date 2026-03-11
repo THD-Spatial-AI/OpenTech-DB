@@ -86,17 +86,30 @@ _CARRIER_MAP: dict[str, str] = {
     "wind":                  "wind",
     "hydro":                 "electricity",
     "natural_gas":           "natural_gas",
+    "gas":                   "natural_gas",
     "coal":                  "coal",
     "uranium":               "nuclear_fuel",
+    "nuclear_fuel":          "nuclear_fuel",
     "biomass":               "biomass",
-    "biogas":                "biomass",
+    "biogas":                "biogas",
+    "syngas":                "syngas",
     "municipal_solid_waste": "biomass",
     "marine":                "electricity",
     "electricity":           "electricity",
     "hydrogen":              "hydrogen",
     "heat":                  "heat",
+    "cooling":               "cooling",
+    "steam":                 "steam",
+    "oil":                   "oil",
+    "water":                 "water",
+    "co2":                   "co2",
+    "ammonia":               "ammonia",
     "geothermal":            "electricity",
-    "co2":                   "electricity",
+    "electricity_heat":      "electricity",
+    "hydrogen_co2":          "hydrogen",
+    "hydrogen_co":           "hydrogen",
+    "hydrogen_nitrogen":     "hydrogen",
+    "flue_gas_electricity":  "electricity",
 }
 
 _CATEGORY_MODEL_MAP: dict[TechnologyCategory, type[Technology]] = {
@@ -234,7 +247,21 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
             # Carrier handling
             raw_carrier     = tech_raw.get("carrier")
             raw_in_carrier  = tech_raw.get("input_carrier",  raw_carrier)
-            raw_out_carrier = tech_raw.get("output_carrier", "electricity")
+
+            # For transmission and storage, the catalogue `carrier` field IS the
+            # transmitted/stored carrier — use it as the output carrier when no
+            # explicit `output_carrier` key is present.
+            # For generation/conversion the explicit `output_carrier` or "electricity"
+            # fallback is correct.
+            try:
+                _cat_tmp = TechnologyCategory(tech_raw.get("domain", domain_str))
+            except ValueError:
+                _cat_tmp = TechnologyCategory.GENERATION
+
+            if _cat_tmp in (TechnologyCategory.TRANSMISSION, TechnologyCategory.STORAGE):
+                raw_out_carrier = tech_raw.get("output_carrier", raw_carrier or "electricity")
+            else:
+                raw_out_carrier = tech_raw.get("output_carrier", "electricity")
 
             in_carrier_val  = _map_carrier(raw_in_carrier)
             out_carrier_val = _map_carrier(raw_out_carrier)

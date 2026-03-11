@@ -917,6 +917,124 @@
           "reference_source": "Global CCS Institute – Industrial CCS Status Report 2023; IEA CCUS 2023"
         }
       ]
+    },
+    {
+      "technology_id": "gas_boiler",
+      "technology_name": "Gas Boiler (Natural Gas / Biomethane)",
+      "domain": "conversion",
+      "input_carrier": "natural_gas",
+      "output_carrier": "heat",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00310015",
+      "description": "Combustion boilers converting natural gas or biomethane to useful heat (steam or hot water) for space heating, domestic hot water, and industrial process heat. Condensing boilers recover latent heat from flue gas, achieving efficiencies > 100% on NCV (Net Calorific Value) basis. H2-ready boilers can operate on up to 100% hydrogen blends. efficiency_percent = net thermal efficiency (NCV/LHV basis).",
+      "instances": [
+        {
+          "instance_id": "gas_boiler_condensing_residential_25kw",
+          "instance_name": "Gas Boiler – 25 kW Condensing Residential (Current, 2024)",
+          "scale": "residential",
+          "typical_capacity_mw": 0.025,
+          "capex_usd_per_kw": 160,
+          "opex_fixed_usd_per_kw_yr": 8.0,
+          "opex_var_usd_per_mwh": 0.5,
+          "efficiency_percent": 94.0,
+          "degradation_rate_percent_per_yr": 0.5,
+          "lifetime_years": 15,
+          "construction_time_years": 0.01,
+          "co2_emission_factor_operational_g_per_kwh": 200.0,
+          "ramping_rate_percent_per_min": 50.0,
+          "reference_source": "IEA Heat Pumps Tracking 2023; Danish Energy Agency Technology Data 2022"
+        },
+        {
+          "instance_id": "gas_boiler_industrial_5mw",
+          "instance_name": "Gas Boiler – 5 MW Industrial Hot Water / Steam (Current, 2024)",
+          "scale": "industrial",
+          "typical_capacity_mw": 5.0,
+          "capex_usd_per_kw": 90,
+          "opex_fixed_usd_per_kw_yr": 4.5,
+          "opex_var_usd_per_mwh": 0.4,
+          "efficiency_percent": 92.0,
+          "degradation_rate_percent_per_yr": 0.4,
+          "lifetime_years": 20,
+          "construction_time_years": 0.2,
+          "co2_emission_factor_operational_g_per_kwh": 205.0,
+          "ramping_rate_percent_per_min": 30.0,
+          "reference_source": "Danish Energy Agency Technology Data 2022; BEIS Boiler Technology Assessment 2022"
+        },
+        {
+          "instance_id": "gas_boiler_h2ready_future_2030",
+          "instance_name": "Gas Boiler – H2-Ready / Biomethane, 2.5 MW (Future, 2030)",
+          "scale": "h2_ready_future",
+          "typical_capacity_mw": 2.5,
+          "capex_usd_per_kw": 120,
+          "opex_fixed_usd_per_kw_yr": 5.0,
+          "opex_var_usd_per_mwh": 0.4,
+          "efficiency_percent": 95.0,
+          "degradation_rate_percent_per_yr": 0.3,
+          "lifetime_years": 20,
+          "construction_time_years": 0.1,
+          "co2_emission_factor_operational_g_per_kwh": 10.0,
+          "ramping_rate_percent_per_min": 50.0,
+          "reference_source": "UK H2 Ready Boiler Programme BEIS 2022; IEA Hydrogen Council 2023"
+        }
+      ]
+    },
+    {
+      "technology_id": "biomass_gasification",
+      "technology_name": "Biomass Gasification",
+      "domain": "conversion",
+      "input_carrier": "biomass",
+      "output_carrier": "syngas",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010020",
+      "description": "Thermochemical conversion of solid biomass (wood chips, agricultural residues, MSW) into a combustible syngas (producer gas) containing H2, CO, CH4, CO2, and N2 at 700–1000 °C via partial oxidation. Syngas can be used in gas engines, gas turbines, or further upgraded to biomethane/H2 via clean-up and WGS. Gasification type: fixed-bed downdraft (small), fluidised-bed (large). efficiency_percent = syngas energy out / biomass energy in (LHV cold-gas efficiency).",
+      "instances": [
+        {
+          "instance_id": "biomass_gasification_0_5mw_fixed_bed",
+          "instance_name": "Biomass Gasification – 0.5 MW Downdraft Fixed-Bed (CHP Ready, Current 2024)",
+          "scale": "small_fixed_bed",
+          "typical_capacity_mw": 0.5,
+          "capex_usd_per_kw": 3500,
+          "opex_fixed_usd_per_kw_yr": 140.0,
+          "opex_var_usd_per_mwh": 8.0,
+          "efficiency_percent": 72.0,
+          "degradation_rate_percent_per_yr": 1.0,
+          "lifetime_years": 20,
+          "construction_time_years": 1.0,
+          "co2_emission_factor_operational_g_per_kwh": 0.0,
+          "ramping_rate_percent_per_min": 3.0,
+          "reference_source": "IRENA Bioenergy for Power 2019; IEA Bioenergy Task 33 Gasification Compendium 2022"
+        },
+        {
+          "instance_id": "biomass_gasification_10mw_fluidised_bed",
+          "instance_name": "Biomass Gasification – 10 MW Fluidised Bed (Commercial, Current 2024)",
+          "scale": "medium_fluidised_bed",
+          "typical_capacity_mw": 10.0,
+          "capex_usd_per_kw": 2200,
+          "opex_fixed_usd_per_kw_yr": 88.0,
+          "opex_var_usd_per_mwh": 5.0,
+          "efficiency_percent": 76.0,
+          "degradation_rate_percent_per_yr": 0.7,
+          "lifetime_years": 25,
+          "construction_time_years": 2.0,
+          "co2_emission_factor_operational_g_per_kwh": 0.0,
+          "ramping_rate_percent_per_min": 2.0,
+          "reference_source": "NREL Gasification Design Basis 2023; IEA Bioenergy Task 33 2022"
+        },
+        {
+          "instance_id": "biomass_gasification_50mw_pressurised_future",
+          "instance_name": "Biomass Gasification – 50 MW Pressurised Fluidised Bed with Syngas Clean-up (Future, 2035)",
+          "scale": "large_pressurised_future",
+          "typical_capacity_mw": 50.0,
+          "capex_usd_per_kw": 1400,
+          "opex_fixed_usd_per_kw_yr": 56.0,
+          "opex_var_usd_per_mwh": 3.0,
+          "efficiency_percent": 82.0,
+          "degradation_rate_percent_per_yr": 0.5,
+          "lifetime_years": 25,
+          "construction_time_years": 2.5,
+          "co2_emission_factor_operational_g_per_kwh": 0.0,
+          "ramping_rate_percent_per_min": 1.5,
+          "reference_source": "European Commission Horizon 2020 BECCS/Gasification Projects 2023; IEA 2023"
+        }
+      ]
     }
   ]
 }

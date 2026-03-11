@@ -42,16 +42,23 @@ class TechnologyCategory(str, Enum):
 
 class EnergyCarrier(str, Enum):
     """Energy carriers following OEO vocabulary."""
-    ELECTRICITY  = "electricity"
-    NATURAL_GAS  = "natural_gas"
-    HYDROGEN     = "hydrogen"
-    HEAT         = "heat"
-    OIL          = "oil"
-    COAL         = "coal"
-    BIOMASS      = "biomass"
-    WIND         = "wind"
+    ELECTRICITY      = "electricity"
+    NATURAL_GAS      = "natural_gas"
+    HYDROGEN         = "hydrogen"
+    HEAT             = "heat"
+    COOLING          = "cooling"
+    STEAM            = "steam"
+    OIL              = "oil"
+    COAL             = "coal"
+    BIOMASS          = "biomass"
+    BIOGAS           = "biogas"
+    SYNGAS           = "syngas"
+    WATER            = "water"
+    CO2              = "co2"
+    AMMONIA          = "ammonia"
+    WIND             = "wind"
     SOLAR_IRRADIANCE = "solar_irradiance"
-    NUCLEAR_FUEL = "nuclear_fuel"
+    NUCLEAR_FUEL     = "nuclear_fuel"
 
 
 class LifeCycleStage(str, Enum):

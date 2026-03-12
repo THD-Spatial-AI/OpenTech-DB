@@ -668,7 +668,3 @@ make pdf     # or: pdflatex main.tex
 
 ## License
 
-Data and code are released under **Creative Commons Attribution 4.0 International (CC BY 4.0)**.
-See <https://creativecommons.org/licenses/by/4.0/>.
-
-When using this database in publications or models, please cite the primary sources listed in each technology record's `reference_source` field.

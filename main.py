@@ -62,8 +62,8 @@ app = FastAPI(
     ),
     version=_VERSION,
     contact={
-        "name":  "Energy Systems Modelling Team",
-        "email": "energy-models@example.org",
+        "name":  "Deggendorf Institute of Technology (DIT)",
+        "email": "ricardo.miranda-castillo@th-deg.de",
     },
     license_info={
         "name": "CC BY 4.0",

@@ -12,8 +12,52 @@
 
 ---
 
+## 🌐 Live API — No Setup Required
+
+A hosted instance is publicly available. You can start querying technology data right now without cloning or running anything locally.
+
+| | URL |
+|---|---|
+| **Base URL** | `https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1` |
+| **Interactive docs (Swagger)** | https://marleigh-unmuttering-effortlessly.ngrok-free.dev/docs |
+| **ReDoc** | https://marleigh-unmuttering-effortlessly.ngrok-free.dev/redoc |
+| **Health check** | https://marleigh-unmuttering-effortlessly.ngrok-free.dev/health |
+
+> **Note:** When calling from code (not a browser), add the header `ngrok-skip-browser-warning: true` to skip the ngrok interstitial page.
+
+### Try it immediately (no install needed)
+
+```bash
+# List all generation technologies
+curl -H "ngrok-skip-browser-warning: true" \
+  "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/technologies/category/generation"
+
+# Get full data for onshore wind (all instances)
+curl -H "ngrok-skip-browser-warning: true" \
+  "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/technologies/onshore_wind"
+
+# Get a PyPSA-ready parameter dict for a CCGT plant
+curl -H "ngrok-skip-browser-warning: true" \
+  "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/adapt/pypsa/ccgt?instance_index=0&discount_rate=0.07"
+```
+
+```python
+import requests
+
+BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
+HEADERS = {"ngrok-skip-browser-warning": "true"}
+
+# Get all storage technologies
+techs = requests.get(f"{BASE}/technologies/category/storage", headers=HEADERS).json()
+for t in techs["technologies"]:
+    print(t["technology_id"], "–", t["technology_name"])
+```
+
+---
+
 ## Table of Contents
 
+- [Live API — No Setup Required](#-live-api--no-setup-required)
 - [Overview](#overview)
 - [Technology Coverage](#technology-coverage)
 - [Project Structure](#project-structure)
@@ -224,34 +268,45 @@ Adapter query parameters: `instance_index` (int, default `0`), `discount_rate` (
 
 This section shows how external tools — scripts, notebooks, modelling frameworks — can retrieve technology data from `opentech-db` at runtime. The API is plain HTTP + JSON; **no special client library is needed**.
 
-> Base URL for a local instance: `http://localhost:8000`
-> Replace with your server hostname or Docker host as appropriate.
+**Base URLs:**
+
+| Instance | Base URL |
+|---|---|
+| **Hosted (public)** | `https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1` |
+| Local Python / conda | `http://localhost:8000/api/v1` |
+| Docker | `http://localhost:8000/api/v1` |
+
+> When calling the hosted URL from code (not a browser), always include the header:
+> `ngrok-skip-browser-warning: true`
 
 ---
 
 ### HTTP / curl
 
 ```bash
+BASE="https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
+HDR='-H "ngrok-skip-browser-warning: true"'
+
 # --- List all technologies ---
-curl http://localhost:8000/api/v1/technologies
+curl $HDR "$BASE/technologies"
 
 # --- Get one technology by ID ---
-curl http://localhost:8000/api/v1/technologies/onshore_wind
+curl $HDR "$BASE/technologies/onshore_wind"
 
-# --- Filter by category ---
-curl "http://localhost:8000/api/v1/technologies/category/generation"
+# --- Filter by category (generation | storage | transmission | conversion) ---
+curl $HDR "$BASE/technologies/category/generation"
 
 # --- Get all instances of a technology ---
-curl http://localhost:8000/api/v1/technologies/onshore_wind/instances
+curl $HDR "$BASE/technologies/onshore_wind/instances"
 
-# --- Get a specific instance ---
-curl http://localhost:8000/api/v1/technologies/solar_pv_distributed/instances/solar_pv_3kw_residential_topcon
+# --- Get a specific instance by ID ---
+curl $HDR "$BASE/technologies/solar_pv_distributed/instances/solar_pv_3kw_residential_topcon"
 
 # --- Get all generation technologies as a Calliope techs: block ---
-curl "http://localhost:8000/api/v1/technologies/calliope?category=generation"
+curl $HDR "$BASE/technologies/calliope?category=generation"
 
-# --- PyPSA-ready dict for instance 0 ---
-curl "http://localhost:8000/api/v1/adapt/pypsa/ccgt?instance_index=0&discount_rate=0.07"
+# --- PyPSA-ready dict for CCGT instance 0, 7% discount rate ---
+curl $HDR "$BASE/adapt/pypsa/ccgt?instance_index=0&discount_rate=0.07"
 ```
 
 ---
@@ -261,10 +316,11 @@ curl "http://localhost:8000/api/v1/adapt/pypsa/ccgt?instance_index=0&discount_ra
 ```python
 import requests
 
-BASE = "http://localhost:8000/api/v1"
+BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
+HEADERS = {"ngrok-skip-browser-warning": "true"}   # required for hosted URL
 
 # 1 – Browse all generation technologies
-resp = requests.get(f"{BASE}/technologies/category/generation")
+resp = requests.get(f"{BASE}/technologies/category/generation", headers=HEADERS)
 resp.raise_for_status()
 catalogue = resp.json()            # {"total": N, "technologies": [...]}
 
@@ -272,7 +328,7 @@ for tech in catalogue["technologies"]:
     print(tech["technology_id"], "–", tech["technology_name"])
 
 # 2 – Fetch one technology and inspect its instances
-resp = requests.get(f"{BASE}/technologies/onshore_wind")
+resp = requests.get(f"{BASE}/technologies/onshore_wind", headers=HEADERS)
 resp.raise_for_status()
 tech = resp.json()
 
@@ -288,6 +344,7 @@ for inst in tech["instances"]:
 resp = requests.get(
     f"{BASE}/adapt/pypsa/ccgt",
     params={"instance_index": 0, "discount_rate": 0.07},
+    headers=HEADERS,
 )
 params = resp.json()["parameters"]
 # → {'carrier': 'natural_gas', 'efficiency': 0.58, 'capital_cost': ..., ...}
@@ -301,15 +358,18 @@ params = resp.json()["parameters"]
 import pandas as pd
 import requests
 
-BASE = "http://localhost:8000/api/v1"
+BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
+HEADERS = {"ngrok-skip-browser-warning": "true"}
 
 def fetch_all_instances(category: str) -> pd.DataFrame:
     """Return a flat DataFrame of every technology instance in a category."""
-    resp = requests.get(f"{BASE}/technologies/category/{category}")
+    resp = requests.get(f"{BASE}/technologies/category/{category}", headers=HEADERS)
     resp.raise_for_status()
     rows = []
     for tech in resp.json()["technologies"]:
-        detail = requests.get(f"{BASE}/technologies/{tech['technology_id']}").json()
+        detail = requests.get(
+            f"{BASE}/technologies/{tech['technology_id']}", headers=HEADERS
+        ).json()
         for inst in detail.get("instances", []):
             rows.append({
                 "technology_id": tech["technology_id"],
@@ -331,8 +391,10 @@ print(gen[["technology_id", "instance_id", "typical_capacity_mw",
 import pypsa
 import requests
 
-BASE  = "http://localhost:8000/api/v1"
-n     = pypsa.Network()
+BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
+HEADERS = {"ngrok-skip-browser-warning": "true"}
+
+n = pypsa.Network()
 n.set_snapshots(pd.date_range("2030-01-01", periods=8760, freq="1h"))
 
 TECHS = [
@@ -345,6 +407,7 @@ for tech_id, idx, label in TECHS:
     resp = requests.get(
         f"{BASE}/adapt/pypsa/{tech_id}",
         params={"instance_index": idx, "discount_rate": 0.07},
+        headers=HEADERS,
     )
     resp.raise_for_status()
     p = resp.json()["parameters"]
@@ -365,10 +428,15 @@ import requests
 import yaml
 from pathlib import Path
 
-BASE = "http://localhost:8000/api/v1"
+BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
+HEADERS = {"ngrok-skip-browser-warning": "true"}
 
 # Fetch the complete Calliope techs block for all generation technologies
-resp = requests.get(f"{BASE}/technologies/calliope", params={"category": "generation"})
+resp = requests.get(
+    f"{BASE}/technologies/calliope",
+    params={"category": "generation"},
+    headers=HEADERS,
+)
 resp.raise_for_status()
 
 techs_block = {"techs": resp.json()["techs"]}
@@ -403,15 +471,18 @@ These frameworks currently consume raw JSON records. Retrieve them and parse the
 ```python
 import requests, json
 
-BASE = "http://localhost:8000/api/v1"
+BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
+HEADERS = {"ngrok-skip-browser-warning": "true"}
 
 # Fetch all storage technologies as raw catalogue records
-resp = requests.get(f"{BASE}/technologies/category/storage")
+resp = requests.get(f"{BASE}/technologies/category/storage", headers=HEADERS)
 resp.raise_for_status()
 
 for tech in resp.json()["technologies"]:
-    detail = requests.get(f"{BASE}/technologies/{tech['technology_id']}").json()
-    inst   = detail["instances"][0]   # pick first (current) instance
+    detail = requests.get(
+        f"{BASE}/technologies/{tech['technology_id']}", headers=HEADERS
+    ).json()
+    inst = detail["instances"][0]   # pick first (current) instance
     print(f"{tech['technology_id']}: CAPEX={inst['capex_usd_per_kw']} USD/kW, "
           f"lifetime={inst['lifetime_years']} yr")
 ```
@@ -422,10 +493,12 @@ for tech in resp.json()["technologies"]:
 
 ```bash
 # Check that the service is alive and see catalogue size
-curl http://localhost:8000/health
+curl -H "ngrok-skip-browser-warning: true" \
+  https://marleigh-unmuttering-effortlessly.ngrok-free.dev/health
 
 # Force reload of all JSON files (e.g. after adding a new technology)
-curl -X POST http://localhost:8000/api/v1/debug/reload
+curl -X POST -H "ngrok-skip-browser-warning: true" \
+  https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/debug/reload
 ```
 
 ---
@@ -596,7 +669,11 @@ print(yaml.dump(calliope_cfg, sort_keys=False))
 # → {essentials: {...}, constraints: {...}, costs: {monetary: {...}}}
 
 # Or generate a full techs: block for all generation technologies via the API
-resp = requests.get("http://localhost:8000/api/v1/technologies/calliope?category=generation")
+resp = requests.get(
+    "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/technologies/calliope",
+    params={"category": "generation"},
+    headers={"ngrok-skip-browser-warning": "true"},
+)
 with open("techs.yaml", "w") as f:
     yaml.dump({"techs": resp.json()["techs"]}, f, sort_keys=False)
 ```

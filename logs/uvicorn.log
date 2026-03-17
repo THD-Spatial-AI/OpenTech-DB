@@ -1,0 +1,169 @@
+INFO:     Uvicorn running on http://127.0.0.1:8005 (Press CTRL+C to quit)
+INFO:     Started parent process [10936]
+INFO:     Started server process [7840]
+INFO:     Waiting for application startup.
+INFO:     Started server process [9668]
+INFO:     Waiting for application startup.
+2026-03-16 14:46:01,388 | INFO     | api.routes | DATA_DIR resolved to: C:\Users\admin1\Desktop\opentech-db\data (exists=True)
+2026-03-16 14:46:01,388 | INFO     | api.routes | DATA_DIR resolved to: C:\Users\admin1\Desktop\opentech-db\data (exists=True)
+2026-03-16 14:46:01,389 | INFO     | api.routes | Found 4 JSON file(s) under data/
+2026-03-16 14:46:01,389 | INFO     | api.routes | Found 4 JSON file(s) under data/
+2026-03-16 14:46:01,409 | INFO     | api.routes |   OK  [catalogue] 17 techs from conversion_technologies.json
+2026-03-16 14:46:01,409 | INFO     | api.routes |   OK  [catalogue] 17 techs from conversion_technologies.json
+2026-03-16 14:46:01,445 | INFO     | api.routes |   OK  [catalogue] 20 techs from generation_technologies.json
+2026-03-16 14:46:01,446 | INFO     | api.routes |   OK  [catalogue] 20 techs from generation_technologies.json
+2026-03-16 14:46:01,460 | INFO     | api.routes |   OK  [catalogue] 12 techs from storage_technologies.json
+2026-03-16 14:46:01,460 | INFO     | api.routes |   OK  [catalogue] 12 techs from storage_technologies.json
+2026-03-16 14:46:01,477 | INFO     | api.routes |   OK  [catalogue] 18 techs from transmission_technologies.json
+2026-03-16 14:46:01,477 | INFO     | api.routes | Total technologies loaded: 67
+2026-03-16 14:46:01,477 | INFO     | api.routes |   OK  [catalogue] 18 techs from transmission_technologies.json
+2026-03-16 14:46:01,477 | INFO     | main | Loaded 67 technologies from /data.
+2026-03-16 14:46:01,477 | INFO     | api.routes | Total technologies loaded: 67
+2026-03-16 14:46:01,477 | INFO     | main |   [67966d19] Alkaline Water Electrolyzer (AWE)        | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [69c4e63c] Proton Exchange Membrane Electrolyzer (PEM) | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [fc812595] Solid Oxide Electrolyzer Cell (SOEC)     | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main | Loaded 67 technologies from /data.
+2026-03-16 14:46:01,477 | INFO     | main |   [8f1769f9] PEM Fuel Cell                            | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [914a4a21] Solid Oxide Fuel Cell (SOFC)             | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [67966d19] Alkaline Water Electrolyzer (AWE)        | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [e41cd32b] Air-Source Heat Pump                     | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [69c4e63c] Proton Exchange Membrane Electrolyzer (PEM) | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [c855b8b4] Ground-Source Heat Pump                  | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [fc812595] Solid Oxide Electrolyzer Cell (SOEC)     | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [39f69527] Electric Boilers                         | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [8f1769f9] PEM Fuel Cell                            | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [03305a19] Combined Heat and Power (CHP)            | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [45b1f373] Biomass CHP                              | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [914a4a21] Solid Oxide Fuel Cell (SOFC)             | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [171c00a0] Methanation Reactors                     | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [e41cd32b] Air-Source Heat Pump                     | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [1bdd9404] Fischer-Tropsch Synthesis                | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [c855b8b4] Ground-Source Heat Pump                  | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [6e7b0f7d] Haber-Bosch Process                      | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [39f69527] Electric Boilers                         | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [88209dfa] Direct Air Capture (DAC)                 | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [03305a19] Combined Heat and Power (CHP)            | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [6bd0d914] Carbon Capture Systems                   | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [45b1f373] Biomass CHP                              | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [65377743] Gas Boiler (Natural Gas / Biomethane)    | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [171c00a0] Methanation Reactors                     | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [5f0f18cf] Biomass Gasification                     | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [1bdd9404] Fischer-Tropsch Synthesis                | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [230d70bd] Solar PV Utility-scale                   | generation   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [6e7b0f7d] Haber-Bosch Process                      | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [66ac6b66] Solar PV Distributed                     | generation   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [88209dfa] Direct Air Capture (DAC)                 | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [295ff906] Solar PV Balcony (Plug-in / Balkonkraftwerk) | generation   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [6bd0d914] Carbon Capture Systems                   | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [3bc06744] Concentrated Solar Power (CSP)           | generation   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [65377743] Gas Boiler (Natural Gas / Biomethane)    | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [24600a13] Onshore Wind                             | generation   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [5f0f18cf] Biomass Gasification                     | conversion   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [4dad0a20] Offshore Wind Fixed-bottom               | generation   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [230d70bd] Solar PV Utility-scale                   | generation   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [a06ac4b5] Offshore Wind Floating                   | generation   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [66ac6b66] Solar PV Distributed                     | generation   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [f7a2a5bf] Hydroelectric Run-of-River               | generation   | 20 instances
+2026-03-16 14:46:01,477 | INFO     | main |   [295ff906] Solar PV Balcony (Plug-in / Balkonkraftwerk) | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [a26a15f4] Hydroelectric Reservoir                  | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [3bc06744] Concentrated Solar Power (CSP)           | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [94d0291f] Combined Cycle Gas Turbine (CCGT)        | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [24600a13] Onshore Wind                             | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [661a5bb4] Open Cycle Gas Turbine (OCGT)            | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [4dad0a20] Offshore Wind Fixed-bottom               | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [0b7ae331] Internal Combustion Engine               | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [a06ac4b5] Offshore Wind Floating                   | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [e471eec6] Coal Power Plant                         | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [f7a2a5bf] Hydroelectric Run-of-River               | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [58265526] Nuclear Power Conventional               | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [a26a15f4] Hydroelectric Reservoir                  | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [4fa0e6b5] Small Modular Reactors (SMR)             | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [94d0291f] Combined Cycle Gas Turbine (CCGT)        | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [d5b8207d] Geothermal Power                         | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [661a5bb4] Open Cycle Gas Turbine (OCGT)            | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [0e90b87a] Biomass Power Plant                      | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [0b7ae331] Internal Combustion Engine               | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [aa216583] Biogas Power Plant                       | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [e471eec6] Coal Power Plant                         | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [e5c05282] Waste-to-Energy                          | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [58265526] Nuclear Power Conventional               | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [7fddf8e2] Marine Energy                            | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [4fa0e6b5] Small Modular Reactors (SMR)             | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [60c76a4b] Lithium-ion BESS                         | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [d5b8207d] Geothermal Power                         | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [977a03d8] Redox Flow Batteries                     | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [0e90b87a] Biomass Power Plant                      | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [623f9dd5] Sodium-Sulfur Batteries                  | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [aa216583] Biogas Power Plant                       | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [367b25f4] Lead-Acid Batteries                      | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [e5c05282] Waste-to-Energy                          | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [9dacd6e7] Pumped Hydro Storage                     | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [7fddf8e2] Marine Energy                            | generation   | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [e333e4c6] Compressed Air Energy Storage (CAES)     | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [60c76a4b] Lithium-ion BESS                         | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [d5d0d05d] Liquid Air Energy Storage (LAES)         | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [977a03d8] Redox Flow Batteries                     | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [616708f7] Flywheels                                | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [623f9dd5] Sodium-Sulfur Batteries                  | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [04cd1528] Sensible Thermal Storage                 | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [367b25f4] Lead-Acid Batteries                      | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [022c3990] Latent Thermal Storage                   | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [9dacd6e7] Pumped Hydro Storage                     | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [24d03c78] Hydrogen Storage Tanks                   | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [e333e4c6] Compressed Air Energy Storage (CAES)     | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [d598eefd] Hydrogen Underground Storage             | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [d5d0d05d] Liquid Air Energy Storage (LAES)         | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [c65c9fc5] HVAC Overhead Lines                      | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [616708f7] Flywheels                                | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [84207511] HVDC Overhead Lines                      | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [04cd1528] Sensible Thermal Storage                 | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [878a67c9] HVAC Underground Cables                  | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [022c3990] Latent Thermal Storage                   | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [fe0dd796] HVDC Subsea Cables                       | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [24d03c78] Hydrogen Storage Tanks                   | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [152dfb6f] Electrical Transformers                  | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [d598eefd] Hydrogen Underground Storage             | storage      | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [2c3ad5df] Natural Gas Pipelines                    | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [c65c9fc5] HVAC Overhead Lines                      | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [59087c1d] Hydrogen Pipelines                       | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [96e25d5b] CO2 Pipelines                            | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [84207511] HVDC Overhead Lines                      | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [321ea9cf] District Heating Networks                | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [878a67c9] HVAC Underground Cables                  | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [3572a26b] District Cooling Pipeline Network        | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [fe0dd796] HVDC Subsea Cables                       | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [bd6cc703] Hydrogen Tube Trailer / Truck Transport  | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [152dfb6f] Electrical Transformers                  | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [bf28a461] Biogas Pipeline Network                  | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [2c3ad5df] Natural Gas Pipelines                    | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [d6ba883a] Biomass Truck Transport                  | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [59087c1d] Hydrogen Pipelines                       | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [18e883c9] Biomass Rail Transport                   | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [96e25d5b] CO2 Pipelines                            | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [4a564134] Oil / Petroleum Products Pipeline        | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [321ea9cf] District Heating Networks                | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [021b7f8c] Fuel Tanker Truck (Oil / Liquid Fuels)   | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [3572a26b] District Cooling Pipeline Network        | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [155fdc66] Water Transmission Pipeline              | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [bd6cc703] Hydrogen Tube Trailer / Truck Transport  | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [28e60aa4] Steam District Network                   | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [bf28a461] Biogas Pipeline Network                  | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [d6ba883a] Biomass Truck Transport                  | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [18e883c9] Biomass Rail Transport                   | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [4a564134] Oil / Petroleum Products Pipeline        | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [021b7f8c] Fuel Tanker Truck (Oil / Liquid Fuels)   | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [155fdc66] Water Transmission Pipeline              | transmission | 20 instances
+2026-03-16 14:46:01,478 | INFO     | main |   [28e60aa4] Steam District Network                   | transmission | 20 instances
+INFO:     Application startup complete.
+INFO:     Application startup complete.
+C:\Users\admin1\Desktop\opentech-db\.venv\Lib\site-packages\fastapi\routing.py:116: FastAPIDeprecationWarning: ORJSONResponse is deprecated, FastAPI now serializes data directly to JSON bytes via Pydantic when a return type or response model is set, which is faster and doesn't need a custom response class. Read more in the FastAPI docs: https://fastapi.tiangolo.com/advanced/custom-response/#orjson-or-response-model and https://fastapi.tiangolo.com/tutorial/response-model/
+  response = await f(request)
+INFO:     127.0.0.1:62303 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60906 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56200 - "GET / HTTP/1.1" 200 OK
+C:\Users\admin1\Desktop\opentech-db\.venv\Lib\site-packages\fastapi\routing.py:116: FastAPIDeprecationWarning: ORJSONResponse is deprecated, FastAPI now serializes data directly to JSON bytes via Pydantic when a return type or response model is set, which is faster and doesn't need a custom response class. Read more in the FastAPI docs: https://fastapi.tiangolo.com/advanced/custom-response/#orjson-or-response-model and https://fastapi.tiangolo.com/tutorial/response-model/
+  response = await f(request)
+INFO:     127.0.0.1:54312 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56407 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56423 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63438 - "GET / HTTP/1.1" 200 OK

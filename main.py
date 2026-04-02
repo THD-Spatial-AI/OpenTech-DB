@@ -21,6 +21,7 @@ from importlib.metadata import version, PackageNotFoundError
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from api.routes import router as tech_router, debug_router
 from adapters.pypsa_adapter import to_pypsa
@@ -91,8 +92,19 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # tighten in production
-    allow_methods=["GET"],
+    # In development: allow the Vite dev server (port 5173 or 5174)
+    # and the ngrok tunnel that exposes this FastAPI backend.
+    # In production: replace with your actual deployed frontend origin.
+    allow_origins=[
+        "http://localhost:5173",    # Vite default
+        "http://localhost:5174",    # Vite fallback
+        "http://localhost:5175",    # Vite fallback (further)
+        "http://localhost:4173",    # Vite `npm run preview`
+        # Add your deployed frontend URL here when going to production:
+        # "https://your-frontend.example.com",
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -101,6 +113,14 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 app.include_router(tech_router,  prefix="/api/v1")
 app.include_router(debug_router, prefix="/api/v1")
+
+# ---------------------------------------------------------------------------
+# Static assets — project documentation (Markdown + LaTeX source)
+# Accessible at:  http://localhost:8000/project-docs/content/01-introduction-goals.md
+# ---------------------------------------------------------------------------
+_DOCS_DIR = Path(__file__).parent / "documentation"
+if _DOCS_DIR.exists():
+    app.mount("/project-docs", StaticFiles(directory=str(_DOCS_DIR)), name="project-docs")
 
 # ---------------------------------------------------------------------------
 # Adapter endpoints

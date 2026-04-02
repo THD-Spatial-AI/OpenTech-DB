@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>opentech-db | Technology Catalogue</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space_Grotesk:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container": "#eceef0",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "on-surface": "#191c1e",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "on-background": "#191c1e",
+                        "surface-tint": "#5654a8",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "on-tertiary-container": "#ffede6",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-primary-fixed-variant": "#3e3c8f",
+                        "error-container": "#ffdad6",
+                        "outline": "#737686",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#943700",
+                        "primary-fixed": "#e2dfff",
+                        "inverse-primary": "#c3c0ff",
+                        "background": "#f7f9fb",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "secondary-fixed": "#d5e3fc",
+                        "surface-bright": "#f7f9fb",
+                        "surface-dim": "#d8dadc",
+                        "secondary-container": "#d5e3fc",
+                        "on-primary-fixed": "#100563",
+                        "on-secondary-container": "#57657a",
+                        "secondary": "#515f74",
+                        "inverse-on-surface": "#eff1f3",
+                        "primary-container": "#6564b9",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#ffdbcd",
+                        "surface-variant": "#e0e3e5",
+                        "tertiary-container": "#bc4800",
+                        "on-tertiary-fixed": "#360f00",
+                        "surface": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "primary": "#4d4b9e",
+                        "outline-variant": "#c3c6d7",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "surface-container-highest": "#e0e3e5",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#e6e8ea",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#f2eeff",
+                        "on-surface-variant": "#434655"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .technical-gradient {
+            background: linear-gradient(135deg, #4d4b9e 0%, #6564b9 100%);
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- SideNavBar (Incorporated from COMPONENTS_5) -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#f2f4f6] dark:bg-slate-900/50 border-r border-slate-200/15 dark:border-slate-800/15 flex flex-col h-full p-4 z-[60] hidden lg:flex">
+<div class="mb-8 px-2">
+<span class="font-['Space_Grotesk'] font-bold text-slate-900 dark:text-white text-xl">opentech-db</span>
+<p class="text-xs text-on-surface-variant/70 mt-1 uppercase tracking-widest font-bold">Advanced Filters</p>
+</div>
+<nav class="flex-grow space-y-6 overflow-y-auto">
+<!-- Filter Groups -->
+<div class="space-y-4">
+<div class="px-2">
+<span class="flex items-center gap-2 font-['Inter'] text-sm font-bold text-slate-900 dark:text-white mb-3">
+<span class="material-symbols-outlined text-sm">filter_list</span> Status
+                </span>
+<div class="space-y-1">
+<label class="flex items-center gap-2 p-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md cursor-pointer transition-transform hover:translate-x-1">
+<input checked="" class="rounded text-primary focus:ring-primary border-outline-variant/30" type="checkbox"/>
+                        Verified
+                    </label>
+<label class="flex items-center gap-2 p-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md cursor-pointer transition-transform hover:translate-x-1">
+<input class="rounded text-primary focus:ring-primary border-outline-variant/30" type="checkbox"/>
+                        Review Required
+                    </label>
+</div>
+</div>
+<div class="px-2">
+<span class="flex items-center gap-2 font-['Inter'] text-sm font-bold text-slate-900 dark:text-white mb-3">
+<span class="material-symbols-outlined text-sm">map</span> Region
+                </span>
+<div class="space-y-1">
+<label class="flex items-center gap-2 p-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md cursor-pointer transition-transform hover:translate-x-1">
+<input class="rounded text-primary focus:ring-primary border-outline-variant/30" type="checkbox"/>
+                        EU
+                    </label>
+<label class="flex items-center gap-2 p-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md cursor-pointer transition-transform hover:translate-x-1">
+<input class="rounded text-primary focus:ring-primary border-outline-variant/30" type="checkbox"/>
+                        North America
+                    </label>
+<label class="flex items-center gap-2 p-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md cursor-pointer transition-transform hover:translate-x-1">
+<input checked="" class="rounded text-primary focus:ring-primary border-outline-variant/30" type="checkbox"/>
+                        Global
+                    </label>
+</div>
+</div>
+<div class="px-2">
+<span class="flex items-center gap-2 font-['Inter'] text-sm font-bold text-slate-900 dark:text-white mb-3">
+<span class="material-symbols-outlined text-sm">database</span> Source
+                </span>
+<div class="space-y-1">
+<label class="flex items-center gap-2 p-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md cursor-pointer transition-transform hover:translate-x-1">
+<input class="rounded text-primary focus:ring-primary border-outline-variant/30" type="checkbox"/>
+                        NREL
+                    </label>
+<label class="flex items-center gap-2 p-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md cursor-pointer transition-transform hover:translate-x-1">
+<input class="rounded text-primary focus:ring-primary border-outline-variant/30" type="checkbox"/>
+                        IEA
+                    </label>
+<label class="flex items-center gap-2 p-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md cursor-pointer transition-transform hover:translate-x-1">
+<input class="rounded text-primary focus:ring-primary border-outline-variant/30" type="checkbox"/>
+                        IRENA
+                    </label>
+</div>
+</div>
+</div>
+</nav>
+<div class="mt-auto space-y-1">
+<a class="flex items-center gap-2 p-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined text-sm">description</span> Documentation
+        </a>
+<a class="flex items-center gap-2 p-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined text-sm">help</span> Support
+        </a>
+</div>
+</aside>
+<!-- Main Wrapper to accommodate SideNavBar -->
+<div class="lg:ml-64 flex flex-col min-h-screen">
+<!-- TopNavBar (Incorporated from COMPONENTS_5) -->
+<header class="bg-[#f7f9fb] dark:bg-slate-900 font-['Space_Grotesk'] text-slate-900 dark:text-slate-100 full-width top-0 z-50 sticky border-b border-outline-variant/15">
+<div class="flex justify-between items-center w-full px-8 py-4 max-w-[1440px] mx-auto">
+<div class="flex items-center gap-8">
+<div class="flex flex-col">
+<span class="text-2xl font-bold tracking-tighter text-slate-900 dark:text-white">opentech-db</span>
+<span class="text-[10px] font-label uppercase tracking-widest text-on-surface-variant/70">OEO-aligned Energy Parameter Database</span>
+</div>
+<nav class="hidden md:flex items-center gap-8 ml-8">
+<a class="text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 font-bold pb-1 text-sm" href="#">Generation</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors text-sm px-2 py-1 rounded" href="#">Storage</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors text-sm px-2 py-1 rounded" href="#">Conversion</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors text-sm px-2 py-1 rounded" href="#">Transmission</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<input class="bg-surface-container-low border-none rounded-lg px-4 py-2 text-sm w-64 focus:ring-2 focus:ring-primary/20" placeholder="Search parameters..." type="text"/>
+<span class="material-symbols-outlined absolute right-3 top-2 text-on-surface-variant text-lg">search</span>
+</div>
+<button class="p-2 rounded-full hover:bg-slate-200/50 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-white">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<main class="max-w-[1440px] mx-auto px-8 py-12 w-full">
+<!-- Hero Title Section -->
+<section class="mb-12">
+<h1 class="font-headline text-5xl font-bold tracking-tight mb-4 text-on-surface">Technology Catalogue</h1>
+<p class="text-on-surface-variant max-w-2xl text-lg leading-relaxed">
+                A standardized repository of technical and economic parameters for energy system modeling, strictly aligned with the Open Energy Ontology (OEO).
+            </p>
+</section>
+<!-- Dynamic Filter Bar & View Toggles -->
+<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12 border-b border-outline-variant/15 pb-6">
+<div class="flex items-center gap-3">
+<div class="flex gap-2">
+<span class="bg-primary/10 text-primary px-3 py-1 text-xs font-bold rounded-sm border border-primary/20 uppercase tracking-tighter">Active: Generation</span>
+<span class="bg-surface-container-highest text-on-surface-variant px-3 py-1 text-xs font-bold rounded-sm uppercase tracking-tighter">142 Technologies</span>
+</div>
+<!-- View Toggles -->
+<div class="h-6 w-px bg-outline-variant/30 hidden sm:block"></div>
+<div class="flex bg-surface-container-low p-1 rounded-lg">
+<button class="p-1.5 rounded bg-surface-container-lowest shadow-sm text-primary" title="Grid View">
+<span class="material-symbols-outlined text-lg">grid_view</span>
+</button>
+<button class="p-1.5 rounded text-on-surface-variant hover:text-primary transition-colors" title="Table View">
+<span class="material-symbols-outlined text-lg">table_rows</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+                    Advanced Filters
+                </button>
+<div class="h-4 w-px bg-outline-variant/30"></div>
+<button class="flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">sort</span>
+                    Sort by Impact
+                </button>
+</div>
+</div>
+<!-- Technology Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
+<!-- Card 1: Utility-Scale Solar PV -->
+<div class="group bg-surface-container-lowest flex flex-col h-full rounded-xl transition-all duration-300 hover:translate-y-[-4px] hover:shadow-xl hover:shadow-primary/5">
+<div class="h-48 overflow-hidden rounded-t-xl relative">
+<img alt="Modern solar farm" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjzmmN9wupq9TMUlKEopcd5EL-gEPPG0Pa9qpcE_N9tmxXdwk9rYsDyPHsu8x7dSeCtRfsjaxGOd0wAJ0yJUFZS0Mbs0mkge2QP2opY4g48hfT5MoAIy4wrLaXioceEMV1dpeYIk7eFx7X0A4BAKTxr5ZoFqM1c8bHNAwKpy_MhwcN9TBjY2qSFnqjVhGZ_HnaVEsz1necErNjNPnZY0_8aZL626j8OOC6QQQ9GRaKbWQXPk6qSiJnafKvZSg1mZx7iO3uwKLauCmL"/>
+<div class="absolute top-4 left-4 flex gap-2">
+<span class="bg-surface-container-lowest/90 backdrop-blur px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary rounded-full shadow-sm">Electricity</span>
+</div>
+<!-- Status Indicator -->
+<div class="absolute top-4 right-4">
+<span class="bg-surface-container-lowest/90 backdrop-blur pl-1.5 pr-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant rounded-full shadow-sm flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Verified
+                        </span>
+</div>
+</div>
+<div class="p-6 flex flex-col flex-grow">
+<div class="flex justify-between items-start mb-3">
+<h3 class="font-headline text-xl font-bold text-on-surface leading-tight">Utility-Scale Solar PV</h3>
+<a class="text-on-surface-variant hover:text-primary" href="#" title="View OEO Class">
+<span class="material-symbols-outlined text-lg">account_tree</span>
+</a>
+</div>
+<p class="text-on-surface-variant text-sm line-clamp-3 mb-6 leading-relaxed">
+                        Photovoltaic systems designed for large-scale energy production, typically mounted on ground-based tracking structures.
+                    </p>
+<div class="mt-auto pt-6 flex flex-col gap-4">
+<div class="grid grid-cols-2 gap-4 pb-6">
+<div>
+<span class="block text-[10px] uppercase tracking-wider text-on-surface-variant font-bold mb-1">Efficiency</span>
+<span class="font-headline font-bold text-lg">22.4 %</span>
+</div>
+<div>
+<span class="block text-[10px] uppercase tracking-wider text-on-surface-variant font-bold mb-1">Lifespan</span>
+<span class="font-headline font-bold text-lg">25 Years</span>
+</div>
+</div>
+<button class="technical-gradient text-on-primary w-full py-3 text-sm font-bold rounded-lg flex items-center justify-center gap-2 group-hover:shadow-lg group-hover:shadow-primary/20 transition-all">
+                            View Parameters
+                            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 2: Onshore Wind -->
+<div class="group bg-surface-container-lowest flex flex-col h-full rounded-xl transition-all duration-300 hover:translate-y-[-4px] hover:shadow-xl hover:shadow-primary/5">
+<div class="h-48 overflow-hidden rounded-t-xl relative">
+<img alt="Wind turbines" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOSelkTsSAaOhiHj1GR2yZ30rLrEUqVfMPD2ziTtfBOH3FvBJkM-eJjj6TD5io-uBnsWU-UVre98dyhsd7-11JHOBvblxMZBU1Ga0tfmrIG9MuCZWQJqAch4-aIvctEQZbKLUdSHyTpWGEcucjU30EIAnSIcGb2lKfd0sYqALOG3AS7vCFkWZT-92PQFzA364P1FcZDqkBxcOL6Iv3oMZ1NQwj7TpHEht1Go2MuNEW6t_eMAI1E8VRqBN4QyOoDuzIXjemC63ZvuX7"/>
+<div class="absolute top-4 left-4">
+<span class="bg-surface-container-lowest/90 backdrop-blur px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary rounded-full shadow-sm">Electricity</span>
+</div>
+<!-- Status Indicator -->
+<div class="absolute top-4 right-4">
+<span class="bg-surface-container-lowest/90 backdrop-blur pl-1.5 pr-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant rounded-full shadow-sm flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Verified
+                        </span>
+</div>
+</div>
+<div class="p-6 flex flex-col flex-grow">
+<div class="flex justify-between items-start mb-3">
+<h3 class="font-headline text-xl font-bold text-on-surface leading-tight">Onshore Wind</h3>
+<a class="text-on-surface-variant hover:text-primary" href="#" title="View OEO Class">
+<span class="material-symbols-outlined text-lg">account_tree</span>
+</a>
+</div>
+<p class="text-on-surface-variant text-sm line-clamp-3 mb-6 leading-relaxed">
+                        Three-blade horizontal axis wind turbines situated on land for converting kinetic energy into electrical power.
+                    </p>
+<div class="mt-auto pt-6 flex flex-col gap-4">
+<div class="grid grid-cols-2 gap-4 pb-6">
+<div>
+<span class="block text-[10px] uppercase tracking-wider text-on-surface-variant font-bold mb-1">Cap. Factor</span>
+<span class="font-headline font-bold text-lg">34.0 %</span>
+</div>
+<div>
+<span class="block text-[10px] uppercase tracking-wider text-on-surface-variant font-bold mb-1">OM Cost</span>
+<span class="font-headline font-bold text-lg">12 €/kW</span>
+</div>
+</div>
+<button class="technical-gradient text-on-primary w-full py-3 text-sm font-bold rounded-lg flex items-center justify-center gap-2 group-hover:shadow-lg group-hover:shadow-primary/20 transition-all">
+                            View Parameters
+                            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 3: Gas Turbine -->
+<div class="group bg-surface-container-lowest flex flex-col h-full rounded-xl transition-all duration-300 hover:translate-y-[-4px] hover:shadow-xl hover:shadow-primary/5">
+<div class="h-48 overflow-hidden rounded-t-xl relative">
+<img alt="Gas turbine" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEZJdGKU-g-zH25IXlclvvP3A4s0vf9U2kKfaZLbP7tcWaVUhrhkdIMu3JmtEmZaMXiN-nx6qQv6jgNPqQ0PM2mh0wTop0PZtBmknxSvu0ytFvZHvFCqA9D8zjrqmk7UUrGf32ODIUzixmlttaaMjsnqsDtRpneos4pV0GM6aaMersZBqP0SdJcHBtr8cojBPnsk5ZgHFGM1TJH5sZ_O-BjE2BclnTsTL7JMKZOyx_dNzjdmkz_E_G5LD8nKO5-L1U8XXCKZfFNDxn"/>
+<div class="absolute top-4 left-4">
+<span class="bg-surface-container-lowest/90 backdrop-blur px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-tertiary rounded-full shadow-sm">Gas</span>
+</div>
+<!-- Status Indicator -->
+<div class="absolute top-4 right-4">
+<span class="bg-surface-container-lowest/90 backdrop-blur pl-1.5 pr-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant rounded-full shadow-sm flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Review
+                        </span>
+</div>
+</div>
+<div class="p-6 flex flex-col flex-grow">
+<div class="flex justify-between items-start mb-3">
+<h3 class="font-headline text-xl font-bold text-on-surface leading-tight">Gas Turbine (OCGT)</h3>
+<a class="text-on-surface-variant hover:text-primary" href="#" title="View OEO Class">
+<span class="material-symbols-outlined text-lg">account_tree</span>
+</a>
+</div>
+<p class="text-on-surface-variant text-sm line-clamp-3 mb-6 leading-relaxed">
+                        Open-cycle gas turbines providing rapid-response peak load generation using natural gas or hydrogen blends.
+                    </p>
+<div class="mt-auto pt-6 flex flex-col gap-4">
+<div class="grid grid-cols-2 gap-4 pb-6">
+<div>
+<span class="block text-[10px] uppercase tracking-wider text-on-surface-variant font-bold mb-1">Ramp Rate</span>
+<span class="font-headline font-bold text-lg">15 %/min</span>
+</div>
+<div>
+<span class="block text-[10px] uppercase tracking-wider text-on-surface-variant font-bold mb-1">CO2 Intensity</span>
+<span class="font-headline font-bold text-lg">420 g/kWh</span>
+</div>
+</div>
+<button class="technical-gradient text-on-primary w-full py-3 text-sm font-bold rounded-lg flex items-center justify-center gap-2 group-hover:shadow-lg group-hover:shadow-primary/20 transition-all">
+                            View Parameters
+                            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 4: Heat Pump -->
+<div class="group bg-surface-container-lowest flex flex-col h-full rounded-xl transition-all duration-300 hover:translate-y-[-4px] hover:shadow-xl hover:shadow-primary/5">
+<div class="h-48 overflow-hidden rounded-t-xl relative">
+<img alt="Heat pump" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYPObml7uJQBe-UZCRfSdrlnX9AcFhur3BfTmN5wNK6GZBBdOtvez6i0LX8KyVXVrp6aTQGmzjyq64RJymqhS7KXYSGNdFqOwDwdOJYNKM1ghsj3BQaV8tbFDHGEK0Y4JTCCNLb2XfCYbiBwHXl28Q6v5tjuyxe2Bbm0TKR0Mf8-Gtq77vayJLBaVC26kR27UvPthcfff3bMS0bGGjJH0fx_Yg4mwQblrFBZpv44E6yCUtT7zCs0BQYVt9bUMaNgUqwl00adxZUdN3"/>
+<div class="absolute top-4 left-4">
+<span class="bg-surface-container-lowest/90 backdrop-blur px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-secondary rounded-full shadow-sm">Heat</span>
+</div>
+<!-- Status Indicator -->
+<div class="absolute top-4 right-4">
+<span class="bg-surface-container-lowest/90 backdrop-blur pl-1.5 pr-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant rounded-full shadow-sm flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Verified
+                        </span>
+</div>
+</div>
+<div class="p-6 flex flex-col flex-grow">
+<div class="flex justify-between items-start mb-3">
+<h3 class="font-headline text-xl font-bold text-on-surface leading-tight">ASHP Heat Pump</h3>
+<a class="text-on-surface-variant hover:text-primary" href="#" title="View OEO Class">
+<span class="material-symbols-outlined text-lg">account_tree</span>
+</a>
+</div>
+<p class="text-on-surface-variant text-sm line-clamp-3 mb-6 leading-relaxed">
+                        Air-source heat pumps utilizing refrigeration cycles to provide efficient space heating and hot water.
+                    </p>
+<div class="mt-auto pt-6 flex flex-col gap-4">
+<div class="grid grid-cols-2 gap-4 pb-6">
+<div>
+<span class="block text-[10px] uppercase tracking-wider text-on-surface-variant font-bold mb-1">COP</span>
+<span class="font-headline font-bold text-lg">3.2 (Avg)</span>
+</div>
+<div>
+<span class="block text-[10px] uppercase tracking-wider text-on-surface-variant font-bold mb-1">Source</span>
+<span class="font-headline font-bold text-lg">Ambient Air</span>
+</div>
+</div>
+<button class="technical-gradient text-on-primary w-full py-3 text-sm font-bold rounded-lg flex items-center justify-center gap-2 group-hover:shadow-lg group-hover:shadow-primary/20 transition-all">
+                            View Parameters
+                            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination Controls for Large Datasets -->
+<div class="mt-12 flex justify-center">
+<nav class="flex items-center gap-1">
+<button class="p-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 rounded-lg bg-primary text-on-primary font-bold">1</button>
+<button class="w-10 h-10 rounded-lg hover:bg-surface-container-low text-on-surface-variant font-bold">2</button>
+<button class="w-10 h-10 rounded-lg hover:bg-surface-container-low text-on-surface-variant font-bold">3</button>
+<span class="px-2 text-on-surface-variant">...</span>
+<button class="w-10 h-10 rounded-lg hover:bg-surface-container-low text-on-surface-variant font-bold">12</button>
+<button class="p-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</nav>
+</div>
+<!-- Metadata Quick-Reference (Dense Table View) -->
+<div class="mt-24">
+<div class="flex items-center justify-between mb-8">
+<div class="flex items-center gap-3">
+<h2 class="font-headline text-2xl font-bold">Metadata Quick-Reference</h2>
+<span class="text-xs bg-surface-container-highest px-2 py-0.5 rounded text-on-surface-variant font-bold">Dense View</span>
+</div>
+<button class="text-sm font-bold text-primary flex items-center gap-1 hover:underline">
+                    Export All (.JSON)
+                    <span class="material-symbols-outlined text-sm">download</span>
+</button>
+</div>
+<div class="bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/15">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-highest">
+<th class="p-4 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Technology ID</th>
+<th class="p-4 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">OEO Alignment</th>
+<th class="p-4 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Status</th>
+<th class="p-4 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Source</th>
+<th class="p-4 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant text-right">Last Updated</th>
+</tr>
+</thead>
+<tbody class="text-sm font-medium">
+<tr class="hover:bg-surface-container-lowest transition-colors border-b border-outline-variant/10">
+<td class="p-4 font-headline">TEC_PV_UTILITY_01</td>
+<td class="p-4 text-on-surface-variant">SolarPhotovoltaicPlant</td>
+<td class="p-4"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Verified</span></td>
+<td class="p-4 text-xs">NREL ATB 2023</td>
+<td class="p-4 text-right text-on-surface-variant">2023-11-24</td>
+</tr>
+<tr class="bg-surface/50 hover:bg-surface-container-lowest transition-colors border-b border-outline-variant/10">
+<td class="p-4 font-headline">TEC_WIND_ON_04</td>
+<td class="p-4 text-on-surface-variant">OnshoreWindEnergyConverter</td>
+<td class="p-4"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Verified</span></td>
+<td class="p-4 text-xs">IEA WEO 2023</td>
+<td class="p-4 text-right text-on-surface-variant">2023-10-12</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="p-4 font-headline">TEC_GT_OC_02</td>
+<td class="p-4 text-on-surface-variant">GasTurbinePlant</td>
+<td class="p-4"><span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Review Required</span></td>
+<td class="p-4 text-xs">IRENA Costing 2023</td>
+<td class="p-4 text-right text-on-surface-variant">2023-09-05</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</main>
+<footer class="bg-surface-container-low mt-24 border-t border-outline-variant/15 w-full">
+<div class="max-w-[1440px] mx-auto px-8 py-12 flex flex-col md:flex-row justify-between items-start gap-8">
+<div class="max-w-xs">
+<span class="font-headline font-bold text-xl block mb-2">opentech-db</span>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+                    Open-source energy technology database for researchers, policymakers, and energy system modelers worldwide. Build 1.4.2-stable.
+                </p>
+</div>
+<div class="flex gap-16">
+<div class="flex flex-col gap-3">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Resources</span>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Documentation</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">API Reference</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Methodology</a>
+</div>
+<div class="flex flex-col gap-3">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Community</span>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">GitHub Repository</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Discussions</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Support</a>
+</div>
+</div>
+</div>
+<div class="max-w-[1440px] mx-auto px-8 py-6 border-t border-outline-variant/10 text-[10px] text-on-surface-variant/60 flex justify-between">
+<span>© 2024 OpenTech Energy Consortium</span>
+<span>All data licensed under CC-BY 4.0</span>
+</div>
+</footer>
+</div>
+</body></html>

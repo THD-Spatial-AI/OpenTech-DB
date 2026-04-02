@@ -42,3 +42,9 @@ documentation/
 # Dev / CI config
 .env*
 *.log
+
+# Frontend (not needed by the Python backend)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.cache/

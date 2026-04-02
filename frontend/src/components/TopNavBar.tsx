@@ -6,8 +6,10 @@
  * concerns (API docs, ontology reference, GitHub, search).
  */
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { useAuth } from "../context/AuthContext";
+import type { ActiveView } from "./SideNavBar";
 
 // Base URL for the backend (same as services/api.ts reads from env)
 const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace("/api/v1", "") ?? "http://localhost:8000";
@@ -53,10 +55,15 @@ const NAV_LINKS = [
 interface TopNavBarProps {
   searchQuery: string;
   onSearchChange: Dispatch<SetStateAction<string>>;
+  onLoginClick: () => void;
+  onViewChange: (v: ActiveView) => void;
+  activeView: ActiveView;
 }
 
-export default function TopNavBar({ searchQuery, onSearchChange }: TopNavBarProps) {
+export default function TopNavBar({ searchQuery, onSearchChange, onLoginClick, onViewChange, activeView }: TopNavBarProps) {
   const searchId = useId();
+  const { user, signOut } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header className="bg-surface-container-low font-headline text-on-surface top-0 z-50 sticky border-b border-outline-variant/15">
@@ -65,7 +72,7 @@ export default function TopNavBar({ searchQuery, onSearchChange }: TopNavBarProp
         {/* Brand + Nav links */}
         <div className="flex items-center gap-10">
           <div className="flex flex-col leading-none">
-            <span className="text-xl font-bold tracking-tighter text-on-surface">opentech-db</span>
+            <span className="text-xl font-bold tracking-tighter text-on-surface">OpenTech DB</span>
             <span className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 mt-0.5">
               OEO-aligned Energy Parameters
             </span>
@@ -131,12 +138,123 @@ export default function TopNavBar({ searchQuery, onSearchChange }: TopNavBarProp
             </svg>
           </a>
 
-          <button
-            aria-label="User account"
-            className="p-2 rounded-full hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-surface"
-          >
-            <span className="material-symbols-outlined text-[20px]">account_circle</span>
-          </button>
+          {/* ── Auth area ────────────────────────────────────────────────── */}
+          {user ? (
+            // ─ Signed-in user pill + dropdown
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+                aria-label={`Signed in as ${user.username}`}
+                className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full
+                           hover:bg-surface-container transition-colors
+                           border border-outline-variant/30 text-sm font-medium
+                           text-on-surface"
+              >
+                {user.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt=""
+                    className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <span className="material-symbols-outlined text-[20px] text-primary">
+                    account_circle
+                  </span>
+                )}
+                <span className="hidden sm:inline max-w-[120px] truncate">
+                  {user.username}
+                </span>
+                <span className="material-symbols-outlined text-[14px] text-on-surface-variant">
+                  {menuOpen ? "expand_less" : "expand_more"}
+                </span>
+              </button>
+
+              {/* Dropdown */}
+              {menuOpen && (
+                <>
+                  {/* Backdrop — click outside to close */}
+                  <div
+                    className="fixed inset-0 z-[70]"
+                    aria-hidden
+                    onClick={() => setMenuOpen(false)}
+                  />
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-[calc(100%+8px)] z-[80] w-52
+                               bg-surface-container-lowest rounded-xl border border-outline-variant/20
+                               shadow-xl shadow-on-surface/10 py-1.5 overflow-hidden"
+                  >
+                    {/* User info */}
+                    <div className="px-4 py-3 border-b border-outline-variant/10">
+                      <p className="text-sm font-bold text-on-surface truncate">{user.username}</p>
+                      <p className="text-xs text-on-surface-variant truncate mt-0.5">{user.email}</p>
+                      {user.is_contributor && (
+                        <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold
+                                         text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                          <span className="material-symbols-outlined text-[11px]">verified</span>
+                          Contributor
+                        </span>
+                      )}
+                    </div>
+
+                    {user.is_contributor && (
+                      <button
+                        role="menuitem"
+                        onClick={() => { setMenuOpen(false); onViewChange("contributor"); }}
+                        className={[
+                          "w-full flex items-center gap-2.5 px-4 py-2.5 text-sm",
+                          "text-on-surface-variant hover:bg-surface-container hover:text-on-surface",
+                          "transition-colors text-left",
+                          activeView === "contributor" ? "text-primary font-semibold" : "",
+                        ].join(" ")}
+                      >
+                        <span className="material-symbols-outlined text-[17px]">add_circle</span>
+                        Add Technology
+                      </button>
+                    )}
+
+                    <button
+                      role="menuitem"
+                      onClick={() => { setMenuOpen(false); onViewChange("profile"); }}
+                      className={[
+                        "w-full flex items-center gap-2.5 px-4 py-2.5 text-sm",
+                        "text-on-surface-variant hover:bg-surface-container hover:text-on-surface",
+                        "transition-colors text-left",
+                        activeView === "profile" ? "text-primary font-semibold" : "",
+                      ].join(" ")}
+                    >
+                      <span className="material-symbols-outlined text-[17px]">manage_accounts</span>
+                      Profile Settings
+                    </button>
+
+                    <button
+                      role="menuitem"
+                      onClick={() => { setMenuOpen(false); signOut(); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm
+                                 text-tertiary hover:bg-tertiary-container/30
+                                 transition-colors text-left"
+                    >
+                      <span className="material-symbols-outlined text-[17px]">logout</span>
+                      Sign out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            // ─ Not signed in
+            <button
+              onClick={onLoginClick}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold
+                         bg-primary text-on-primary hover:bg-primary-container
+                         transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
+            >
+              <span className="material-symbols-outlined text-[16px]">login</span>
+              Sign in
+            </button>
+          )}
         </div>
       </div>
     </header>

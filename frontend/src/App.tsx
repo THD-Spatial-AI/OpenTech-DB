@@ -35,12 +35,17 @@ import { startTransition, Suspense, use, useDeferredValue, useState } from "reac
 import type { TechnologyCategory, TechnologySummary } from "./types/api";
 import { fetchCategoryTechnologies, invalidateCategory } from "./services/api";
 
-import SideNavBar, { type FilterState } from "./components/SideNavBar";
+import SideNavBar, { type FilterState, type ActiveView } from "./components/SideNavBar";
 import TopNavBar from "./components/TopNavBar";
 import TechGrid from "./components/TechGrid";
 import MetadataTable from "./components/MetadataTable";
 import DetailsModal from "./components/DetailsModal";
 import ErrorBoundary from "./components/ErrorBoundary";
+import ContributorWorkspace from "./components/contributor/ContributorWorkspace";
+import ProfilePage from "./components/profile/ProfilePage";
+import AuthPage from "./components/auth/AuthPage";
+import OAuthCallback from "./components/auth/OAuthCallback";
+import { useAuth } from "./context/AuthContext";
 
 // ── Grid loading skeleton ─────────────────────────────────────────────────────
 
@@ -114,6 +119,11 @@ export default function App() {
   const [filters, setFilters]               = useState<FilterState>(DEFAULT_FILTERS);
   const [selectedTech, setSelectedTech]     = useState<TechnologySummary | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeView, setActiveView]         = useState<ActiveView>("catalogue");
+  const [showAuth, setShowAuth]             = useState(false);
+  const [authInitialError, setAuthInitialError] = useState<string | undefined>();
+
+  const { user } = useAuth();
 
   // useDeferredValue keeps typing responsive while Suspense re-renders
   const deferredSearch = useDeferredValue(searchQuery);
@@ -129,13 +139,35 @@ export default function App() {
   return (
     // React 19: <title>/<meta> are hoisted to <head> automatically
     <>
-      <title>opentech-db | Technology Catalogue</title>
+      <title>
+        {activeView === "contributor"
+          ? "OpenTech DB | Contributor Workspace"
+          : activeView === "profile"
+          ? "OpenTech DB | Profile Settings"
+          : "OpenTech DB | Technology Catalogue"}
+      </title>
       <meta
         name="description"
         content="OEO-aligned open energy technology parameter database."
       />
 
-      <div className="bg-surface font-body text-on-surface antialiased min-h-screen">
+      {/* Handles ?token= from ORCID OAuth redirect; ?auth_error= from failed OAuth */}
+      <OAuthCallback
+        onAuthError={(msg) => {
+          setAuthInitialError(msg);
+          setShowAuth(true);
+        }}
+      />
+
+      {/* Full-page auth overlay */}
+      {showAuth && !user && (
+        <AuthPage
+          onSuccess={() => { setShowAuth(false); setAuthInitialError(undefined); }}
+          initialError={authInitialError}
+        />
+      )}
+
+      <div className={showAuth && !user ? "hidden" : "bg-surface font-body text-on-surface antialiased min-h-screen"}>
         {/* ── Side nav ──────────────────────────────────────────────── */}
         <SideNavBar
           activeCategory={activeCategory}
@@ -143,6 +175,9 @@ export default function App() {
           filters={filters}
           onFilterChange={setFilters}
           onCollapsedChange={setSidebarCollapsed}
+          activeView={activeView}
+          onViewChange={setActiveView}
+          onLoginClick={() => setShowAuth(true)}
         />
 
         {/* ── Main wrapper — offset by the fixed side nav on lg ─────── */}
@@ -151,34 +186,43 @@ export default function App() {
           <TopNavBar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            onLoginClick={() => setShowAuth(true)}
+            onViewChange={setActiveView}
+            activeView={activeView}
           />
 
           {/* ── Page content ─────────────────────────────────────────── */}
-          <main className="max-w-[1440px] mx-auto px-8 py-12 w-full flex-1">
+          {activeView === "contributor" ? (
+            <ContributorWorkspace />
+          ) : activeView === "profile" ? (
+            <ProfilePage onViewChange={setActiveView} />
+          ) : (
+            <main className="max-w-[1440px] mx-auto px-8 py-12 w-full flex-1">
 
-            {/* Hero */}
-            <section className="mb-12">
-              <h1 className="font-headline text-5xl font-bold tracking-tight mb-4 text-on-surface">
-                Technology Catalogue
-              </h1>
-              <p className="text-on-surface-variant max-w-2xl text-lg leading-relaxed">
-                A standardised repository of technical and economic parameters for energy
-                system modelling, strictly aligned with the Open Energy Ontology (OEO).
-              </p>
-            </section>
+              {/* Hero */}
+              <section className="mb-12">
+                <h1 className="font-headline text-5xl font-bold tracking-tight mb-4 text-on-surface">
+                  Technology Catalogue
+                </h1>
+                <p className="text-on-surface-variant max-w-2xl text-lg leading-relaxed">
+                  A standardised repository of technical and economic parameters for energy
+                  system modelling, strictly aligned with the Open Energy Ontology (OEO).
+                </p>
+              </section>
 
-            {/* Data grid — ErrorBoundary catches API failures gracefully */}
-            <ErrorBoundary context={activeCategory}>
-              <Suspense fallback={<GridSkeleton />}>
-                <CategoryContent
-                  category={activeCategory}
-                  searchQuery={deferredSearch}
-                  filters={filters}
-                  onOpenTech={setSelectedTech}
-                />
-              </Suspense>
-            </ErrorBoundary>
-          </main>
+              {/* Data grid — ErrorBoundary catches API failures gracefully */}
+              <ErrorBoundary context={activeCategory}>
+                <Suspense fallback={<GridSkeleton />}>
+                  <CategoryContent
+                    category={activeCategory}
+                    searchQuery={deferredSearch}
+                    filters={filters}
+                    onOpenTech={setSelectedTech}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            </main>
+          )}
 
           {/* ── Footer ───────────────────────────────────────────────── */}
           <footer className="bg-surface-container-low border-t border-outline-variant/15 px-8 py-12">

@@ -94,6 +94,25 @@ class ParameterValue(BaseModel):
                 raise ValueError("`min` must be ≤ `max`.")
         return self
 
+class GenerationProfile(BaseModel):
+    """
+    Example or site-specific generation profile time series.
+
+    The default representation is an hourly annual capacity-factor series,
+    but the schema intentionally leaves unit/kind open for future extensions.
+    """
+    profile_id: str | None = Field(None, description="Stable identifier for the profile.")
+    kind: str = Field("annual_series", description="Profile form, e.g. annual_series or daily_template.")
+    time_resolution: str = Field("1h", description="Sampling interval, e.g. 1h or 30min.")
+    unit: str = Field("capacity_factor", description="Value unit, typically capacity_factor or power_kw.")
+    values: list[float] = Field(default_factory=list, description="Ordered time-series values.")
+    source: str | None = Field(None, description="Profile provenance or reference.")
+    year: int | None = Field(None, description="Reference weather or operating year.")
+    timezone: str | None = Field(None, description="Timezone used for the series.")
+    notes: str | None = Field(None, description="Free-form notes about assumptions or representativeness.")
+
+    model_config = {"extra": "allow"}
+
 
 # ---------------------------------------------------------------------------
 # Equipment instance  (one row = one real-world model / projection)
@@ -152,6 +171,10 @@ class EquipmentInstance(BaseModel):
         None,
         description="Initial state of charge at the first model timestep [fraction 0–1]. "
                     "Maps to Calliope constraints.storage_initial.",
+    )
+    generation_profile: GenerationProfile | None = Field(
+        None,
+        description="Optional instance-level generation profile, typically an hourly annual capacity-factor series.",
     )
 
     # --- Arbitrary extra parameters for model-specific needs ---
@@ -226,6 +249,10 @@ class PowerPlant(Technology):
     fleet_opex_fixed_per_kw_yr: ParameterValue | None = None
     fleet_electrical_efficiency: ParameterValue | None = None
     fleet_co2_emission_factor:   ParameterValue | None = None
+    generation_profile: GenerationProfile | None = Field(
+        None,
+        description="Optional technology-level generation profile example, typically an hourly annual capacity-factor series.",
+    )
 
 
 class VREPlant(PowerPlant):

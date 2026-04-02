@@ -1,0 +1,13 @@
+﻿{
+    "profile_id":  "onshore_wind_example_annual",
+    "kind":  "annual_series",
+    "time_resolution":  "1h",
+    "unit":  "capacity_factor",
+    "year":  2025,
+    "timezone":  "UTC",
+    "source":  "Synthetic example profile generated for opentech-db",
+    "notes":  "Hourly annual capacity-factor example for onshore wind with moderate seasonality and synoptic variability.",
+    "values":  [
+
+               ]
+}

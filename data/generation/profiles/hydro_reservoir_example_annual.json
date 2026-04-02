@@ -1,0 +1,13 @@
+﻿{
+    "profile_id":  "hydro_reservoir_example_annual",
+    "kind":  "annual_series",
+    "time_resolution":  "1h",
+    "unit":  "capacity_factor",
+    "year":  2025,
+    "timezone":  "UTC",
+    "source":  "Synthetic example profile generated for opentech-db",
+    "notes":  "Hourly annual capacity-factor example for dispatchable reservoir hydro with seasonal inflow and daily shaping.",
+    "values":  [
+
+               ]
+}

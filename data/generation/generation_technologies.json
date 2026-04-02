@@ -36,6 +36,11 @@
                   "carrier": "solar",
                   "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000165",
                   "description": "Large-scale ground-mounted photovoltaic power plants connected directly to transmission networks, typically >1 MW. Includes single-axis tracking systems.",
+                  "generation_profile": {
+                        "profile_id": "solar_pv_utility_example_annual",
+                        "source_file": "profiles/solar_pv_utility_example_annual.json",
+                        "notes": "Example hourly capacity-factor profile for a temperate utility PV fleet. Not site-specific."
+                  },
                   "instances": [
                         {
                               "instance_id": "solar_pv_utility_100mw_current",
@@ -1356,6 +1361,11 @@
                   "carrier": "wind",
                   "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000311",
                   "description": "Land-based wind turbines from single-turbine community installations (2–3 MW) to large utility farms (600+ MW). Covers six turbine classes: micro/community (2–3 MW, hub height 80–100 m), small commercial (3–5 MW), mid-size (5–7 MW, modern German standard), large modern (7–10 MW), next-generation (>10 MW). Capacity factors range from ~25% in low-wind interior sites to ~55% on US Great Plains. Includes German Bürgerwindpark, EEG auction, and repowering contexts.",
+                  "generation_profile": {
+                        "profile_id": "onshore_wind_example_annual",
+                        "source_file": "profiles/onshore_wind_example_annual.json",
+                        "notes": "Example hourly capacity-factor profile for an onshore wind fleet with moderate winter seasonality. Not site-specific."
+                  },
                   "instances": [
                         {
                               "instance_id": "onshore_wind_single_3mw_community",
@@ -2676,6 +2686,11 @@
                   "carrier": "hydro",
                   "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010094",
                   "description": "Hydropower plants with a large upstream reservoir for water storage, enabling dispatchable generation independent of instantaneous river flow. Provides peaking, balancing, and long-duration storage services.",
+                  "generation_profile": {
+                        "profile_id": "hydro_reservoir_example_annual",
+                        "source_file": "profiles/hydro_reservoir_example_annual.json",
+                        "notes": "Example hourly capacity-factor profile for reservoir hydro with seasonal inflow and dispatch shaping. Not plant-specific."
+                  },
                   "instances": [
                         {
                               "instance_id": "hydro_reservoir_200mw_medium",
@@ -3006,6 +3021,11 @@
                   "carrier": "natural_gas",
                   "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000184",
                   "description": "Combined-cycle power plants burning natural gas in a gas turbine and recovering exhaust heat in a heat recovery steam generator (HRSG) to drive a steam turbine. Highest thermal efficiency among gas-fired plants.",
+                  "generation_profile": {
+                        "profile_id": "ccgt_example_annual",
+                        "source_file": "profiles/ccgt_example_annual.json",
+                        "notes": "Example hourly capacity-factor profile for a mid-merit combined-cycle fleet. Not market-specific."
+                  },
                   "instances": [
                         {
                               "instance_id": "ccgt_400mw_standard",
@@ -4326,6 +4346,11 @@
                   "carrier": "uranium",
                   "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000303",
                   "description": "Large-scale nuclear fission power plants producing baseload electricity. Includes Generation II (PWR, BWR) and Generation III/III+ reactors (AP1000, EPR). Very low operational CO2 emissions.",
+                  "generation_profile": {
+                        "profile_id": "nuclear_conventional_example_annual",
+                        "source_file": "profiles/nuclear_conventional_example_annual.json",
+                        "notes": "Example hourly capacity-factor profile for baseload nuclear generation with planned maintenance outages. Not unit-specific."
+                  },
                   "instances": [
                         {
                               "instance_id": "nuclear_gen2_900mw",

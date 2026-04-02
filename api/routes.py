@@ -37,6 +37,7 @@ import json
 import logging
 import re
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from functools import lru_cache
 from typing import Annotated, Any
@@ -63,8 +64,9 @@ from schemas.models import (
     EquipmentInstance,
 )
 
-router        = APIRouter(prefix="/technologies", tags=["Technologies"])
-debug_router  = APIRouter(prefix="/debug",        tags=["Debug"])
+router          = APIRouter(prefix="/technologies", tags=["Technologies"])
+debug_router    = APIRouter(prefix="/debug",         tags=["Debug"])
+ontology_router = APIRouter(prefix="/ontology",      tags=["Ontology"])
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -128,7 +130,7 @@ _LEGACY_VRE_TYPES = {"pv_utility", "onshore_wind", "offshore_wind", "run_of_rive
 # ---------------------------------------------------------------------------
 
 def _load_json_file(path: Path) -> dict:
-    with path.open(encoding="utf-8") as fh:
+    with path.open(encoding="utf-8-sig") as fh:
         return json.load(fh)
 
 
@@ -155,6 +157,40 @@ def _map_carrier(raw_carrier: str | None) -> str | None:
         return None
     return _CARRIER_MAP.get(raw_carrier.lower(), "electricity")
 
+def _load_generation_profile(raw_profile: Any, base_dir: Path, source: str | None = None) -> dict | None:
+    """Load an inline or file-backed generation profile definition."""
+    if raw_profile is None:
+        return None
+
+    if isinstance(raw_profile, str):
+        raw_profile = {"source_file": raw_profile}
+
+    if not isinstance(raw_profile, dict):
+        return None
+
+    profile_data: dict[str, Any] = {}
+    source_file = raw_profile.get("source_file")
+    if source_file:
+        profile_path = (base_dir / source_file).resolve()
+        try:
+            with profile_path.open(encoding="utf-8-sig") as fh:
+                loaded = json.load(fh)
+            if not isinstance(loaded, dict):
+                raise ValueError("generation profile file must contain a JSON object")
+            profile_data.update(loaded)
+        except Exception as exc:  # noqa: BLE001
+            raise ValueError(f"failed to load generation profile '{source_file}': {exc}") from exc
+
+    profile_data.update({key: value for key, value in raw_profile.items() if key != "source_file"})
+
+    if "values" in profile_data and isinstance(profile_data["values"], list):
+        profile_data["values"] = [float(value) for value in profile_data["values"]]
+
+    if source and not profile_data.get("source"):
+        profile_data["source"] = source
+
+    return profile_data
+
 
 # ---------------------------------------------------------------------------
 # Helpers – CATALOGUE format loader
@@ -165,7 +201,7 @@ def _is_catalogue(raw: dict) -> bool:
     return "metadata" in raw and "technologies" in raw and isinstance(raw["technologies"], list)
 
 
-def _map_catalogue_instance(inst: dict, source: str | None) -> dict:
+def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> dict:
     """
     Convert one flat catalogue instance dict into a dict that matches
     the EquipmentInstance Pydantic schema (nested ParameterValue objects).
@@ -208,6 +244,7 @@ def _map_catalogue_instance(inst: dict, source: str | None) -> dict:
         # Flexibility
         "ramp_up_rate":          _pv(ramp, "%capacity/min", ref),
         "ramp_down_rate":        _pv(ramp, "%capacity/min", ref),
+        "generation_profile": _load_generation_profile(inst.get("generation_profile"), base_dir, ref),
 
         # Pass-through extras
         "extra": {
@@ -287,7 +324,7 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
 
             # Map instances
             instances = [
-                _map_catalogue_instance(inst, tech_raw.get("technology_name"))
+                _map_catalogue_instance(inst, tech_raw.get("technology_name"), path.parent)
                 for inst in tech_raw.get("instances", [])
             ]
 
@@ -313,6 +350,11 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 tech_dict["is_renewable"]    = (raw_carrier or "").lower() in {
                     "solar", "wind", "hydro", "marine", "geothermal", "biomass", "biogas"
                 }
+                tech_dict["generation_profile"] = _load_generation_profile(
+                    tech_raw.get("generation_profile"),
+                    path.parent,
+                    tech_name,
+                )
             elif cat == TechnologyCategory.STORAGE:
                 tech_dict["storage_type"]    = tech_id_str
                 tech_dict["stored_carrier"]  = in_carrier_val
@@ -450,6 +492,7 @@ def debug_data():
 def reload_cache():
     """Force a full reload of all JSON files without restarting the server."""
     _load_all_technologies.cache_clear()
+    _build_ontology_schema.cache_clear()
     techs = _get_all()
     return {"status": "reloaded", "total": len(techs)}
 
@@ -758,3 +801,108 @@ def get_instance(
         status_code=404,
         detail=f"Instance '{instance_id}' not found in technology '{tech_id}'.",
     )
+
+
+# ---------------------------------------------------------------------------
+# Ontology router — controlled-vocabulary schema for contributors
+# ---------------------------------------------------------------------------
+
+_PENDING_DIR = DATA_DIR.parent / "data" / "pending_submissions"
+
+
+@lru_cache(maxsize=1)
+def _build_ontology_schema() -> dict:
+    """
+    Scan all catalogue JSON files to derive the live controlled-vocabulary
+    lists.  Result is cached in-process (cleared on /debug/reload).
+    """
+    oeo_classes: set[str] = set()
+    reference_sources: set[str] = set()
+
+    for json_file in DATA_DIR.rglob("*.json"):
+        try:
+            raw = _load_json_file(json_file)
+        except Exception:
+            continue
+        if not _is_catalogue(raw):
+            continue
+        for tech in raw.get("technologies", []):
+            oeo_uri = tech.get("oeo_class")
+            if oeo_uri:
+                oeo_classes.add(oeo_uri)
+            for inst in tech.get("instances", []):
+                ref = inst.get("reference_source")
+                if ref:
+                    reference_sources.add(ref)
+
+    return {
+        "allowed_domains":           [c.value for c in TechnologyCategory],
+        "allowed_carriers":          [c.value for c in EnergyCarrier],
+        "allowed_oeo_classes":       sorted(oeo_classes),
+        "allowed_reference_sources": sorted(reference_sources),
+    }
+
+
+@ontology_router.get(
+    "/schema",
+    summary="Controlled-vocabulary schema for contributor submissions",
+    response_description="Lists of allowed domains, carriers, OEO class URIs, and reference sources.",
+)
+def get_ontology_schema() -> dict:
+    """
+    Returns the OEO-aligned allowlists used to validate contributor submissions.
+    The four arrays are derived live from the loaded technology catalogue and
+    the EnergyCarrier / TechnologyCategory enumerations.
+    """
+    return _build_ontology_schema()
+
+
+# ---------------------------------------------------------------------------
+# Contributor submission endpoint — POST /technologies
+# ---------------------------------------------------------------------------
+
+class SubmissionResponse(BaseModel):
+    id: str
+    technology_name: str
+    status: str = "pending_review"
+
+
+@router.post(
+    "",
+    status_code=202,
+    response_model=SubmissionResponse,
+    summary="Submit a new technology for review",
+)
+def submit_technology(payload: dict = Body(...)) -> SubmissionResponse:
+    """
+    Accept a contributor-submitted technology.  The payload is written to
+    ``data/pending_submissions/`` as a timestamped JSON file awaiting admin
+    review before it appears in the public catalogue.
+    """
+    tech_name = str(payload.get("technology_name", "unknown")).strip() or "unknown"
+    submission_id = str(uuid.uuid4())
+
+    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
+
+    safe_name = re.sub(r"[^a-z0-9_-]", "_", tech_name.lower())[:60]
+    filename = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}_{safe_name}_{submission_id[:8]}.json"
+
+    record = {
+        "submission_id":    submission_id,
+        "submitted_at":     datetime.now(timezone.utc).isoformat(),
+        "status":           "pending_review",
+        "technology_name":  tech_name,
+        "payload":          payload,
+    }
+
+    try:
+        with (_PENDING_DIR / filename).open("w", encoding="utf-8") as fh:
+            import json as _json
+            _json.dump(record, fh, indent=2, ensure_ascii=False)
+    except OSError as exc:
+        logger.error("Could not write pending submission: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to store submission.") from exc
+
+    logger.info("New submission: %s (%s)", tech_name, submission_id)
+    return SubmissionResponse(id=submission_id, technology_name=tech_name)
+

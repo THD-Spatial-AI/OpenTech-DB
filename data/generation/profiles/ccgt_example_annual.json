@@ -1,0 +1,13 @@
+﻿{
+    "profile_id":  "ccgt_example_annual",
+    "kind":  "annual_series",
+    "time_resolution":  "1h",
+    "unit":  "capacity_factor",
+    "year":  2025,
+    "timezone":  "UTC",
+    "source":  "Synthetic example profile generated for opentech-db",
+    "notes":  "Hourly annual capacity-factor example for mid-merit CCGT operation with seasonal demand and maintenance periods.",
+    "values":  [
+
+               ]
+}

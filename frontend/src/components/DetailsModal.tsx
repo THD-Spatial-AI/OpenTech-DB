@@ -33,11 +33,18 @@ import {
   useId,
   useOptimistic,
   useRef,
+  useState,
+  lazy,
   Suspense,
   startTransition,
 } from "react";
 import type { EquipmentInstance, Technology, TechnologySummary } from "../types/api";
 import { fetchTechnology } from "../services/api";
+
+// Lazy-load ECharts (large library) so it doesn't bloat the initial bundle
+const TechCharts = lazy(() =>
+  import("./TechCharts").then((m) => ({ default: m.TechCharts }))
+);
 
 // ── Source badge colours ──────────────────────────────────────────────────────
 
@@ -163,9 +170,11 @@ function CapexSparkline({ instances }: { instances: EquipmentInstance[] }) {
 function InstanceRow({
   inst,
   index,
+  techName,
 }: {
   inst: EquipmentInstance;
   index: number;
+  techName: string;
 }) {
   const bg = index % 2 !== 0 ? "bg-surface-container-low/20" : "";
 
@@ -182,7 +191,26 @@ function InstanceRow({
       {/* Variant */}
       <td className="px-5 py-5 font-bold text-on-surface sticky left-0 bg-white/50
                      group-hover:bg-transparent backdrop-blur-sm z-10">
-        {inst.label}
+        <div className="flex items-center gap-2">
+          <span>{inst.label}</span>
+          <button
+            onClick={() => downloadInstanceJSON(inst, techName)}
+            title="Download variant as JSON"
+            aria-label={`Download ${inst.label} as JSON`}
+            className="flex items-center gap-1 px-2 py-0.5 rounded border border-outline-variant/40
+                       text-[10px] font-bold text-on-surface-variant bg-surface-container
+                       hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>download</span>
+            JSON
+          </button>
+        </div>
+      </td>
+      {/* Capacity */}
+      <td className="px-5 py-5 font-medium text-center">
+        {inst.capacity_kw
+          ? `${fmt(inst.capacity_kw.value, 0)} ${inst.capacity_kw.unit}`
+          : "—"}
       </td>
       {/* CAPEX */}
       <td className="px-5 py-5 font-headline text-lg font-medium text-center text-on-surface">
@@ -216,6 +244,18 @@ function InstanceRow({
       <td className="px-5 py-5 text-right">{sourceBadge(mainSource)}</td>
     </tr>
   );
+}
+
+// ── Per-variant JSON download ────────────────────────────────────────────────
+
+function downloadInstanceJSON(inst: EquipmentInstance, techName: string): void {
+  const blob = new Blob([JSON.stringify(inst, null, 2)], { type: "application/json" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `${techName.replace(/\s+/g, "_")}_${inst.label.replace(/\s+/g, "_")}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── Export CSV helper ─────────────────────────────────────────────────────────
@@ -276,6 +316,57 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
 
   const isVerified = !tech.tags.some((t) => t.toLowerCase() === "review_required");
   const primaryCarrier = tech.output_carriers[0] ?? tech.input_carriers[0];
+
+  // ── Sort state for the instances table ─────────────────────────────────────
+  type SortField = "label" | "capacity_kw" | "capex_per_kw" | "opex_fixed_per_kw_yr" | "efficiency" | "economic_lifetime_yr";
+  type SortDir   = "asc" | "desc";
+  const [sortField, setSortField] = useState<SortField>("label");
+  const [sortDir,   setSortDir]   = useState<SortDir>("asc");
+
+  function handleSort(field: SortField) {
+    if (field === sortField) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  }
+
+  const sortedInstances = [...tech.instances].sort((a, b) => {
+    let av: number | string | null = null;
+    let bv: number | string | null = null;
+    switch (sortField) {
+      case "label":                av = a.label;                                       bv = b.label;                                       break;
+      case "capacity_kw":         av = a.capacity_kw?.value          ?? null;         bv = b.capacity_kw?.value          ?? null;         break;
+      case "capex_per_kw":        av = a.capex_per_kw?.value         ?? null;         bv = b.capex_per_kw?.value         ?? null;         break;
+      case "opex_fixed_per_kw_yr":av = a.opex_fixed_per_kw_yr?.value ?? null;         bv = b.opex_fixed_per_kw_yr?.value ?? null;         break;
+      case "efficiency":          av = (a.electrical_efficiency?.value ?? a.thermal_efficiency?.value) ?? null;
+                                  bv = (b.electrical_efficiency?.value ?? b.thermal_efficiency?.value) ?? null; break;
+      case "economic_lifetime_yr":av = a.economic_lifetime_yr?.value  ?? null;         bv = b.economic_lifetime_yr?.value  ?? null;        break;
+    }
+    // Nulls always last
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (typeof av === "string" && typeof bv === "string") {
+      return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    }
+    return sortDir === "asc"
+      ? (av as number) - (bv as number)
+      : (bv as number) - (av as number);
+  });
+
+  // Helper to render a sort indicator arrow
+  function SortIcon({ field }: { field: SortField }) {
+    if (field !== sortField) {
+      return <span className="material-symbols-outlined opacity-20" style={{ fontSize: "12px" }}>unfold_more</span>;
+    }
+    return (
+      <span className="material-symbols-outlined text-primary" style={{ fontSize: "12px" }}>
+        {sortDir === "asc" ? "arrow_upward" : "arrow_downward"}
+      </span>
+    );
+  }
 
   // useOptimistic for the "Share Metadata" button toast
   const [shareLabel, setOptimisticShare] = useOptimistic(
@@ -511,8 +602,60 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
             </div>
           </div>
 
+          {/* ── Parameter Comparison Charts ──────────────────────────── */}
+          {tech.instances.length >= 2 && (
+            <div className="mb-6">
+              <Suspense
+                fallback={
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 animate-pulse">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className={`h-72 bg-surface-container-low rounded-xl ${i === 2 ? "xl:col-span-2" : ""}`} />
+                    ))}
+                  </div>
+                }
+              >
+                <TechCharts instances={tech.instances} />
+              </Suspense>
+            </div>
+          )}
+
           {/* Instances Table */}
           <div className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border border-outline-variant/10">
+            {/* Sort toolbar */}
+            <div className="flex items-center gap-3 px-5 py-3 border-b border-outline-variant/10 bg-surface-container/30 flex-wrap">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">
+                Sort by
+              </span>
+              {(
+                [
+                  ["label",                "Variant"],
+                  ["capacity_kw",          "Capacity"],
+                  ["capex_per_kw",         "CAPEX"],
+                  ["opex_fixed_per_kw_yr", "Fixed OPEX"],
+                  ["efficiency",           "Efficiency"],
+                  ["economic_lifetime_yr", "Lifetime"],
+                ] as [SortField, string][]
+              ).map(([field, label]) => (
+                <button
+                  key={field}
+                  onClick={() => handleSort(field)}
+                  className={[
+                    "flex items-center gap-0.5 px-2.5 py-1 rounded text-[10px] font-bold border transition-colors",
+                    sortField === field
+                      ? "bg-primary text-on-primary border-primary"
+                      : "text-on-surface-variant border-outline-variant/50 hover:bg-surface-container-high",
+                  ].join(" ")}
+                >
+                  {label}
+                  <span className={`material-symbols-outlined ${sortField === field ? "text-on-primary" : "opacity-40"}`} style={{ fontSize: "11px" }}>
+                    {sortField === field ? (sortDir === "asc" ? "arrow_upward" : "arrow_downward") : "unfold_more"}
+                  </span>
+                </button>
+              ))}
+              <span className="ml-auto text-[10px] text-on-surface-variant/50">
+                {sortedInstances.length} variant{sortedInstances.length !== 1 ? "s" : ""}
+              </span>
+            </div>
             <div className="overflow-x-auto">
               <table
                 className="w-full text-left border-collapse"
@@ -520,43 +663,48 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
               >
                 <thead>
                   <tr className="bg-surface-container-highest/20">
-                    {[
-                      "Variant",
-                      "CAPEX ($/kW)",
-                      "Fixed OPEX ($/kW-yr)",
-                      "Efficiency (%)",
-                      "Lifetime",
-                      "WACC (%)",
-                      "CO₂ (g/kWh)",
-                      "Source",
-                    ].map((col, i) => (
+                    {(
+                      [
+                        ["label",                "Variant",              "sticky left-0 bg-surface-container-lowest z-10 text-left"],
+                        ["capacity_kw",          "Capacity (kW)",        "text-center"],
+                        ["capex_per_kw",         "CAPEX ($/kW)",         "text-center"],
+                        ["opex_fixed_per_kw_yr", "Fixed OPEX ($/kW-yr)", "text-center"],
+                        ["efficiency",           "Efficiency (%)",       "text-center"],
+                        ["economic_lifetime_yr", "Lifetime",             "text-center"],
+                        [null,                   "WACC (%)",             "text-center"],
+                        [null,                   "CO\u2082 (g/kWh)",         "text-center"],
+                        [null,                   "Source",               "text-right"],
+                      ] as [SortField | null, string, string][]
+                    ).map(([field, col, align]) => (
                       <th
                         key={col}
                         scope="col"
+                        onClick={field ? () => handleSort(field) : undefined}
                         className={[
                           "px-5 py-4 text-[10px] font-bold uppercase tracking-[0.05em]",
                           "text-on-surface-variant border-b border-outline-variant/15",
-                          i === 0
-                            ? "sticky left-0 bg-surface-container-lowest z-10 text-left"
-                            : i === 7
-                            ? "text-right"
-                            : "text-center",
+                          align,
+                          field ? "cursor-pointer hover:text-on-surface select-none" : "",
+                          sortField === field ? "text-primary" : "",
                         ].join(" ")}
                       >
-                        {col}
+                        <span className="inline-flex items-center gap-0.5">
+                          {col}
+                          {field && <SortIcon field={field} />}
+                        </span>
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
-                  {tech.instances.length > 0 ? (
-                    tech.instances.map((inst, idx) => (
-                      <InstanceRow key={inst.id} inst={inst} index={idx} />
+                  {sortedInstances.length > 0 ? (
+                    sortedInstances.map((inst, idx) => (
+                      <InstanceRow key={inst.id} inst={inst} index={idx} techName={tech.name} />
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={9}
                         className="px-5 py-10 text-center text-on-surface-variant italic"
                       >
                         No instances recorded for this technology.

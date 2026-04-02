@@ -129,3 +129,54 @@ export interface TechnologyCatalogueResponse {
   total: number;
   technologies: TechnologySummary[];
 }
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Unified user shape returned by the FastAPI backend (GET /auth/me).
+ * Supabase users are mapped to this shape inside AuthContext via
+ * mapSupabaseUser(); ORCID users come directly from the /auth/me endpoint.
+ */
+export interface AuthUser {
+  id: string;
+  username: string;
+  email: string;
+  avatar_url?: string | null;
+  /** "github" | "orcid" | "email" */
+  auth_provider: string;
+  /** Whether the data-steward role has been granted */
+  is_contributor: boolean;
+}
+
+// ── Ontology schema — returned by GET /api/v1/ontology/schema ────────────────
+// Defines the controlled vocabularies that contributors MUST use when adding
+// new technologies. All four arrays are sourced directly from the OEO.
+
+export interface OntologySchema {
+  allowed_domains: string[];
+  allowed_carriers: string[];
+  allowed_oeo_classes: string[];
+  allowed_reference_sources: string[];
+}
+
+// ── Contributor payload — POST /api/v1/technologies ──────────────────────────
+
+export interface CreateTechnologyInstancePayload {
+  variant_name: string;
+  capex_usd_per_kw: number;
+  opex_fixed_usd_per_kw_yr: number;
+  opex_var_usd_per_mwh: number;
+  efficiency_percent: number;
+  lifetime_years: number;
+  co2_emission_factor_operational_g_per_kwh: number;
+  reference_source: string;
+}
+
+export interface CreateTechnologyPayload {
+  technology_name: string;
+  domain: string;
+  carrier: string;
+  oeo_class: string;
+  description: string;
+  instances: CreateTechnologyInstancePayload[];
+}

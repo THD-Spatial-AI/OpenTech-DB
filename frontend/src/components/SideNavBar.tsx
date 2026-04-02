@@ -18,6 +18,7 @@
 import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { TechnologyCategory } from "../types/api";
+import { useAuth } from "../context/AuthContext";
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace("/api/v1", "") ??
@@ -30,12 +31,17 @@ export interface FilterState {
   instanceScale: Set<string>;  // "single" | "few" | "many"
 }
 
+export type ActiveView = "catalogue" | "contributor" | "profile";
+
 interface SideNavBarProps {
   activeCategory: TechnologyCategory;
   onCategoryChange: (next: TechnologyCategory) => void;
   filters: FilterState;
   onFilterChange: Dispatch<SetStateAction<FilterState>>;
   onCollapsedChange?: (collapsed: boolean) => void;
+  activeView: ActiveView;
+  onViewChange: (next: ActiveView) => void;
+  onLoginClick: () => void;
 }
 
 // ── Category definitions ──────────────────────────────────────────────────────
@@ -120,7 +126,11 @@ export default function SideNavBar({
   filters,
   onFilterChange,
   onCollapsedChange,
+  activeView,
+  onViewChange,
+  onLoginClick,
 }: SideNavBarProps) {
+  const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggle = (group: keyof FilterState, value: string) =>
@@ -180,7 +190,7 @@ export default function SideNavBar({
             <button
               key={c.value}
               title={c.label}
-              onClick={() => onCategoryChange(c.value)}
+              onClick={() => { onViewChange("catalogue"); onCategoryChange(c.value); }}
               className="w-8 h-8 flex items-center justify-center rounded-full
                          hover:bg-surface-container transition-colors text-on-surface-variant/50 hover:text-on-surface-variant"
             >
@@ -189,6 +199,34 @@ export default function SideNavBar({
           ))}
           <span title="OEO filters" className="material-symbols-outlined text-on-surface-variant/30 text-xl mt-2">hub</span>
           <span title="Data richness" className="material-symbols-outlined text-on-surface-variant/30 text-xl">layers</span>
+          {/* Contribute shortcut */}
+          <button
+            title="Contributor Workspace"
+            onClick={() => onViewChange("contributor")}
+            className={[
+              "w-8 h-8 flex items-center justify-center rounded-full transition-colors mt-2",
+              activeView === "contributor"
+                ? "bg-primary/15 text-primary"
+                : "hover:bg-surface-container text-on-surface-variant/50 hover:text-on-surface-variant",
+            ].join(" ")}
+          >
+            <span className="material-symbols-outlined text-lg">add_circle</span>
+          </button>
+          {/* Profile shortcut */}
+          {user && (
+            <button
+              title="Profile Settings"
+              onClick={() => onViewChange("profile")}
+              className={[
+                "w-8 h-8 flex items-center justify-center rounded-full transition-colors mt-1",
+                activeView === "profile"
+                  ? "bg-primary/15 text-primary"
+                  : "hover:bg-surface-container text-on-surface-variant/50 hover:text-on-surface-variant",
+              ].join(" ")}
+            >
+              <span className="material-symbols-outlined text-lg">manage_accounts</span>
+            </button>
+          )}
         </div>
       </aside>
     );
@@ -205,7 +243,7 @@ export default function SideNavBar({
       {/* Brand + collapse */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-outline-variant/10 flex-shrink-0">
         <div>
-          <span className="font-headline font-bold text-on-surface text-base">opentech-db</span>
+          <span className="font-headline font-bold text-on-surface text-base">OpenTech DB</span>
           <p className="text-[10px] text-on-surface-variant/60 mt-0.5 uppercase tracking-widest font-bold">
             Navigation &amp; Filters
           </p>
@@ -241,11 +279,11 @@ export default function SideNavBar({
         <div>
           <SectionHeading icon="category" label="Technology Category" />
           {CATEGORIES.map(({ icon, label, value }) => {
-            const isActive = value === activeCategory;
+            const isActive = activeView === "catalogue" && value === activeCategory;
             return (
               <button
                 key={value}
-                onClick={() => onCategoryChange(value)}
+                onClick={() => { onViewChange("catalogue"); onCategoryChange(value); }}
                 aria-current={isActive ? "page" : undefined}
                 className={[
                   "w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium transition-all text-left",
@@ -305,6 +343,67 @@ export default function SideNavBar({
               onChange={() => toggle("instanceScale", value)}
             />
           ))}
+        </div>
+
+        {/* ── Contribute ────────────────────────────────────────────────── */}
+        <div className="border-t border-outline-variant/10 pt-4">
+          <SectionHeading icon="add_circle" label="Contribute" />
+          {user ? (
+            <button
+              onClick={() => onViewChange("contributor")}
+              aria-current={activeView === "contributor" ? "page" : undefined}
+              className={[
+                "w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium transition-all text-left",
+                activeView === "contributor"
+                  ? "bg-primary/10 text-primary font-bold border-l-2 border-primary pl-[6px]"
+                  : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface hover:translate-x-0.5",
+              ].join(" ")}
+            >
+              <span className={["material-symbols-outlined text-lg", activeView === "contributor" ? "text-primary" : ""].join(" ")}>
+                add
+              </span>
+              Add Technology
+              {activeView === "contributor" && (
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={onLoginClick}
+              className="w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium
+                         text-on-surface-variant hover:bg-surface-container hover:text-on-surface
+                         hover:translate-x-0.5 transition-all text-left group"
+            >
+              <span className="material-symbols-outlined text-lg">lock</span>
+              Sign in to contribute
+              <span className="ml-auto text-[10px] font-bold uppercase tracking-wide
+                               text-on-surface-variant/40 group-hover:text-primary/60
+                               transition-colors">
+                Sign in
+              </span>
+            </button>
+          )}
+          {/* Profile link — only when signed in */}
+          {user && (
+            <button
+              onClick={() => onViewChange("profile")}
+              aria-current={activeView === "profile" ? "page" : undefined}
+              className={[
+                "w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium transition-all text-left mt-1",
+                activeView === "profile"
+                  ? "bg-primary/10 text-primary font-bold border-l-2 border-primary pl-[6px]"
+                  : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface hover:translate-x-0.5",
+              ].join(" ")}
+            >
+              <span className={["material-symbols-outlined text-lg", activeView === "profile" ? "text-primary" : ""].join(" ")}>
+                manage_accounts
+              </span>
+              Profile Settings
+              {activeView === "profile" && (
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+              )}
+            </button>
+          )}
         </div>
 
         {/* ── Documentation quick-links ──────────────────────────────────── */}

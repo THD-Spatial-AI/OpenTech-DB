@@ -21,6 +21,9 @@ import type {
   Technology,
   TechnologyCategory,
   TechnologyCatalogueResponse,
+  OntologySchema,
+  CreateTechnologyPayload,
+  AuthUser,
 } from "../types/api";
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
@@ -98,3 +101,84 @@ export function invalidateCategory(category: TechnologyCategory): void {
 }
 
 /** Invalidates the entire promise cache (e.g. on a global refresh). */
+export function invalidateAll(): void {
+  promiseCache.clear();
+}
+
+// ── Ontology schema ───────────────────────────────────────────────────────────
+
+/**
+ * Fetches the controlled-vocabulary lists that contributors must use.
+ * Cached once per session — the values are stable between deploys.
+ * Safe to pass to React 19 `use()` inside a <Suspense> boundary.
+ */
+export function fetchOntologySchema(): Promise<OntologySchema> {
+  return cached("ontology:schema", () =>
+    apiFetch<OntologySchema>("/ontology/schema")
+  );
+}
+
+// ── Contributor endpoint ──────────────────────────────────────────────────────
+
+/**
+ * Posts a new technology to the database.
+ * Returns the created technology's ID on success.
+ * Throws an Error with a descriptive message on API failure.
+ */
+export async function submitTechnology(
+  payload: CreateTechnologyPayload
+): Promise<{ id: string; technology_name: string }> {
+  const response = await fetch(`${BASE_URL}/technologies`, {
+    method: "POST",
+    headers: {
+      ...HEADERS,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    // Surface the backend's error detail when available
+    let detail = `API error ${response.status}: ${response.statusText}`;
+    try {
+      const body = (await response.json()) as { detail?: string };
+      if (body.detail) detail = body.detail;
+    } catch {
+      // ignore JSON parse failure
+    }
+    throw new Error(detail);
+  }
+
+  return response.json() as Promise<{ id: string; technology_name: string }>;
+}
+
+// ── Auth endpoints ────────────────────────────────────────────────────────────
+
+/**
+ * GET /auth/me
+ * Validates and returns the current user for a custom JWT.
+ * Called only for the ORCID path; Supabase sessions are managed by the
+ * Supabase client directly and do not require this endpoint.
+ */
+export async function fetchCurrentUser(token: string): Promise<AuthUser> {
+  const response = await fetch(`${BASE_URL}/auth/me`, {
+    headers: {
+      ...HEADERS,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Session expired — please sign in again.");
+  return response.json() as Promise<AuthUser>;
+}
+
+/**
+ * Returns the backend URL that initiates the ORCID OAuth flow.
+ * The FastAPI backend handles the full OAuth dance with ORCID's servers
+ * and redirects back to the SPA with ?token=<jwt> on success.
+ *
+ * GitHub OAuth is now handled entirely by Supabase
+ * (supabase.auth.signInWithOAuth({ provider: 'github' })).
+ */
+export function getOrcidOAuthUrl(): string {
+  return `${BASE_URL}/auth/orcid`;
+}

@@ -120,8 +120,8 @@ Lithium-ion BESS · Redox Flow Batteries · Sodium-Sulfur Batteries · Lead-Acid
 ### Conversion & Sector Coupling (15 technologies)
 Alkaline Electrolyzer (AWE) · PEM Electrolyzer · Solid Oxide Electrolyzer (SOEC) · PEM Fuel Cell · Solid Oxide Fuel Cell (SOFC) · Air-Source Heat Pump · Ground-Source Heat Pump · Electric Boilers · CHP · Biomass CHP · Methanation · Fischer-Tropsch Synthesis · Haber-Bosch Process · Direct Air Capture (DAC) · Carbon Capture Systems
 
-### Transmission & Distribution (9 technologies)
-HVAC Overhead Lines · HVDC Overhead Lines · HVAC Underground Cables · HVDC Subsea Cables · Electrical Transformers · Natural Gas Pipelines · Hydrogen Pipelines · CO₂ Pipelines · District Heating Networks
+### Transmission & Distribution (30 technologies)
+HVAC Overhead Lines · HVDC Overhead Lines · HVAC Underground Cables · HVDC Subsea Cables · **Transmission & Sub-Transmission Transformers** · **Distribution Transformers** · Natural Gas Pipelines · Hydrogen Pipelines · CO₂ Pipelines · District Heating Networks · District Cooling Pipeline · Hydrogen Tube Trailer · Biogas Pipeline · Biomass Truck Transport · Biomass Rail Transport · Oil Pipeline · Fuel Tanker Truck · Water Pipeline · Steam Network · **Industrial Process Heat Networks** · **Geothermal Heat Distribution Networks** · **Heat Network Substations & Heat Exchangers** · MV Distribution Cables · LV Distribution Cables · HV/MV Electricity Substations · MV/LV Secondary Distribution Substations · STATCOM · SVC · HVDC Converter Stations · High Voltage Switchgear (GIS & AIS)
 
 ---
 
@@ -141,7 +141,7 @@ opentech-db/
 │   ├── storage/
 │   │   └── storage_technologies.json       # 12 technologies
 │   ├── transmission/
-│   │   └── transmission_technologies.json  # 9 technologies
+│   │   └── transmission_technologies.json  # 30 technologies
 │   └── conversion/
 │       └── conversion_technologies.json    # 15 technologies
 │

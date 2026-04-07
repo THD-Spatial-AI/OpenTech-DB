@@ -19,7 +19,7 @@
 import { Suspense, useMemo, useState, useCallback } from "react";
 import { fetchOntologySchema } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
-import AddTechnology from "./AddTechnology";
+import VisualTechBuilder from "./visual-builder/VisualTechBuilder";
 import ErrorBoundary from "../ErrorBoundary";
 
 // ── Submission record (stored in localStorage) ────────────────────────────────
@@ -117,18 +117,19 @@ function ContributorInfoBanner() {
       </span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-on-surface">
-          Ontology-Aligned Data Entry
+          Visual Topology Builder — OEO Aligned
         </p>
         <p className="text-sm text-on-surface-variant mt-1 leading-relaxed">
-          To maintain the integrity of the OEO-aligned database, key taxonomic
-          fields (<em>Domain</em>, <em>Carrier</em>, <em>OEO Class</em>,{" "}
-          <em>Reference Source</em>) are locked to approved controlled-vocabulary
-          lists. These lists are fetched live from the ontology schema endpoint
-          and validated on both the client and server.
+          Drag equipment blocks from the palette onto the canvas to design your
+          energy system topology. Connect nodes to show carrier flows, then
+          expand the <em>Node Properties</em> panel to set technical parameters
+          and use the built-in <em>Cost Calculator</em> to derive CAPEX / OPEX
+          before submitting.
         </p>
         <p className="text-xs text-on-surface-variant/70 mt-2">
-          Free-text input for these fields is intentionally disabled. Contact a
-          data steward to request additions to the controlled vocabulary.
+          Ontology dropdowns (<em>Domain</em>, <em>OEO Class</em>,{" "}
+          <em>Reference Source</em>) are locked to the live controlled-vocabulary
+          lists. Contact a data steward to request additions.
         </p>
       </div>
       <button
@@ -312,18 +313,20 @@ export default function ContributorWorkspace() {
             {/* ── Info callout ─────────────────────────────────────────── */}
             <ContributorInfoBanner />
 
-            {/* ── Form — ErrorBoundary catches API / promise rejection ── */}
-            <ErrorBoundary context="contributor-workspace">
-              <Suspense fallback={<FormSkeleton />}>
-                <AddTechnology
-                  schemaPromise={schemaPromise}
-                  onSuccess={(name) => {
-                    handleSuccess(name);
-                    setActiveTab("my");
-                  }}
-                />
-              </Suspense>
-            </ErrorBoundary>
+            {/* ── Visual builder — full-height canvas ──────────────────── */}
+            <div className="h-[calc(100vh-300px)] min-h-[560px]">
+              <ErrorBoundary context="contributor-workspace">
+                <Suspense fallback={<FormSkeleton />}>
+                  <VisualTechBuilder
+                    schemaPromise={schemaPromise}
+                    onSubmitSuccess={(name) => {
+                      handleSuccess(name);
+                      setActiveTab("my");
+                    }}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            </div>
           </>
         ) : (
           <MySubmissionsPanel submissions={submissions} />

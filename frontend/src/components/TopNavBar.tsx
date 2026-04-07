@@ -6,8 +6,7 @@
  * concerns (API docs, ontology reference, GitHub, search).
  */
 
-import { useId, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import type { ActiveView } from "./SideNavBar";
 
@@ -53,32 +52,29 @@ const NAV_LINKS = [
 ] as const;
 
 interface TopNavBarProps {
-  searchQuery: string;
-  onSearchChange: Dispatch<SetStateAction<string>>;
   onLoginClick: () => void;
   onViewChange: (v: ActiveView) => void;
   activeView: ActiveView;
 }
 
-export default function TopNavBar({ searchQuery, onSearchChange, onLoginClick, onViewChange, activeView }: TopNavBarProps) {
-  const searchId = useId();
+export default function TopNavBar({ onLoginClick, onViewChange, activeView }: TopNavBarProps) {
   const { user, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header className="bg-surface-container-low font-headline text-on-surface top-0 z-50 sticky border-b border-outline-variant/15">
-      <div className="flex justify-between items-center w-full px-8 py-3 max-w-[1440px] mx-auto">
+      <div className="flex items-center w-full px-8 py-3 max-w-[1440px] mx-auto gap-4">
 
         {/* Brand + Nav links */}
-        <div className="flex items-center gap-10">
-          <div className="flex flex-col leading-none">
+        <div className="flex items-center gap-6 min-w-0 flex-1">
+          <div className="flex flex-col leading-none flex-shrink-0">
             <span className="text-xl font-bold tracking-tighter text-on-surface">OpenTech DB</span>
             <span className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 mt-0.5">
               OEO-aligned Energy Parameters
             </span>
           </div>
 
-          <nav aria-label="Main navigation" className="hidden md:flex items-center gap-1">
+          <nav aria-label="Main navigation" className="hidden md:flex items-center gap-1 min-w-0 overflow-hidden">
             {NAV_LINKS.map(({ label, href, icon, active, external }) => (
               <a
                 key={label}
@@ -102,28 +98,8 @@ export default function TopNavBar({ searchQuery, onSearchChange, onLoginClick, o
           </nav>
         </div>
 
-        {/* Search + GitHub icon */}
-        <div className="flex items-center gap-3">
-          <div className="relative hidden lg:block">
-            <label htmlFor={searchId} className="sr-only">Search parameters</label>
-            <input
-              id={searchId}
-              type="search"
-              placeholder="Search technologies…"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="bg-surface-container border-none rounded-lg pl-9 pr-4 py-2 text-sm w-64
-                         focus:outline-none focus:ring-2 focus:ring-primary/30 text-on-surface
-                         placeholder:text-on-surface-variant/50"
-            />
-            <span
-              aria-hidden="true"
-              className="material-symbols-outlined absolute left-2.5 top-2 text-on-surface-variant text-[18px]"
-            >
-              search
-            </span>
-          </div>
-
+        {/* GitHub icon + Auth area */}
+        <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
           <a
             href="https://github.com"
             target="_blank"
@@ -150,7 +126,7 @@ export default function TopNavBar({ searchQuery, onSearchChange, onLoginClick, o
                 className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full
                            hover:bg-surface-container transition-colors
                            border border-outline-variant/30 text-sm font-medium
-                           text-on-surface"
+                           text-on-surface max-w-[220px]"
               >
                 {user.avatar_url ? (
                   <img
@@ -163,7 +139,7 @@ export default function TopNavBar({ searchQuery, onSearchChange, onLoginClick, o
                     account_circle
                   </span>
                 )}
-                <span className="hidden sm:inline max-w-[120px] truncate">
+                <span className="hidden sm:inline max-w-[80px] truncate">
                   {user.username}
                 </span>
                 <span className="material-symbols-outlined text-[14px] text-on-surface-variant">

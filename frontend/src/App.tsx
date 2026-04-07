@@ -184,8 +184,6 @@ export default function App() {
         <div className={`${sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"} flex flex-col min-h-screen transition-[margin] duration-300`}>
 
           <TopNavBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
             onLoginClick={() => setShowAuth(true)}
             onViewChange={setActiveView}
             activeView={activeView}
@@ -204,10 +202,32 @@ export default function App() {
                 <h1 className="font-headline text-5xl font-bold tracking-tight mb-4 text-on-surface">
                   Technology Catalogue
                 </h1>
-                <p className="text-on-surface-variant max-w-2xl text-lg leading-relaxed">
+                <p className="text-on-surface-variant max-w-2xl text-lg leading-relaxed mb-6">
                   A standardised repository of technical and economic parameters for energy
                   system modelling, strictly aligned with the Open Energy Ontology (OEO).
                 </p>
+                {/* Search bar — inline under the hero title */}
+                <div className="relative max-w-md">
+                  <label htmlFor="catalogue-search" className="sr-only">Search technologies</label>
+                  <input
+                    id="catalogue-search"
+                    type="search"
+                    placeholder="Search technologies…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-surface-container-lowest border border-outline-variant/30
+                               rounded-xl pl-10 pr-4 py-3 text-sm text-on-surface
+                               placeholder:text-on-surface-variant/50
+                               focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50
+                               shadow-sm transition-all"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant/60 text-[20px]"
+                  >
+                    search
+                  </span>
+                </div>
               </section>
 
               {/* Data grid — ErrorBoundary catches API failures gracefully */}

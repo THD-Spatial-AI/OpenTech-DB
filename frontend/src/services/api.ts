@@ -24,6 +24,8 @@ import type {
   OntologySchema,
   CreateTechnologyPayload,
   AuthUser,
+  SubmissionRecord,
+  AdminLoginResponse,
 } from "../types/api";
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
@@ -181,4 +183,57 @@ export async function fetchCurrentUser(token: string): Promise<AuthUser> {
  */
 export function getOrcidOAuthUrl(): string {
   return `${BASE_URL}/auth/orcid`;
+}
+
+// ── Admin endpoints ────────────────────────────────────────────────────────────────
+
+export async function adminLogin(
+  email: string,
+  password: string
+): Promise<AdminLoginResponse> {
+  const response = await fetch(`${BASE_URL}/auth/admin/login`, {
+    method: "POST",
+    headers: { ...HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    throw new Error("Invalid admin credentials.");
+  }
+  return response.json() as Promise<AdminLoginResponse>;
+}
+
+export async function fetchAdminSubmissions(
+  token: string,
+  statusFilter?: string
+): Promise<SubmissionRecord[]> {
+  const url = statusFilter
+    ? `${BASE_URL}/admin/submissions?status=${encodeURIComponent(statusFilter)}`
+    : `${BASE_URL}/admin/submissions`;
+  const response = await fetch(url, {
+    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error("Failed to fetch submissions.");
+  return response.json() as Promise<SubmissionRecord[]>;
+}
+
+export async function actOnSubmission(
+  token: string,
+  submissionId: string,
+  action: "approve" | "reject",
+  reason?: string
+): Promise<{ status: string; submission_id: string }> {
+  const response = await fetch(
+    `${BASE_URL}/admin/submissions/${encodeURIComponent(submissionId)}`,
+    {
+      method: "POST",
+      headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action, reason }),
+    }
+  );
+  if (!response.ok) {
+    let detail = `API error ${response.status}`;
+    try { const b = (await response.json()) as { detail?: string }; if (b.detail) detail = b.detail; } catch { /**/ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<{ status: string; submission_id: string }>;
 }

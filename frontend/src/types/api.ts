@@ -142,10 +142,12 @@ export interface AuthUser {
   username: string;
   email: string;
   avatar_url?: string | null;
-  /** "github" | "orcid" | "email" */
+  /** "github" | "orcid" | "email" | "admin" */
   auth_provider: string;
   /** Whether the data-steward role has been granted */
   is_contributor: boolean;
+  /** Whether this user has admin privileges */
+  is_admin?: boolean;
 }
 
 // ── Ontology schema — returned by GET /api/v1/ontology/schema ────────────────
@@ -179,4 +181,22 @@ export interface CreateTechnologyPayload {
   oeo_class: string;
   description: string;
   instances: CreateTechnologyInstancePayload[];
+}
+
+// ── Admin — pending submissions ───────────────────────────────────────────────
+
+export interface SubmissionRecord {
+  submission_id:   string;
+  technology_name: string;
+  submitted_at:    string;
+  status:          "pending_review" | "approved" | "rejected";
+  domain:          string | null;
+  oeo_class:       string | null;
+  description:     string | null;
+  filename:        string;
+}
+
+export interface AdminLoginResponse {
+  token: string;
+  user:  AuthUser;
 }

@@ -45,6 +45,7 @@ import ContributorWorkspace from "./components/contributor/ContributorWorkspace"
 import ProfilePage from "./components/profile/ProfilePage";
 import AuthPage from "./components/auth/AuthPage";
 import OAuthCallback from "./components/auth/OAuthCallback";
+import AdminPanel from "./components/admin/AdminPanel";
 import { useAuth } from "./context/AuthContext";
 
 // ── Grid loading skeleton ─────────────────────────────────────────────────────
@@ -144,6 +145,8 @@ export default function App() {
           ? "OpenTech DB | Contributor Workspace"
           : activeView === "profile"
           ? "OpenTech DB | Profile Settings"
+          : activeView === "admin"
+          ? "OpenTech DB | Admin Panel"
           : "OpenTech DB | Technology Catalogue"}
       </title>
       <meta
@@ -193,8 +196,8 @@ export default function App() {
           {activeView === "contributor" ? (
             <ContributorWorkspace />
           ) : activeView === "profile" ? (
-            <ProfilePage onViewChange={setActiveView} />
-          ) : (
+            <ProfilePage onViewChange={setActiveView} />          ) : activeView === "admin" ? (
+            <AdminPanel />          ) : (
             <main className="max-w-[1440px] mx-auto px-8 py-12 w-full flex-1">
 
               {/* Hero */}

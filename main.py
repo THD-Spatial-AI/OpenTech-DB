@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from api.routes import router as tech_router, debug_router, ontology_router
+from api.routes import router as tech_router, debug_router, ontology_router, admin_router
 from api.auth import router as auth_router
 from adapters.pypsa_adapter import to_pypsa
 from adapters.calliope_adapter import to_calliope
@@ -105,7 +105,7 @@ app.add_middleware(
         # "https://your-frontend.example.com",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     # Authorization header must be explicitly exposed for GET /auth/me
     allow_headers=["Authorization", "Content-Type", "ngrok-skip-browser-warning", "Accept"],
 )
@@ -117,6 +117,7 @@ app.include_router(tech_router,      prefix="/api/v1")
 app.include_router(debug_router,     prefix="/api/v1")
 app.include_router(auth_router,      prefix="/api/v1")
 app.include_router(ontology_router,  prefix="/api/v1")
+app.include_router(admin_router,     prefix="/api/v1")
 
 # ---------------------------------------------------------------------------
 # Static assets — project documentation (Markdown + LaTeX source)

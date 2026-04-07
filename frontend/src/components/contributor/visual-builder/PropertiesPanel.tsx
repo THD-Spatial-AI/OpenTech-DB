@@ -27,6 +27,7 @@ import {
   useTechBuilderStore,
   CARRIER_COLORS,
   type TechNodeData,
+  type CarrierNodeData,
   type CarrierPort,
 } from "./useTechBuilderStore";
 import CostCalculatorWizard from "./CostCalculatorWizard";
@@ -175,6 +176,138 @@ function CarrierPortRow({
   );
 }
 
+// ── Carrier properties panel ──────────────────────────────────────────────────────────
+
+function CarrierPropertiesContent({
+  nodeId,
+  data,
+}: {
+  nodeId: string;
+  data: CarrierNodeData;
+}) {
+  const updateCarrierNode = useTechBuilderStore((s) => s.updateCarrierNode);
+  const color   = CARRIER_COLORS[data.carrier] ?? "#6366f1";
+  const isInput = data.direction === "input";
+
+  const update = useCallback(
+    (patch: Partial<CarrierNodeData>) => updateCarrierNode(nodeId, patch),
+    [nodeId, updateCarrierNode]
+  );
+
+  return (
+    <>
+      {/* Header */}
+      <div className="px-4 py-3.5 border-b border-outline-variant/15 flex-shrink-0 flex items-center gap-2">
+        <span
+          className="w-4 h-4 rounded-full flex-shrink-0"
+          style={{ background: color }}
+        />
+        <h2 className="text-sm font-bold text-on-surface flex-1 min-w-0 truncate capitalize">
+          {data.carrier.replace(/_/g, " ")}
+        </h2>
+        <span
+          className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white flex-shrink-0"
+          style={{ background: color }}
+        >
+          {isInput ? "INPUT" : "OUTPUT"}
+        </span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+        <p className="text-[10px] text-on-surface-variant/60 leading-relaxed">
+          {isInput
+            ? "Energy carrier flowing into the technology. Set stream properties below to document the input conditions."
+            : "Energy carrier flowing out of the technology. Set stream properties below to document the output conditions."}
+        </p>
+
+        {/* Flow rate */}
+        <div>
+          <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+            Nominal Flow Rate (kW)
+          </label>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={data.flowRateKw || ""}
+            onChange={(e) =>
+              update({ flowRateKw: parseFloat(e.target.value) || 0 })
+            }
+            className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            placeholder="e.g. 5000"
+          />
+          <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
+            Nominal power through this carrier link at rated conditions
+          </p>
+        </div>
+
+        {/* Temperature */}
+        <div>
+          <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+            Temperature (°C)
+            <span className="ml-1 font-normal text-on-surface-variant/40">— optional</span>
+          </label>
+          <input
+            type="number"
+            step={1}
+            value={data.temperatureC ?? ""}
+            onChange={(e) =>
+              update({
+                temperatureC: e.target.value === "" ? null : parseFloat(e.target.value),
+              })
+            }
+            className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            placeholder="e.g. 120"
+          />
+          <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
+            Relevant for heat, steam, geothermal and cooling streams
+          </p>
+        </div>
+
+        {/* Pressure */}
+        <div>
+          <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+            Pressure (bar)
+            <span className="ml-1 font-normal text-on-surface-variant/40">— optional</span>
+          </label>
+          <input
+            type="number"
+            min={0}
+            step={0.1}
+            value={data.pressureBar ?? ""}
+            onChange={(e) =>
+              update({
+                pressureBar:
+                  e.target.value === "" ? null : parseFloat(e.target.value),
+              })
+            }
+            className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            placeholder="e.g. 30"
+          />
+          <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
+            Relevant for natural gas, hydrogen, steam and CO₂ streams
+          </p>
+        </div>
+
+        {/* Quality note */}
+        <div>
+          <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+            Quality Note
+            <span className="ml-1 font-normal text-on-surface-variant/40">— optional</span>
+          </label>
+          <textarea
+            rows={3}
+            value={data.qualityNote}
+            onChange={(e) => update({ qualityNote: e.target.value })}
+            className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+            placeholder="e.g. H₂ purity > 99.9 %, Biomass moisture < 15 %…"
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function EmptyState() {
@@ -212,9 +345,13 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
   const { nodes, selectedNodeId, updateNodeData } = useTechBuilderStore();
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
-  const data = selectedNode?.data ?? null;
+  const nodeType = selectedNode?.type ?? null;
 
-  // ── Field update helpers ──────────────────────────────────────────────────
+  // Type-safe access to data based on node type
+  const data         = nodeType === "techNode"    ? selectedNode!.data as unknown as TechNodeData    : null;
+  const carrierData  = nodeType === "carrierNode"  ? selectedNode!.data as unknown as CarrierNodeData : null;
+
+  // ── Field update helpers (tech node only) ──────────────────────────────
 
   const update = useCallback(
     (patch: Partial<TechNodeData>) => {
@@ -281,12 +418,14 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
     async (_prev) => {
       const { nodes: currentNodes, selectedNodeId: selId } =
         useTechBuilderStore.getState();
-      const node = currentNodes.find((n) => n.id === selId);
+      const node = currentNodes.find((n) => n.id === selId && n.type === "techNode");
       if (!node) return { ok: false, error: "No technology node selected." };
 
-      const d = node.data;
+      const d = node.data as unknown as TechNodeData;
       const primaryInputCarrier =
-        d.inputPorts[0]?.carrier || d.outputPorts[0]?.carrier || "electricity";
+        (d.inputPorts as Array<{carrier: string}>)[0]?.carrier ||
+        (d.outputPorts as Array<{carrier: string}>)[0]?.carrier ||
+        "electricity";
 
       const payload = {
         technology_name: d.label,
@@ -330,7 +469,7 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (!data || !selectedNodeId) {
+  if (!selectedNode) {
     return (
       <aside className="h-full w-[336px] flex-shrink-0 border-l border-outline-variant/20 bg-surface-container-lowest flex flex-col overflow-hidden">
         <div className="px-4 py-3.5 border-b border-outline-variant/15 flex-shrink-0">
@@ -344,13 +483,25 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
     );
   }
 
+  // ── Carrier node selected ──────────────────────────────────────────────────────
+  if (nodeType === "carrierNode" && carrierData) {
+    return (
+      <aside className="h-full w-[336px] flex-shrink-0 border-l border-outline-variant/20 bg-surface-container-lowest flex flex-col overflow-hidden">
+        <CarrierPropertiesContent nodeId={selectedNodeId!} data={carrierData} />
+      </aside>
+    );
+  }
+
+  // ── Technology node selected ───────────────────────────────────────────────
+  if (!data) return null; // should not happen, but guards TypeScript
+
   return (
     <aside className="h-full w-[336px] flex-shrink-0 border-l border-outline-variant/20 bg-surface-container-lowest flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3.5 border-b border-outline-variant/15 flex-shrink-0 flex items-center gap-2">
         <span className="material-symbols-outlined text-[16px] text-primary">tune</span>
         <h2 className="text-sm font-bold text-on-surface flex-1 min-w-0 truncate">
-          {data.label}
+          {data!.label}
         </h2>
         <span className="text-[9px] bg-surface-container text-on-surface-variant px-2 py-0.5 rounded-full font-semibold border border-outline-variant/20">
           {data.domain}
@@ -362,18 +513,19 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
 
         {/* ── 1. Identity & Taxonomy ── */}
         <PanelSection title="Identity & Taxonomy" icon="label" defaultOpen>
-          {/* Technology name */}
+          {/* Technology Name — locked (comes from OEO catalogue) */}
           <div>
             <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
               Technology Name
+              <span className="ml-1 text-[9px] text-on-surface-variant/40 font-normal">(catalogue-defined)</span>
             </label>
-            <input
-              type="text"
-              value={data.label}
-              onChange={(e) => update({ label: e.target.value })}
-              className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="e.g. Utility PV Plant"
-            />
+            <div className="flex items-center gap-2 w-full text-xs bg-surface-container/60 border border-outline-variant/20 rounded-lg px-3 py-2 text-on-surface">
+              <span className="material-symbols-outlined text-[13px] text-on-surface-variant/40">lock</span>
+              <span className="flex-1 font-medium">{data!.label}</span>
+            </div>
+            <p className="text-[10px] text-on-surface-variant/40 mt-0.5 leading-relaxed">
+              Fixed by OEO ontology. Use "Variant Label" below for a custom instance name.
+            </p>
           </div>
 
           {/* Variant name */}
@@ -405,13 +557,25 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
             placeholder="— select OEO class —"
           />
 
-          <OntologySelect
-            label="Reference Source"
-            value={data.referenceSource}
-            options={schema.allowed_reference_sources}
-            onChange={(v) => update({ referenceSource: v })}
-            placeholder="— select reference —"
-          />
+          {/* Reference Source — free-text with datalist suggestions */}
+          <div>
+            <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+              Reference Source
+            </label>
+            <input
+              list="ref-source-suggestions"
+              type="text"
+              value={data.referenceSource}
+              onChange={(e) => update({ referenceSource: e.target.value })}
+              className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="e.g. IRENA Green Hydrogen Cost Reduction 2020"
+            />
+            <datalist id="ref-source-suggestions">
+              {schema.allowed_reference_sources.map((src) => (
+                <option key={src} value={src} />
+              ))}
+            </datalist>
+          </div>
 
           {/* Description */}
           <div>

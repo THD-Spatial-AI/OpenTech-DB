@@ -31,7 +31,7 @@ export interface FilterState {
   instanceScale: Set<string>;  // "single" | "few" | "many"
 }
 
-export type ActiveView = "catalogue" | "contributor" | "profile";
+export type ActiveView = "catalogue" | "contributor" | "profile" | "admin";
 
 interface SideNavBarProps {
   activeCategory: TechnologyCategory;
@@ -404,6 +404,25 @@ export default function SideNavBar({
               )}
             </button>
           )}
+          {/* Admin panel — always accessible; AdminPanel handles its own auth */}
+          <button
+            onClick={() => onViewChange("admin")}
+            aria-current={activeView === "admin" ? "page" : undefined}
+            className={[
+              "w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium transition-all text-left mt-1",
+              activeView === "admin"
+                ? "bg-indigo-100 text-indigo-700 font-bold border-l-2 border-indigo-500 pl-[6px]"
+                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface hover:translate-x-0.5",
+            ].join(" ")}
+          >
+            <span className={["material-symbols-outlined text-lg", activeView === "admin" ? "text-indigo-600" : ""].join(" ")}>
+              admin_panel_settings
+            </span>
+            Admin Panel
+            {activeView === "admin" && (
+              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
+            )}
+          </button>
         </div>
 
         {/* ── Documentation quick-links ──────────────────────────────────── */}

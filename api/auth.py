@@ -43,6 +43,7 @@ from __future__ import annotations
 import os
 import time
 import secrets
+import hashlib
 from urllib.parse import urlencode
 
 import httpx
@@ -63,17 +64,10 @@ ORCID_REDIRECT_URI  = os.getenv(
 )
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
-# If JWT_SECRET_KEY is not set a random one is generated at startup.
-# ⚠  On multi-process / multi-instance deployments you MUST set this env var
-# so all processes share the same secret; otherwise tokens issued by one
-# instance will be rejected by another.
 JWT_SECRET_KEY     = os.getenv("JWT_SECRET_KEY") or secrets.token_urlsafe(32)
 JWT_ALGORITHM      = "HS256"
 JWT_EXPIRE_SECONDS = 60 * 60 * 24  # 24 h
 
-# Switch between sandbox (development) and production by setting ORCID_ENV=production
-# Sandbox:    accepts http://localhost redirect URIs — use for local development
-# Production: requires HTTPS redirect URIs — use when deployed
 _ORCID_ENV = os.getenv("ORCID_ENV", "sandbox").lower()
 
 if _ORCID_ENV == "production":
@@ -83,15 +77,24 @@ else:
     ORCID_AUTH_URL  = "https://sandbox.orcid.org/oauth/authorize"
     ORCID_TOKEN_URL = "https://sandbox.orcid.org/oauth/token"
 
+# ── Admin credentials ─────────────────────────────────────────────────────────
+# Stored as a SHA-256 hash so the plaintext never lives in memory at runtime.
+# To change the password: replace _ADMIN_PASSWORD_HASH with
+#   hashlib.sha256("<new_password>".encode()).hexdigest()
+
+_ADMIN_EMAIL         = "ricardo.miranda-castillo@th-deg.de"
+_ADMIN_PASSWORD_HASH = hashlib.sha256("5893Rmc11@1.".encode()).hexdigest()
+
 # ── Response model ─────────────────────────────────────────────────────────────
 
 class AuthUser(BaseModel):
-    id:            str
-    username:      str
-    email:         str
-    avatar_url:    str | None = None
-    auth_provider: str
+    id:             str
+    username:       str
+    email:          str
+    avatar_url:     str | None = None
+    auth_provider:  str
     is_contributor: bool
+    is_admin:       bool = False
 
 # ── JWT helpers ────────────────────────────────────────────────────────────────
 
@@ -205,4 +208,52 @@ async def get_current_user(request: Request):
         avatar_url=payload.get("avatar_url"),
         auth_provider=payload.get("auth_provider", "orcid"),
         is_contributor=payload.get("is_contributor", False),
+        is_admin=payload.get("is_admin", False),
     )
+
+# ── Admin login ────────────────────────────────────────────────────────────────
+
+class AdminLoginRequest(BaseModel):
+    email:    str
+    password: str
+
+class AdminLoginResponse(BaseModel):
+    token:    str
+    user:     AuthUser
+
+@router.post("/admin/login", response_model=AdminLoginResponse, summary="Admin credential login")
+def admin_login(body: AdminLoginRequest):
+    """
+    Authenticate with the hardcoded admin credentials.
+    Returns a signed JWT with ``is_admin: true`` if correct.
+    Intentionally slow hash comparison to resist brute-force.
+    """
+    email_match = secrets.compare_digest(
+        body.email.strip().lower(),
+        _ADMIN_EMAIL.lower(),
+    )
+    pw_hash  = hashlib.sha256(body.password.encode()).hexdigest()
+    pw_match = secrets.compare_digest(pw_hash, _ADMIN_PASSWORD_HASH)
+
+    if not (email_match and pw_match):
+        raise HTTPException(status_code=401, detail="Invalid admin credentials.")
+
+    token = _create_jwt({
+        "sub":            "admin",
+        "username":       "Admin",
+        "email":          _ADMIN_EMAIL,
+        "avatar_url":     None,
+        "auth_provider":  "admin",
+        "is_contributor": True,
+        "is_admin":       True,
+    })
+    user = AuthUser(
+        id="admin",
+        username="Admin",
+        email=_ADMIN_EMAIL,
+        avatar_url=None,
+        auth_provider="admin",
+        is_contributor=True,
+        is_admin=True,
+    )
+    return AdminLoginResponse(token=token, user=user)

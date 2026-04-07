@@ -60,21 +60,45 @@ export interface TechNodeData extends Record<string, unknown> {
   opexVarUsdPerMwh: number;
 }
 
+// ── Carrier node data shape ─────────────────────────────────────────────────
+
+export interface CarrierNodeData extends Record<string, unknown> {
+  /** OEO carrier name, e.g. "electricity", "natural_gas". */
+  carrier: string;
+  /** Whether this is an input to or output from the technology. */
+  direction: "input" | "output";
+  /** Display label (human-readable carrier name). */
+  label: string;
+  /** Nominal energy flow [kW]. 0 = not yet set. */
+  flowRateKw: number;
+  /** Stream temperature [°C] — for thermal/steam/geothermal flows. */
+  temperatureC: number | null;
+  /** Stream pressure [bar] — for gas/H₂/steam flows. */
+  pressureBar: number | null;
+  /** Free-text quality note (e.g. "H₂ purity > 99.9 %"). */
+  qualityNote: string;
+}
+
 // ── Store shape ───────────────────────────────────────────────────────────────
 
 interface TechBuilderState {
-  nodes: Node<TechNodeData>[];
+  /** Mixed array — contains techNode and carrierNode React Flow nodes. */
+  nodes: Node[];
   edges: Edge[];
   selectedNodeId: string | null;
+  /** Non-null when a user action cannot be completed (e.g. adding a second tech node). */
+  canvasWarning: string | null;
 
   // React Flow change-handlers (wire directly to <ReactFlow> props)
-  onNodesChange: (changes: NodeChange<Node<TechNodeData>>[]) => void;
+  onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
 
   // Domain actions
   setSelectedNode: (id: string | null) => void;
+  setCanvasWarning: (w: string | null) => void;
   updateNodeData: (id: string, patch: Partial<TechNodeData>) => void;
+  updateCarrierNode: (id: string, patch: Partial<CarrierNodeData>) => void;
   addEquipmentNode: (oeoClass: string, domain: string, position: XYPosition) => void;
   clearGraph: () => void;
 }
@@ -567,13 +591,12 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
   nodes: [],
   edges: [],
   selectedNodeId: null,
+  canvasWarning: null,
 
   // ── React Flow wired handlers ─────────────────────────────────────────────
 
   onNodesChange: (changes) =>
-    set({
-      nodes: applyNodeChanges(changes, get().nodes) as Node<TechNodeData>[],
-    }),
+    set({ nodes: applyNodeChanges(changes, get().nodes) }),
 
   onEdgesChange: (changes) =>
     set({ edges: applyEdgeChanges(changes, get().edges) }),
@@ -595,6 +618,8 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
 
   setSelectedNode: (id) => set({ selectedNodeId: id }),
 
+  setCanvasWarning: (w) => set({ canvasWarning: w }),
+
   updateNodeData: (id, patch) =>
     set({
       nodes: get().nodes.map((n) =>
@@ -602,28 +627,92 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
       ),
     }),
 
-  addEquipmentNode: (oeoClass, _domain, position) => {
-    const id   = `tech-${nodeCounter++}`;
-    const oeoId = getOeoId(oeoClass);
-    const meta  = OEO_META[oeoId];
-    const label = meta?.label ?? shortLabel(oeoClass);
-    const domain = meta?.domain ?? "conversion";
+  updateCarrierNode: (id, patch) =>
+    set({
+      nodes: get().nodes.map((n) =>
+        n.id === id ? { ...n, data: { ...n.data, ...patch } } : n
+      ),
+    }),
 
-    // Build carrier ports from OEO_META, falling back to sensible domain defaults
+  addEquipmentNode: (oeoClass, _domain, position) => {
+    // ── Enforce single technology node ──────────────────────────────────────
+    const existingTech = get().nodes.find((n) => n.type === "techNode");
+    if (existingTech) {
+      set({
+        canvasWarning: "Only one technology per canvas. Clear it first to add a different one.",
+        selectedNodeId: existingTech.id,
+      });
+      return;
+    }
+
+    const techId  = `tech-${nodeCounter++}`;
+    const oeoId   = getOeoId(oeoClass);
+    const meta    = OEO_META[oeoId];
+    const label   = meta?.label ?? shortLabel(oeoClass);
+    const domain  = meta?.domain ?? "conversion";
+
     const rawInputs  = meta?.inputs  ?? (domain === "generation" ? ["solar_irradiance"] : ["electricity"]);
     const rawOutputs = meta?.outputs ?? ["electricity"];
 
-    const defaultInputs: CarrierPort[] = rawInputs.map((c, i) => ({
-      id: `${id}-in-${i}`,
-      carrier: c,
-    }));
-    const defaultOutputs: CarrierPort[] = rawOutputs.map((c, i) => ({
-      id: `${id}-out-${i}`,
-      carrier: c,
-    }));
+    // ── Carrier nodes + edges ────────────────────────────────────────────────
+    const carrierNodes: Node[] = [];
+    const carrierEdges: Edge[] = [];
 
-    const newNode: Node<TechNodeData> = {
-      id,
+    rawInputs.forEach((carrier, i) => {
+      const cid     = `carrier-in-${nodeCounter++}`;
+      const yOffset = (i - (rawInputs.length - 1) / 2) * 130;
+      carrierNodes.push({
+        id: cid,
+        type: "carrierNode",
+        position: { x: position.x - 240, y: position.y + yOffset },
+        data: {
+          carrier,
+          direction: "input",
+          label: carrier.replace(/_/g, " "),
+          flowRateKw: 0,
+          temperatureC: null,
+          pressureBar: null,
+          qualityNote: "",
+        },
+      });
+      carrierEdges.push({
+        id: `edge-${cid}-${techId}`,
+        source: cid,
+        target: techId,
+        animated: true,
+        style: { stroke: CARRIER_COLORS[carrier] ?? "#6366f1", strokeWidth: 2.5 },
+      });
+    });
+
+    rawOutputs.forEach((carrier, i) => {
+      const cid     = `carrier-out-${nodeCounter++}`;
+      const yOffset = (i - (rawOutputs.length - 1) / 2) * 130;
+      carrierNodes.push({
+        id: cid,
+        type: "carrierNode",
+        position: { x: position.x + 270, y: position.y + yOffset },
+        data: {
+          carrier,
+          direction: "output",
+          label: carrier.replace(/_/g, " "),
+          flowRateKw: 0,
+          temperatureC: null,
+          pressureBar: null,
+          qualityNote: "",
+        },
+      });
+      carrierEdges.push({
+        id: `edge-${techId}-${cid}`,
+        source: techId,
+        target: cid,
+        animated: true,
+        style: { stroke: CARRIER_COLORS[carrier] ?? "#6366f1", strokeWidth: 2.5 },
+      });
+    });
+
+    // ── Tech node (centre) ──────────────────────────────────────────────────
+    const techNode: Node = {
+      id: techId,
       type: "techNode",
       position,
       data: {
@@ -633,19 +722,25 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
         description: meta?.hint ?? "",
         variantName: `${label} — 2024 Reference`,
         referenceSource: "",
-        inputPorts:  defaultInputs,
-        outputPorts: defaultOutputs,
-        efficiencyPercent:  meta?.efficiencyPct      ?? 85,
-        co2FactorGPerKwh:   meta?.co2GPerKwh         ?? 0,
-        lifetimeYears:      meta?.lifetimeYrs         ?? 25,
-        capexUsdPerKw:      meta?.capexPerKw          ?? 0,
-        opexFixedUsdPerKwYr: meta?.opexFixedPerKwYr   ?? 0,
-        opexVarUsdPerMwh:   meta?.opexVarPerMwh       ?? 0,
+        // Keep inputPorts/outputPorts for submission payload
+        inputPorts:  rawInputs.map((c, idx) => ({ id: `${techId}-in-${idx}`, carrier: c })),
+        outputPorts: rawOutputs.map((c, idx) => ({ id: `${techId}-out-${idx}`, carrier: c })),
+        efficiencyPercent:   meta?.efficiencyPct     ?? 85,
+        co2FactorGPerKwh:    meta?.co2GPerKwh        ?? 0,
+        lifetimeYears:       meta?.lifetimeYrs       ?? 25,
+        capexUsdPerKw:       meta?.capexPerKw        ?? 0,
+        opexFixedUsdPerKwYr: meta?.opexFixedPerKwYr  ?? 0,
+        opexVarUsdPerMwh:    meta?.opexVarPerMwh     ?? 0,
       },
     };
 
-    set({ nodes: [...get().nodes, newNode], selectedNodeId: id });
+    set({
+      nodes:          [...get().nodes, ...carrierNodes, techNode],
+      edges:          [...get().edges, ...carrierEdges],
+      selectedNodeId: techId,
+      canvasWarning:  null,
+    });
   },
 
-  clearGraph: () => set({ nodes: [], edges: [], selectedNodeId: null }),
+  clearGraph: () => set({ nodes: [], edges: [], selectedNodeId: null, canvasWarning: null }),
 }));

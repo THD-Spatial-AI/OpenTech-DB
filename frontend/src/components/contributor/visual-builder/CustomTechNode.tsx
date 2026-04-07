@@ -26,7 +26,6 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import {
-  CARRIER_COLORS,
   useTechBuilderStore,
   getOeoId,
   OEO_META,
@@ -43,64 +42,6 @@ const DOMAIN_STYLES: Record<string, { bg: string; text: string; icon: string }> 
 };
 
 // ── Carrier handle pill ───────────────────────────────────────────────────────
-
-interface HandlePillProps {
-  id: string;
-  carrier: string;
-  position: Position;
-  index: number;
-  total: number;
-}
-
-function HandlePill({ id, carrier, position, index, total }: HandlePillProps) {
-  const color = CARRIER_COLORS[carrier] ?? "#6366f1";
-  const isLeft = position === Position.Left;
-
-  // Distribute handles vertically with 24px spacing, centred in node body
-  const topPct = total === 1 ? 50 : 30 + (index / (total - 1)) * 40;
-
-  return (
-    <div
-      className="absolute group/handle"
-      style={{
-        [isLeft ? "left" : "right"]: -10,
-        top: `${topPct}%`,
-        transform: "translateY(-50%)",
-      }}
-    >
-      {/* Carrier label on hover */}
-      <span
-        className={`
-          absolute whitespace-nowrap text-[9px] font-semibold px-1.5 py-0.5 rounded
-          bg-slate-800 text-white opacity-0 group-hover/handle:opacity-100
-          transition-opacity pointer-events-none z-50
-          ${isLeft ? "left-4 top-1/2 -translate-y-1/2" : "right-4 top-1/2 -translate-y-1/2"}
-        `}
-      >
-        {carrier.replace(/_/g, " ")}
-      </span>
-
-      <Handle
-        id={id}
-        type={isLeft ? "target" : "source"}
-        position={position}
-        style={{
-          width: 10,
-          height: 10,
-          background: color,
-          border: "2px solid white",
-          boxShadow: `0 0 0 1px ${color}`,
-          position: "relative",
-          top: "auto",
-          left: "auto",
-          right: "auto",
-          transform: "none",
-        }}
-        className="!static"
-      />
-    </div>
-  );
-}
 
 // ── Main node component ───────────────────────────────────────────────────────
 
@@ -188,65 +129,25 @@ function CustomTechNode({ id, data, selected }: NodeProps<Node<TechNodeData>>) {
           <span className="text-[10px] font-semibold text-slate-700">{capexDisplay}</span>
         </div>
 
-        {/* Carrier port summary */}
-        <div className="flex items-center gap-2 pt-0.5">
-          <div className="flex items-center gap-0.5">
-            {data.inputPorts.map((p) => (
-              <span
-                key={p.id}
-                className="w-2 h-2 rounded-full border border-white"
-                style={{ background: CARRIER_COLORS[p.carrier] ?? "#6366f1" }}
-                title={p.carrier}
-              />
-            ))}
-          </div>
-          <span className="text-[9px] text-slate-300">→</span>
-          <div className="flex items-center gap-0.5">
-            {data.outputPorts.map((p) => (
-              <span
-                key={p.id}
-                className="w-2 h-2 rounded-full border border-white"
-                style={{ background: CARRIER_COLORS[p.carrier] ?? "#6366f1" }}
-                title={p.carrier}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Carrier flow hint */}
+        <p className="text-[9px] text-slate-400 pt-0.5 truncate">
+          {(data.inputPorts as Array<{carrier: string}>).map((p) => p.carrier.replace(/_/g, " ")).join(", ")}
+          {" "}→{" "}
+          {(data.outputPorts as Array<{carrier: string}>).map((p) => p.carrier.replace(/_/g, " ")).join(", ")}
+        </p>
       </div>
 
-      {/* ── Input handles (left side) ── */}
-      <div
-        className="absolute inset-y-0 left-0 flex flex-col justify-center pointer-events-none"
-        aria-hidden
-      >
-        {data.inputPorts.map((port, i) => (
-          <HandlePill
-            key={port.id}
-            id={port.id}
-            carrier={port.carrier}
-            position={Position.Left}
-            index={i}
-            total={data.inputPorts.length}
-          />
-        ))}
-      </div>
-
-      {/* ── Output handles (right side) ── */}
-      <div
-        className="absolute inset-y-0 right-0 flex flex-col justify-center pointer-events-none"
-        aria-hidden
-      >
-        {data.outputPorts.map((port, i) => (
-          <HandlePill
-            key={port.id}
-            id={port.id}
-            carrier={port.carrier}
-            position={Position.Right}
-            index={i}
-            total={data.outputPorts.length}
-          />
-        ))}
-      </div>
+      {/* Simple connection handles for incoming/outgoing carrier edges */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        style={{ width: 8, height: 8, background: "#94a3b8", border: "2px solid white" }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        style={{ width: 8, height: 8, background: "#94a3b8", border: "2px solid white" }}
+      />
     </div>
   );
 }

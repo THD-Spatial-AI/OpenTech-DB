@@ -39,30 +39,34 @@ import {
   type NodeTypes,
 } from "@xyflow/react";
 import type { OntologySchema } from "../../../types/api";
-import { useTechBuilderStore } from "./useTechBuilderStore";
+import { useTechBuilderStore, CARRIER_COLORS } from "./useTechBuilderStore";
 import CustomTechNode from "./CustomTechNode";
+import CarrierNode from "./CarrierNode";
 import EquipmentPalette from "./EquipmentPalette";
 import PropertiesPanel from "./PropertiesPanel";
 
-// ── Node type registry (stable reference outside component) ───────────────────
+// ── Node type registry (stable reference outside component) ───────────────────────
 
 const NODE_TYPES: NodeTypes = {
-  techNode: CustomTechNode,
+  techNode:    CustomTechNode,
+  carrierNode: CarrierNode,
 };
 
 // ── Canvas toolbar ────────────────────────────────────────────────────────────
 
 function CanvasToolbar() {
-  const { nodes, clearGraph, selectedNodeId } = useTechBuilderStore();
-
+  const { nodes, clearGraph, selectedNodeId, canvasWarning, setCanvasWarning } =
+    useTechBuilderStore();
   const { fitView } = useReactFlow();
 
   return (
     <Panel position="top-center">
-      <div
-        className="flex items-center gap-1 bg-white/90 backdrop-blur border border-slate-200
-                   rounded-2xl shadow-lg px-3 py-2"
-      >
+      <div className="flex flex-col items-center gap-2">
+        {/* Main toolbar row */}
+        <div
+          className="flex items-center gap-1 bg-white/90 backdrop-blur border border-slate-200
+                     rounded-2xl shadow-lg px-3 py-2"
+        >
         {/* Node count */}
         <span className="text-[10px] font-semibold text-slate-500 pr-2 border-r border-slate-200 mr-1">
           {nodes.length} {nodes.length === 1 ? "node" : "nodes"}
@@ -105,12 +109,28 @@ function CanvasToolbar() {
             Editing node
           </span>
         )}
+        </div>
+
+        {/* Canvas warning banner */}
+        {canvasWarning && (
+          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800
+                          text-xs font-medium rounded-xl px-3 py-2 shadow-md max-w-sm">
+            <span className="material-symbols-outlined text-[14px] text-amber-500 flex-shrink-0">warning</span>
+            <span className="flex-1">{canvasWarning}</span>
+            <button
+              type="button"
+              onClick={() => setCanvasWarning(null)}
+              className="text-amber-400 hover:text-amber-700 flex-shrink-0"
+              aria-label="Dismiss warning"
+            >
+              <span className="material-symbols-outlined text-[14px]">close</span>
+            </button>
+          </div>
+        )}
       </div>
     </Panel>
   );
 }
-
-// ── Drop-enabled canvas ───────────────────────────────────────────────────────
 
 function FlowCanvas() {
   const {
@@ -189,6 +209,9 @@ function FlowCanvas() {
         <MiniMap
           position="bottom-right"
           nodeColor={(node) => {
+            if (node.type === "carrierNode") {
+              return CARRIER_COLORS[(node.data as { carrier?: string }).carrier ?? "electricity"] ?? "#6366f1";
+            }
             const domain = (node.data as { domain?: string })?.domain ?? "";
             const colors: Record<string, string> = {
               generation:   "#f59e0b",

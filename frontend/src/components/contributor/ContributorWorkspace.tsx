@@ -16,41 +16,13 @@
  * it is stable for the entire lifetime of this page component.
  */
 
-import { Suspense, useMemo, useState, useCallback } from "react";
-import { fetchOntologySchema } from "../../services/api";
+import { Suspense, useMemo, useState, useCallback, useEffect } from "react";
+import { fetchOntologySchema, fetchMySubmissions } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import VisualTechBuilder from "./visual-builder/VisualTechBuilder";
 import ErrorBoundary from "../ErrorBoundary";
+import type { SubmissionRecord } from "../../types/api";
 
-// ── Submission record (stored in localStorage) ────────────────────────────────
-
-interface SubmissionRecord {
-  id: string;
-  technologyName: string;
-  submittedAt: string; // ISO date string
-  status: "pending_review" | "approved" | "rejected";
-}
-
-const STORAGE_KEY_PREFIX = "opentech_submissions_";
-
-function loadSubmissions(userId: string): SubmissionRecord[] {
-  try {
-    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${userId}`);
-    return raw ? (JSON.parse(raw) as SubmissionRecord[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveSubmissions(userId: string, submissions: SubmissionRecord[]): void {
-  try {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}${userId}`, JSON.stringify(submissions));
-  } catch {
-    // ignore storage quota errors
-  }
-}
-
-// ── Loading skeleton ──────────────────────────────────────────────────────────
 
 function FormSkeleton() {
   return (
@@ -163,17 +135,59 @@ function StatusBadge({ status }: { status: SubmissionRecord["status"] }) {
   );
 }
 
-// ── My Submissions tab ────────────────────────────────────────────────────────
+// ── My Submissions tab — fetches live from the database ───────────────────────
 
-function MySubmissionsPanel({ submissions }: { submissions: SubmissionRecord[] }) {
-  if (submissions.length === 0) {
+function MySubmissionsPanel({ token }: { token: string }) {
+  const [submissions, setSubmissions] = useState<SubmissionRecord[] | null>(null);
+  const [error, setError]             = useState<string | null>(null);
+  const [loading, setLoading]         = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchMySubmissions(token);
+      setSubmissions(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load submissions.");
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-3">
+        <span className="material-symbols-outlined text-[28px] text-primary/50 animate-spin">autorenew</span>
+        <p className="text-on-surface-variant text-sm">Loading your submissions…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-16 text-center">
+        <span className="material-symbols-outlined text-4xl text-tertiary/60">error</span>
+        <p className="text-on-surface-variant text-sm">{error}</p>
+        <button
+          onClick={() => void load()}
+          className="text-xs font-bold text-primary border border-primary/30 px-3 py-1.5 rounded-lg hover:bg-primary/5"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!submissions || submissions.length === 0) {
     return (
       <div className="flex flex-col items-center gap-4 py-20 text-center">
         <span className="material-symbols-outlined text-5xl text-on-surface-variant/25">inbox</span>
         <p className="text-on-surface-variant text-base font-medium">No submissions yet</p>
         <p className="text-on-surface-variant/60 text-sm max-w-xs">
           Switch to the <strong>New Submission</strong> tab to add your first technology.
-          Submitted records appear here for tracking.
         </p>
       </div>
     );
@@ -181,23 +195,43 @@ function MySubmissionsPanel({ submissions }: { submissions: SubmissionRecord[] }
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-on-surface-variant/60 mb-5">
-        {submissions.length} submission{submissions.length !== 1 ? "s" : ""} recorded locally.
-        An administrator reviews each entry before it appears in the public catalogue.
-      </p>
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-xs text-on-surface-variant/60">
+          {submissions.length} submission{submissions.length !== 1 ? "s" : ""} — reviewed by an administrator before appearing in the catalogue.
+        </p>
+        <button
+          onClick={() => void load()}
+          className="flex items-center gap-1 text-xs text-on-surface-variant hover:text-primary transition-colors"
+        >
+          <span className="material-symbols-outlined text-[14px]">refresh</span>
+          Refresh
+        </button>
+      </div>
       {submissions.map((sub) => (
         <div
-          key={sub.id}
-          className="flex items-center justify-between gap-4 rounded-xl border border-outline-variant/20
+          key={sub.submission_id}
+          className="flex items-start justify-between gap-4 rounded-xl border border-outline-variant/20
                      bg-surface-container-lowest px-5 py-4"
         >
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-on-surface truncate">{sub.technologyName}</p>
-            <p className="text-xs text-on-surface-variant/60 mt-0.5">
-              Submitted {new Date(sub.submittedAt).toLocaleDateString(undefined, {
-                year: "numeric", month: "short", day: "numeric",
-              })}
-            </p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-on-surface truncate">{sub.technology_name}</p>
+            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+              {sub.domain && (
+                <span className="text-[10px] font-semibold bg-surface-container text-on-surface-variant/60 px-1.5 py-0.5 rounded capitalize">
+                  {sub.domain}
+                </span>
+              )}
+              <p className="text-xs text-on-surface-variant/50">
+                {new Date(sub.submitted_at).toLocaleDateString(undefined, {
+                  year: "numeric", month: "short", day: "numeric",
+                })}
+              </p>
+            </div>
+            {sub.status === "rejected" && sub.rejection_reason && (
+              <p className="text-xs text-red-600 mt-1.5 italic">
+                Reason: {sub.rejection_reason}
+              </p>
+            )}
           </div>
           <StatusBadge status={sub.status} />
         </div>
@@ -211,37 +245,24 @@ function MySubmissionsPanel({ submissions }: { submissions: SubmissionRecord[] }
 type Tab = "new" | "my";
 
 export default function ContributorWorkspace() {
-  const { user } = useAuth();
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("new");
-  const [submissions, setSubmissions] = useState<SubmissionRecord[]>(() =>
-    user ? loadSubmissions(user.id) : []
-  );
+  const [submissionCount, setSubmissionCount] = useState(0);
 
   // Stable Promise reference — created once, never re-created on re-renders.
   // use() in AddTechnology will read this same reference each time.
   const schemaPromise = useMemo(() => fetchOntologySchema(), []);
 
   const handleSuccess = useCallback(
-    (technologyName: string) => {
-      if (!user) return;
-      const record: SubmissionRecord = {
-        id: crypto.randomUUID(),
-        technologyName,
-        submittedAt: new Date().toISOString(),
-        status: "pending_review",
-      };
-      setSubmissions((prev) => {
-        const next = [record, ...prev];
-        saveSubmissions(user.id, next);
-        return next;
-      });
+    (_technologyName: string) => {
+      setSubmissionCount((n) => n + 1);
     },
-    [user]
+    []
   );
 
   const TABS: { id: Tab; label: string; icon: string; count?: number }[] = [
     { id: "new", label: "New Submission", icon: "add_circle" },
-    { id: "my",  label: "My Submissions", icon: "list_alt",  count: submissions.length },
+    { id: "my",  label: "My Submissions", icon: "list_alt",  count: submissionCount > 0 ? submissionCount : undefined },
   ];
 
   return (
@@ -329,7 +350,14 @@ export default function ContributorWorkspace() {
             </div>
           </>
         ) : (
-          <MySubmissionsPanel submissions={submissions} />
+          token ? (
+            <MySubmissionsPanel token={token} />
+          ) : (
+            <div className="flex flex-col items-center gap-4 py-20 text-center">
+              <span className="material-symbols-outlined text-5xl text-on-surface-variant/25">lock</span>
+              <p className="text-on-surface-variant text-sm">Sign in to view your submissions.</p>
+            </div>
+          )
         )}
       </div>
     </>

@@ -128,13 +128,15 @@ export function fetchOntologySchema(): Promise<OntologySchema> {
  * Throws an Error with a descriptive message on API failure.
  */
 export async function submitTechnology(
-  payload: CreateTechnologyPayload
+  payload: CreateTechnologyPayload,
+  token?: string | null
 ): Promise<{ id: string; technology_name: string }> {
   const response = await fetch(`${BASE_URL}/technologies`, {
     method: "POST",
     headers: {
       ...HEADERS,
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(payload),
   });
@@ -217,6 +219,20 @@ export async function adminLogin(
   return response.json() as Promise<AdminLoginResponse>;
 }
 
+export async function fetchMySubmissions(
+  token: string
+): Promise<SubmissionRecord[]> {
+  const response = await fetch(`${BASE_URL}/submissions/mine`, {
+    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<SubmissionRecord[]>;
+}
+
 export async function fetchAdminSubmissions(
   token: string,
   statusFilter?: string
@@ -239,14 +255,21 @@ export async function actOnSubmission(
   token: string,
   submissionId: string,
   action: "approve" | "reject",
-  reason?: string
+  reason?: string,
+  editedPayload?: Record<string, unknown> | null,
+  adminNotes?: string,
 ): Promise<{ status: string; submission_id: string }> {
   const response = await fetch(
     `${BASE_URL}/admin/submissions/${encodeURIComponent(submissionId)}`,
     {
       method: "POST",
       headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ action, reason }),
+      body: JSON.stringify({
+        action,
+        reason: reason || undefined,
+        admin_notes: adminNotes || undefined,
+        edited_payload: editedPayload || undefined,
+      }),
     }
   );
   if (!response.ok) {

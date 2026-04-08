@@ -8,3 +8,4 @@ PyYAML>=6.0.1
 httpx>=0.27.0        # for async testing / optional client
 python-jose[cryptography]>=3.3.0  # JWT signing/verification for ORCID tokens
 bcrypt>=4.1.0        # Secure password hashing for admin credentials
+supabase>=2.0.0      # Supabase Python client — stores contributor submissions in Postgres

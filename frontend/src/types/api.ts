@@ -186,14 +186,17 @@ export interface CreateTechnologyPayload {
 // ── Admin — pending submissions ───────────────────────────────────────────────
 
 export interface SubmissionRecord {
-  submission_id:   string;
-  technology_name: string;
-  submitted_at:    string;
-  status:          "pending_review" | "approved" | "rejected";
-  domain:          string | null;
-  oeo_class:       string | null;
-  description:     string | null;
-  filename:        string;
+  submission_id:    string;
+  technology_name:  string;
+  submitted_at:     string;
+  status:           "pending_review" | "approved" | "rejected";
+  domain:           string | null;
+  oeo_class:        string | null;
+  description:      string | null;
+  submitter_email:  string | null;  // user who submitted (linked to Supabase auth)
+  rejection_reason: string | null;  // populated when admin rejects
+  filename:         string;          // empty for DB records
+  payload:          CreateTechnologyPayload | null;  // full submission details
 }
 
 export interface AdminLoginResponse {

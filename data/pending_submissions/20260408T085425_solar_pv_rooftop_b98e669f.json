@@ -1,0 +1,11 @@
+{
+  "submission_id": "b98e669f-e8ff-4911-8a7c-8156db6063b6",
+  "submitted_at": "2026-04-08T08:54:25.193755+00:00",
+  "status": "pending_review",
+  "technology_name": "Solar PV Rooftop",
+  "payload": {
+    "technology_name": "Solar PV Rooftop",
+    "domain": "generation",
+    "description": "Test post-volume"
+  }
+}

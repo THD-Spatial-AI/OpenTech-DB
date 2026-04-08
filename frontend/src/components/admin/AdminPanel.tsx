@@ -14,7 +14,7 @@ import {
   actOnSubmission,
 } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
-import type { SubmissionRecord } from "../../types/api";
+import type { SubmissionRecord, CreateTechnologyInstancePayload } from "../../types/api";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -32,6 +32,73 @@ function StatusBadge({ status }: { status: SubmissionRecord["status"] }) {
   );
 }
 
+// ── Detail section wrapper (module-level to avoid focus loss) ───────────────
+
+function DetailSection({
+  icon, title, isPending, children,
+}: {
+  icon: string;
+  title: string;
+  isPending: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-b border-slate-100 last:border-0">
+      <div className="flex items-center gap-2 px-5 py-2 bg-slate-50/70">
+        <span className="material-symbols-outlined text-[13px] text-indigo-500">{icon}</span>
+        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{title}</p>
+        {isPending && (
+          <span className="ml-auto text-[9px] text-indigo-400 italic">editable</span>
+        )}
+      </div>
+      <div className="px-5 py-3">{children}</div>
+    </div>
+  );
+}
+
+// ── Editable number field ─────────────────────────────────────────────────────
+
+function EditNum({
+  label, unit, value, onChange,
+}: { label: string; unit: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div>
+      <label className="block text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+        {label}
+      </label>
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          min={0}
+          step="any"
+          value={value}
+          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          className="w-full text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5
+                     focus:outline-none focus:ring-2 focus:ring-indigo-300 tabular-nums"
+        />
+        <span className="text-[9px] text-slate-400 whitespace-nowrap">{unit}</span>
+      </div>
+    </div>
+  );
+}
+
+function EditText({
+  label, value, onChange, mono = false, multiline = false,
+}: { label: string; value: string; onChange: (v: string) => void; mono?: boolean; multiline?: boolean }) {
+  const cls = `w-full text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5
+    focus:outline-none focus:ring-2 focus:ring-indigo-300 ${mono ? "font-mono" : ""}`;
+  return (
+    <div>
+      <label className="block text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+        {label}
+      </label>
+      {multiline
+        ? <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} className={`${cls} resize-none`} />
+        : <input type="text"  value={value} onChange={(e) => onChange(e.target.value)} className={cls} />}
+    </div>
+  );
+}
+
 // ── Submission card ───────────────────────────────────────────────────────────
 
 function SubmissionCard({
@@ -43,40 +110,75 @@ function SubmissionCard({
   token: string;
   onAction: (id: string, action: "approve" | "reject", reason?: string) => void;
 }) {
-  const [expanded,     setExpanded]     = useState(false);
-  const [rejectMode,   setRejectMode]   = useState(false);
-  const [reason,       setReason]       = useState("");
-  const [acting,       setActing]       = useState(false);
-  const [actionError,  setActionError]  = useState<string | null>(null);
+  const [expanded,    setExpanded]    = useState(false);
+  const [rejectMode,  setRejectMode]  = useState(false);
+  const [reason,      setReason]      = useState("");
+  const [adminNotes,  setAdminNotes]  = useState("");
+  const [acting,      setActing]      = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // ── Editable copies of the payload fields ──────────────────────────────────
+  const orig = record.payload;
+  const [editName,        setEditName]        = useState(record.technology_name);
+  const [editDomain,      setEditDomain]      = useState(orig?.domain        ?? record.domain        ?? "");
+  const [editCarrier,     setEditCarrier]     = useState(orig?.carrier       ?? "");
+  const [editOeo,         setEditOeo]         = useState(orig?.oeo_class     ?? record.oeo_class     ?? "");
+  const [editDescription, setEditDescription] = useState(orig?.description   ?? record.description   ?? "");
+  const [editInstances,   setEditInstances]   = useState<CreateTechnologyInstancePayload[]>(
+    orig?.instances ?? []
+  );
+
+  const updateInstance = useCallback(
+    (i: number, patch: Partial<CreateTechnologyInstancePayload>) =>
+      setEditInstances((prev) => prev.map((inst, idx) => idx === i ? { ...inst, ...patch } : inst)),
+    []
+  );
+
+  // Build the edited payload for submission
+  const buildEditedPayload = useCallback(() => ({
+    ...(orig ?? {}),
+    technology_name: editName,
+    domain:          editDomain,
+    carrier:         editCarrier,
+    oeo_class:       editOeo,
+    description:     editDescription,
+    instances:       editInstances,
+  }), [orig, editName, editDomain, editCarrier, editOeo, editDescription, editInstances]);
 
   const handleAction = useCallback(async (action: "approve" | "reject") => {
     setActing(true);
     setActionError(null);
     try {
-      await actOnSubmission(token, record.submission_id, action, reason || undefined);
+      const edited = buildEditedPayload();
+      await actOnSubmission(
+        token,
+        record.submission_id,
+        action,
+        reason || undefined,
+        edited,
+        adminNotes || undefined,
+      );
       onAction(record.submission_id, action, reason || undefined);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setActing(false);
     }
-  }, [token, record.submission_id, reason, onAction]);
+  }, [token, record.submission_id, reason, adminNotes, buildEditedPayload, onAction]);
 
   const isPending = record.status === "pending_review";
   const date = new Date(record.submitted_at).toLocaleString("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    dateStyle: "medium", timeStyle: "short",
   });
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      {/* Card header */}
+
+      {/* ── Card header ── */}
       <div className="flex items-start gap-3 px-5 py-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-bold text-slate-800 truncate">
-              {record.technology_name}
-            </h3>
+            <h3 className="text-sm font-bold text-slate-800 truncate">{record.technology_name}</h3>
             <StatusBadge status={record.status} />
             {record.domain && (
               <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded capitalize">
@@ -84,17 +186,22 @@ function SubmissionCard({
               </span>
             )}
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Submitted {date}
-          </p>
+          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+            {record.submitter_email && (
+              <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[13px]">person</span>
+                {record.submitter_email}
+              </span>
+            )}
+            <p className="text-[11px] text-slate-400">Submitted {date}</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
           {isPending && !rejectMode && (
             <>
               <button
-                type="button"
-                disabled={acting}
+                type="button" disabled={acting}
                 onClick={() => handleAction("approve")}
                 className="flex items-center gap-1 text-xs font-bold text-white bg-emerald-600
                            hover:bg-emerald-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
@@ -103,8 +210,7 @@ function SubmissionCard({
                 Approve
               </button>
               <button
-                type="button"
-                disabled={acting}
+                type="button" disabled={acting}
                 onClick={() => setRejectMode(true)}
                 className="flex items-center gap-1 text-xs font-bold text-white bg-red-500
                            hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
@@ -127,15 +233,14 @@ function SubmissionCard({
         </div>
       </div>
 
-      {/* Reject reason input */}
+      {/* ── Reject reason input ── */}
       {rejectMode && isPending && (
         <div className="px-5 pb-4 border-t border-slate-100 pt-3 space-y-2">
           <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-            Rejection Reason (optional)
+            Rejection Reason (shown to submitter)
           </label>
           <textarea
-            rows={2}
-            value={reason}
+            rows={2} value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2
                        focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
@@ -143,8 +248,7 @@ function SubmissionCard({
           />
           <div className="flex gap-2">
             <button
-              type="button"
-              disabled={acting}
+              type="button" disabled={acting}
               onClick={() => handleAction("reject")}
               className="text-xs font-bold text-white bg-red-500 hover:bg-red-600
                          px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
@@ -162,7 +266,7 @@ function SubmissionCard({
         </div>
       )}
 
-      {/* Error */}
+      {/* ── Error ── */}
       {actionError && (
         <div className="mx-5 mb-3 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
           <span className="material-symbols-outlined text-[14px] text-red-500">error</span>
@@ -170,37 +274,134 @@ function SubmissionCard({
         </div>
       )}
 
-      {/* Expanded detail */}
+      {/* ── Expanded full-detail editor ── */}
       {expanded && (
-        <div className="px-5 pb-4 border-t border-slate-100 pt-3 space-y-2">
-          {record.oeo_class && (
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                OEO Class
-              </span>
-              <p className="text-xs font-mono text-slate-600 break-all mt-0.5">
-                {record.oeo_class}
-              </p>
-            </div>
-          )}
-          {record.description && (
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Description
-              </span>
-              <p className="text-xs text-slate-600 leading-relaxed mt-0.5">
-                {record.description}
-              </p>
-            </div>
-          )}
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Submission ID
-            </span>
-            <p className="text-[10px] font-mono text-slate-400 mt-0.5">
-              {record.submission_id}
-            </p>
-          </div>
+        <div className="border-t border-slate-100 text-[11px]">
+          <>
+                {/* ── Identity ── */}
+                <DetailSection icon="label" title="Identity & Taxonomy" isPending={isPending}>
+                  <div className="grid grid-cols-2 gap-3">
+                    {isPending
+                      ? <EditText label="Technology Name" value={editName} onChange={setEditName} />
+                      : <div><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Name</p><p className="text-xs text-slate-700 mt-0.5">{record.technology_name}</p></div>
+                    }
+                    {isPending
+                      ? <EditText label="Domain" value={editDomain} onChange={setEditDomain} />
+                      : <div><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Domain</p><p className="text-xs text-slate-700 capitalize mt-0.5">{record.domain ?? "—"}</p></div>
+                    }
+                    {isPending
+                      ? <EditText label="Carrier" value={editCarrier} onChange={setEditCarrier} />
+                      : <div><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Carrier</p><p className="text-xs text-slate-700 mt-0.5">{orig?.carrier ?? "—"}</p></div>
+                    }
+                    {isPending
+                      ? <EditText label="OEO Class URI" value={editOeo} onChange={setEditOeo} mono />
+                      : <div><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">OEO Class</p><p className="text-xs font-mono text-slate-500 break-all mt-0.5">{record.oeo_class ?? "—"}</p></div>
+                    }
+                  </div>
+                  <div className="mt-3">
+                    {isPending
+                      ? <EditText label="Description" value={editDescription} onChange={setEditDescription} multiline />
+                      : <><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Description</p><p className="text-xs text-slate-600 leading-relaxed">{record.description ?? "—"}</p></>
+                    }
+                  </div>
+                </DetailSection>
+
+                {/* ── Technical Variants ── */}
+                {editInstances.length > 0 && (
+                  <DetailSection icon="engineering" title={`Technical Variants (${editInstances.length})`} isPending={isPending}>
+                    <div className="space-y-4">
+                      {editInstances.map((inst, i) => (
+                        <div key={i} className="rounded-xl border border-slate-200 overflow-hidden">
+                          {/* Variant header */}
+                          <div className="flex items-center gap-2 px-4 py-2 bg-slate-100/80 border-b border-slate-200">
+                            <span className="material-symbols-outlined text-[13px] text-slate-500">settings</span>
+                            {isPending
+                              ? <input
+                                  type="text"
+                                  value={inst.variant_name}
+                                  onChange={(e) => updateInstance(i, { variant_name: e.target.value })}
+                                  className="flex-1 text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1
+                                             focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                                />
+                              : <p className="text-xs font-bold text-slate-700 flex-1">{inst.variant_name || `Variant ${i + 1}`}</p>
+                            }
+                          </div>
+                          {/* Parameter grid */}
+                          <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {isPending ? <>
+                              <EditNum label="CAPEX"         unit="USD/kW"     value={inst.capex_usd_per_kw}                           onChange={(v) => updateInstance(i, { capex_usd_per_kw: v })} />
+                              <EditNum label="OPEX Fixed"    unit="USD/kW·yr"  value={inst.opex_fixed_usd_per_kw_yr}                   onChange={(v) => updateInstance(i, { opex_fixed_usd_per_kw_yr: v })} />
+                              <EditNum label="OPEX Variable" unit="USD/MWh"    value={inst.opex_var_usd_per_mwh}                       onChange={(v) => updateInstance(i, { opex_var_usd_per_mwh: v })} />
+                              <EditNum label="Efficiency"    unit="%"          value={inst.efficiency_percent}                          onChange={(v) => updateInstance(i, { efficiency_percent: v })} />
+                              <EditNum label="Lifetime"      unit="years"      value={inst.lifetime_years}                              onChange={(v) => updateInstance(i, { lifetime_years: v })} />
+                              <EditNum label="CO₂ Factor"   unit="g CO₂/kWh"  value={inst.co2_emission_factor_operational_g_per_kwh}   onChange={(v) => updateInstance(i, { co2_emission_factor_operational_g_per_kwh: v })} />
+                            </> : <>
+                              {([
+                                ["CAPEX",         inst.capex_usd_per_kw,                          "USD/kW"],
+                                ["OPEX Fixed",    inst.opex_fixed_usd_per_kw_yr,                  "USD/kW·yr"],
+                                ["OPEX Variable", inst.opex_var_usd_per_mwh,                      "USD/MWh"],
+                                ["Efficiency",    inst.efficiency_percent,                         "%"],
+                                ["Lifetime",      inst.lifetime_years,                             "years"],
+                                ["CO₂ Factor",   inst.co2_emission_factor_operational_g_per_kwh,  "g CO₂/kWh"],
+                              ] as [string, number, string][]).map(([label, val, unit]) => (
+                                <div key={label}>
+                                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+                                  <p className="text-sm font-bold text-slate-800 tabular-nums mt-0.5">
+                                    {val != null ? val.toLocaleString() : <span className="text-slate-300">—</span>}
+                                  </p>
+                                  <p className="text-[9px] text-slate-400">{unit}</p>
+                                </div>
+                              ))}
+                            </>}
+                          </div>
+                          {/* Reference source */}
+                          <div className="px-4 pb-3">
+                            {isPending
+                              ? <EditText label="Reference Source" value={inst.reference_source} onChange={(v) => updateInstance(i, { reference_source: v })} />
+                              : <><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Reference Source</p><p className="text-xs text-slate-500 italic mt-0.5">{inst.reference_source || "—"}</p></>
+                            }
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </DetailSection>
+                )}
+
+                {/* ── Admin Notes (always visible for pending) ── */}
+                {isPending && (
+                  <DetailSection icon="rate_review" title="Admin Notes / Feedback" isPending={isPending}>
+                    <p className="text-[10px] text-slate-400 mb-2 leading-relaxed">
+                      Visible to the submitter in their "My Submissions" view. Explain any edits you made or why you changed specific values.
+                    </p>
+                    <textarea
+                      rows={3}
+                      value={adminNotes}
+                      onChange={(e) => setAdminNotes(e.target.value)}
+                      className="w-full text-xs bg-white border border-slate-200 rounded-lg px-3 py-2
+                                 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                      placeholder="e.g. Corrected CAPEX to match IRENA 2023 reference values. Adjusted OEO class to the more specific sub-class."
+                    />
+                  </DetailSection>
+                )}
+
+                {/* ── Rejection reason ── */}
+                {record.rejection_reason && (
+                  <div className="px-5 py-3 bg-red-50/50 border-t border-red-100">
+                    <p className="text-[9px] font-bold text-red-400 uppercase tracking-widest mb-1">Admin Feedback</p>
+                    <p className="text-xs text-red-700">{record.rejection_reason}</p>
+                  </div>
+                )}
+
+                {/* ── Footer meta ── */}
+                <div className="px-5 py-2.5 bg-slate-50/40 flex items-center gap-4">
+                  <p className="text-[9px] font-mono text-slate-300 flex-1">ID: {record.submission_id}</p>
+                  {isPending && (
+                    <p className="text-[9px] text-indigo-400 italic">
+                      Edits above are saved when you Approve or Reject
+                    </p>
+                  )}
+                </div>
+          </>
         </div>
       )}
     </div>

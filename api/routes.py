@@ -395,7 +395,12 @@ def _pick_legacy_model(raw: dict) -> type[Technology]:
 def _load_all_technologies() -> dict[str, Technology]:
     logger.info("DATA_DIR resolved to: %s (exists=%s)", DATA_DIR, DATA_DIR.exists())
     techs: dict[str, Technology] = {}
-    json_files = list(DATA_DIR.rglob("*.json"))
+    # Exclude submission-related directories — they are not catalogue files.
+    _EXCLUDED_DIRS = {"pending_submissions", "profiles"}
+    json_files = [
+        p for p in DATA_DIR.rglob("*.json")
+        if not any(part in _EXCLUDED_DIRS for part in p.parts)
+    ]
     logger.info("Found %d JSON file(s) under data/", len(json_files))
 
     for json_file in json_files:
@@ -810,6 +815,47 @@ def get_instance(
 
 _PENDING_DIR = DATA_DIR.parent / "data" / "pending_submissions"
 
+# ── Supabase client (lazy, falls back to file storage when not configured) ────
+
+import os as _os
+
+_SUPABASE_URL     = _os.getenv("SUPABASE_URL", "")
+_SUPABASE_SVC_KEY = _os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+_sb_client        = None  # initialised on first use
+_SUBMISSIONS_TABLE = "technology_submissions"
+
+
+def _get_sb():
+    """Return a Supabase service-role client, or ``None`` if credentials are absent."""
+    global _sb_client
+    if not _SUPABASE_URL or not _SUPABASE_SVC_KEY:
+        return None
+    if _sb_client is None:
+        from supabase import create_client as _create_sb
+        _sb_client = _create_sb(_SUPABASE_URL, _SUPABASE_SVC_KEY)
+    return _sb_client
+
+
+def _extract_user_from_token(authorization: str | None) -> tuple[str | None, str | None]:
+    """Return ``(user_id, email)`` from a Bearer JWT, or ``(None, None)``."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None, None
+    token = authorization.removeprefix("Bearer ")
+    # Supabase JWT
+    try:
+        p = _decode_supabase_jwt(token)
+        return p.get("sub"), p.get("email")
+    except Exception:
+        pass
+    # ORCID / admin HS256 JWT
+    try:
+        from api.auth import _decode_jwt
+        p = _decode_jwt(token)
+        return p.get("sub"), p.get("email")
+    except Exception:
+        pass
+    return None, None
+
 
 @lru_cache(maxsize=1)
 def _build_ontology_schema() -> dict:
@@ -874,28 +920,56 @@ class SubmissionResponse(BaseModel):
     response_model=SubmissionResponse,
     summary="Submit a new technology for review",
 )
-def submit_technology(payload: dict = Body(...)) -> SubmissionResponse:
+def submit_technology(
+    payload: dict = Body(...),
+    authorization: Annotated[str | None, Header()] = None,
+) -> SubmissionResponse:
     """
-    Accept a contributor-submitted technology.  The payload is written to
-    ``data/pending_submissions/`` as a timestamped JSON file awaiting admin
-    review before it appears in the public catalogue.
+    Accept a contributor-submitted technology for admin review.
+
+    The submission is stored in the Supabase ``technology_submissions`` table
+    and linked to the authenticated user.  Falls back to local JSON files when
+    Supabase is not configured (``SUPABASE_SERVICE_ROLE_KEY`` env var absent).
     """
     tech_name = str(payload.get("technology_name", "unknown")).strip() or "unknown"
+    user_id, user_email = _extract_user_from_token(authorization)
+
+    # ── Supabase path ──────────────────────────────────────────────────────────
+    sb = _get_sb()
+    if sb is not None:
+        try:
+            result = sb.table(_SUBMISSIONS_TABLE).insert({
+                "user_id":         user_id,
+                "submitter_email": user_email,
+                "technology_name": tech_name,
+                "domain":          payload.get("domain"),
+                "carrier":         payload.get("carrier"),
+                "oeo_class":       payload.get("oeo_class"),
+                "description":     payload.get("description"),
+                "payload":         payload,
+                "status":          "pending_review",
+            }).execute()
+            submission_id = result.data[0]["id"]
+            logger.info("DB submission: %s by %s (%s)", tech_name, user_email, submission_id)
+            return SubmissionResponse(id=submission_id, technology_name=tech_name)
+        except Exception as exc:
+            logger.error("Supabase insert failed, falling back to file storage: %s", exc)
+            # fall through to file storage
+
+    # ── File fallback ──────────────────────────────────────────────────────────
     submission_id = str(uuid.uuid4())
-
     _PENDING_DIR.mkdir(parents=True, exist_ok=True)
-
     safe_name = re.sub(r"[^a-z0-9_-]", "_", tech_name.lower())[:60]
     filename = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}_{safe_name}_{submission_id[:8]}.json"
-
     record = {
-        "submission_id":    submission_id,
-        "submitted_at":     datetime.now(timezone.utc).isoformat(),
-        "status":           "pending_review",
-        "technology_name":  tech_name,
-        "payload":          payload,
+        "submission_id":   submission_id,
+        "submitted_at":    datetime.now(timezone.utc).isoformat(),
+        "status":          "pending_review",
+        "technology_name": tech_name,
+        "user_id":         user_id,
+        "submitter_email": user_email,
+        "payload":         payload,
     }
-
     try:
         with (_PENDING_DIR / filename).open("w", encoding="utf-8") as fh:
             import json as _json
@@ -904,7 +978,7 @@ def submit_technology(payload: dict = Body(...)) -> SubmissionResponse:
         logger.error("Could not write pending submission: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to store submission.") from exc
 
-    logger.info("New submission: %s (%s)", tech_name, submission_id)
+    logger.info("File submission: %s (%s)", tech_name, submission_id)
     return SubmissionResponse(id=submission_id, technology_name=tech_name)
 
 
@@ -1005,29 +1079,70 @@ def _require_admin(authorization: str | None) -> dict:
 
 
 class SubmissionRecord(BaseModel):
-    submission_id:   str
-    technology_name: str
-    submitted_at:    str
-    status:          str
-    domain:          str | None = None
-    oeo_class:       str | None = None
-    description:     str | None = None
-    filename:        str
+    submission_id:    str
+    technology_name:  str
+    submitted_at:     str
+    status:           str
+    domain:           str | None = None
+    oeo_class:        str | None = None
+    description:      str | None = None
+    submitter_email:  str | None = None   # linked to the authenticated user
+    rejection_reason: str | None = None   # set when rejected by admin
+    filename:         str        = ""     # non-empty only for file-fallback records
+    payload:          dict | None = None  # full CreateTechnologyPayload submitted by user
+
+
+def _row_to_record(row: dict, filename: str = "") -> SubmissionRecord:
+    """Map a Supabase row dict to a ``SubmissionRecord``."""
+    # Merge top-level carrier into payload so the frontend can read it uniformly
+    payload = row.get("payload") or {}
+    if row.get("carrier") and not payload.get("carrier"):
+        payload = {**payload, "carrier": row["carrier"]}
+    return SubmissionRecord(
+        submission_id=str(row.get("id", row.get("submission_id", ""))),
+        technology_name=row.get("technology_name", "—"),
+        submitted_at=str(row.get("submitted_at", "")),
+        status=row.get("status", "pending_review"),
+        domain=row.get("domain"),
+        oeo_class=row.get("oeo_class"),
+        description=row.get("description"),
+        submitter_email=row.get("submitter_email"),
+        rejection_reason=row.get("rejection_reason"),
+        filename=filename,
+        payload=payload if payload else None,
+    )
 
 
 @admin_router.get(
     "/submissions",
     response_model=list[SubmissionRecord],
-    summary="List all pending technology submissions",
+    summary="List all technology submissions",
 )
 def list_submissions(
     authorization: Annotated[str | None, Header()] = None,
     status_filter: str | None = Query(None, alias="status"),
 ) -> list[SubmissionRecord]:
-    """Return all submissions from ``data/pending_submissions/``, newest first."""
+    """Return all submissions (from Supabase or local files), newest first."""
     _require_admin(authorization)
-    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
 
+    # ── Supabase path ──────────────────────────────────────────────────────────
+    sb = _get_sb()
+    if sb is not None:
+        try:
+            q = sb.table(_SUBMISSIONS_TABLE) \
+                  .select("id,technology_name,domain,carrier,oeo_class,description,status,"
+                          "submitted_at,submitter_email,rejection_reason,payload") \
+                  .order("submitted_at", desc=True)
+            if status_filter:
+                q = q.eq("status", status_filter)
+            result = q.execute()
+            return [_row_to_record(row) for row in result.data]
+        except Exception as exc:
+            logger.error("Supabase list failed: %s", exc)
+            raise HTTPException(status_code=500, detail=f"Failed to fetch submissions: {exc}")
+
+    # ── File fallback ──────────────────────────────────────────────────────────
+    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
     records: list[SubmissionRecord] = []
     for path in sorted(_PENDING_DIR.glob("*.json"), reverse=True):
         try:
@@ -1038,23 +1153,27 @@ def list_submissions(
         status = raw.get("status", "pending_review")
         if status_filter and status != status_filter:
             continue
-        payload = raw.get("payload", {})
+        p = raw.get("payload", {})
         records.append(SubmissionRecord(
             submission_id=raw.get("submission_id", path.stem),
             technology_name=raw.get("technology_name", "—"),
             submitted_at=raw.get("submitted_at", ""),
             status=status,
-            domain=payload.get("domain"),
-            oeo_class=payload.get("oeo_class"),
-            description=payload.get("description"),
+            domain=p.get("domain"),
+            oeo_class=p.get("oeo_class"),
+            description=p.get("description"),
+            submitter_email=raw.get("submitter_email"),
+            rejection_reason=raw.get("rejection_reason"),
             filename=path.name,
         ))
     return records
 
 
 class AdminActionRequest(BaseModel):
-    action:  str   # "approve" | "reject"
-    reason:  str | None = None
+    action:          str            # "approve" | "reject"
+    reason:          str | None = None
+    admin_notes:     str | None = None   # visible feedback for the submitter
+    edited_payload:  dict | None = None  # admin-corrected version of the submission
 
 
 @admin_router.post(
@@ -1067,16 +1186,69 @@ def act_on_submission(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
     """
-    Set the status of a pending submission to ``approved`` or ``rejected``.
+    Set the status of a submission to ``approved`` or ``rejected``.
 
     * **approve** — writes the technology into the appropriate catalogue JSON
-      file and marks the submission as ``approved``.
-    * **reject**  — marks the submission as ``rejected`` with an optional reason.
+      and marks the row ``approved``.
+    * **reject**  — marks the row ``rejected`` with an optional reason that is
+      visible to the submitter in their "My Submissions" view.
     """
-    _require_admin(authorization)
-    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
+    admin_payload = _require_admin(authorization)
+    admin_email   = admin_payload.get("email", "admin")
 
-    # Find the file
+    if body.action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'.")
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    # ── Supabase path ──────────────────────────────────────────────────────────
+    sb = _get_sb()
+    if sb is not None:
+        try:
+            result = sb.table(_SUBMISSIONS_TABLE) \
+                       .select("*") \
+                       .eq("id", submission_id) \
+                       .single() \
+                       .execute()
+            row = result.data
+            if not row:
+                raise HTTPException(status_code=404, detail="Submission not found.")
+            if row.get("status") != "pending_review":
+                raise HTTPException(status_code=409, detail=f"Submission already {row['status']}.")
+
+            if body.action == "approve":
+                effective_payload = body.edited_payload or row.get("payload", {})
+                _approve_submission({
+                    "payload":          effective_payload,
+                    "submission_id":    submission_id,
+                    "technology_name":  effective_payload.get("technology_name") or row.get("technology_name", ""),
+                })
+                # Invalidate the in-process technology cache so the new entry
+                # is visible immediately on the next /technologies request.
+                _load_all_technologies.cache_clear()
+            # Build combined feedback text from reason + admin_notes
+            feedback = " | ".join(filter(None, [body.reason, body.admin_notes])) or None
+            update_data: dict = {
+                "status":           "approved" if body.action == "approve" else "rejected",
+                "reviewed_at":      now,
+                "reviewed_by":      admin_email,
+                "rejection_reason": feedback,
+            }
+            if body.edited_payload:
+                update_data["payload"] = body.edited_payload
+            sb.table(_SUBMISSIONS_TABLE).update(update_data).eq("id", submission_id).execute()
+
+            logger.info("Admin %s submission %s (DB)", body.action, submission_id)
+            return {"status": body.action.replace("approve", "approved").replace("reject", "rejected"),
+                    "submission_id": submission_id}
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.error("Supabase action failed: %s", exc)
+            raise HTTPException(status_code=500, detail=f"Failed to process submission: {exc}")
+
+    # ── File fallback ──────────────────────────────────────────────────────────
+    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
     matches = list(_PENDING_DIR.glob(f"*{submission_id[:8]}*.json"))
     if not matches:
         raise HTTPException(status_code=404, detail="Submission not found.")
@@ -1085,27 +1257,24 @@ def act_on_submission(
     with path.open(encoding="utf-8") as fh:
         record = json.load(fh)
 
-    if record.get("status") not in ("pending_review",):
-        raise HTTPException(
-            status_code=409,
-            detail=f"Submission already {record['status']}.",
-        )
+    if record.get("status") != "pending_review":
+        raise HTTPException(status_code=409, detail=f"Submission already {record['status']}.")
 
     if body.action == "approve":
         _approve_submission(record)
         record["status"] = "approved"
-        record["reviewed_at"] = datetime.now(timezone.utc).isoformat()
-    elif body.action == "reject":
-        record["status"] = "rejected"
-        record["reviewed_at"] = datetime.now(timezone.utc).isoformat()
-        record["rejection_reason"] = body.reason or ""
+        _load_all_technologies.cache_clear()
     else:
-        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'.")
+        record["status"] = "rejected"
+
+    record["reviewed_at"]      = now
+    record["reviewed_by"]      = admin_email
+    record["rejection_reason"] = body.reason or ""
 
     with path.open("w", encoding="utf-8") as fh:
         json.dump(record, fh, indent=2, ensure_ascii=False)
 
-    logger.info("Admin %s submission %s", body.action, submission_id)
+    logger.info("Admin %s submission %s (file)", body.action, submission_id)
     return {"status": record["status"], "submission_id": submission_id}
 
 
@@ -1113,10 +1282,12 @@ def _approve_submission(record: dict) -> None:
     """
     Append the approved technology to the matching domain catalogue file.
     If the domain file does not exist it is created from scratch.
+    The written structure mirrors the existing catalogue JSON schema so the
+    frontend /technologies endpoint can load and display it immediately.
     """
-    payload = record.get("payload", {})
-    domain  = payload.get("domain", "conversion")
-    tech_name = payload.get("technology_name", "Unknown Technology")
+    payload   = record.get("payload") or {}
+    domain    = (payload.get("domain") or "conversion").lower().strip()
+    tech_name = (payload.get("technology_name") or record.get("technology_name") or "Unknown Technology").strip()
 
     domain_file = DATA_DIR / domain / f"{domain}_technologies.json"
     domain_file.parent.mkdir(parents=True, exist_ok=True)
@@ -1127,45 +1298,152 @@ def _approve_submission(record: dict) -> None:
             catalogue = json.load(fh)
     else:
         catalogue = {
-            "metadata": {"domain": domain, "last_updated": ""},
+            "metadata": {"domain": domain, "version": "1.0.0", "last_updated": ""},
             "technologies": [],
         }
 
-    # Build a minimal technology entry from the submitted payload
-    safe_name = re.sub(r"[^a-z0-9_]", "_", tech_name.lower())[:60]
-    tech_id   = f"{safe_name}_{record['submission_id'][:8]}"
+    # ── Find an existing technology entry with the same name (case-insensitive) ──
+    tech_name_lower = tech_name.lower()
+    existing_tech = next(
+        (t for t in catalogue.get("technologies", [])
+         if t.get("technology_name", "").lower() == tech_name_lower),
+        None,
+    )
 
-    instances_raw = payload.get("instances", [{}])
-    instances = []
-    for idx, inst in enumerate(instances_raw):
-        instances.append({
-            "instance_id":   f"{tech_id}_inst_{idx}",
-            "variant_name":  inst.get("variant_name", f"{tech_name} Default"),
-            "capex_usd_per_kw":                         inst.get("capex_usd_per_kw", 0),
-            "opex_fixed_usd_per_kw_yr":                inst.get("opex_fixed_usd_per_kw_yr", 0),
-            "opex_var_usd_per_mwh":                    inst.get("opex_var_usd_per_mwh", 0),
-            "efficiency_percent":                       inst.get("efficiency_percent", 0),
-            "lifetime_years":                           inst.get("lifetime_years", 20),
-            "co2_emission_factor_operational_g_per_kwh": inst.get("co2_emission_factor_operational_g_per_kwh", 0),
-            "reference_source":                         inst.get("reference_source", "contributor_submission"),
-        })
+    # Stable ID prefix: reuse the existing entry's id, or generate a new one
+    if existing_tech:
+        id_prefix = existing_tech["technology_id"]
+    else:
+        safe_name = re.sub(r"[^a-z0-9_]", "_", tech_name.lower())[:60]
+        id_prefix = f"{safe_name}_{record.get('submission_id', 'x')[:8]}"
 
-    new_tech = {
-        "technology_id":   tech_id,
-        "technology_name": tech_name,
-        "domain":          domain,
-        "carrier":         payload.get("carrier", "electricity"),
-        "oeo_class":       payload.get("oeo_class", ""),
-        "description":     payload.get("description", ""),
-        "instances":       instances,
+    # IDs already taken in this technology (avoid collisions when merging)
+    existing_instance_ids = {
+        inst.get("instance_id") for inst in (existing_tech or {}).get("instances", [])
     }
 
-    catalogue["technologies"].append(new_tech)
+    instances_raw = payload.get("instances", [{}])
+    new_instances: list[dict] = []
+    for idx, inst in enumerate(instances_raw):
+        variant  = (inst.get("variant_name") or f"{tech_name} v{idx + 1}").strip()
+        safe_var = re.sub(r"[^a-z0-9_]", "_", variant.lower())[:40]
+        inst_id  = f"{id_prefix}_{safe_var}"
+        if inst_id in existing_instance_ids:
+            inst_id = f"{inst_id}_{record.get('submission_id', 'x')[:6]}"
+        new_instances.append({
+            "instance_id":   inst_id,
+            "instance_name": variant,
+            # Size
+            "capacity_mw":               inst.get("capacity_mw", 0),
+            # Cost
+            "capex_usd_per_kw":          inst.get("capex_usd_per_kw", 0),
+            "opex_fixed_usd_per_kw_yr":  inst.get("opex_fixed_usd_per_kw_yr", 0),
+            "opex_var_usd_per_mwh":      inst.get("opex_var_usd_per_mwh", 0),
+            # Technical
+            "efficiency_percent":                         inst.get("efficiency_percent", 0),
+            "lifetime_years":                             inst.get("lifetime_years", 20),
+            "co2_emission_factor_operational_g_per_kwh": inst.get("co2_emission_factor_operational_g_per_kwh", 0),
+            # Provenance
+            "reference_source": inst.get("reference_source", "contributor_submission"),
+        })
+
+    if existing_tech:
+        # ── Merge: add new instances into the existing technology card ──
+        existing_tech.setdefault("instances", []).extend(new_instances)
+        logger.info(
+            "Merged %d new instance(s) into existing technology '%s' in %s",
+            len(new_instances), tech_name, domain_file,
+        )
+    else:
+        # ── Create: brand-new technology entry ──
+        catalogue.setdefault("technologies", []).append({
+            "technology_id":   id_prefix,
+            "technology_name": tech_name,
+            "domain":          domain,
+            "carrier":         payload.get("carrier", "electricity"),
+            "oeo_class":       payload.get("oeo_class", ""),
+            "description":     payload.get("description", ""),
+            "instances":       new_instances,
+            "source": "contributor_submission",
+        })
+        logger.info(
+            "Created new technology entry '%s' → %s (%d instances)",
+            tech_name, domain_file, len(new_instances),
+        )
+
     catalogue.setdefault("metadata", {})["last_updated"] = datetime.now(timezone.utc).isoformat()
 
     with domain_file.open("w", encoding="utf-8") as fh:
         json.dump(catalogue, fh, indent=2, ensure_ascii=False)
 
-    logger.info("Approved technology '%s' appended to %s", tech_name, domain_file)
+
+# ---------------------------------------------------------------------------
+# Contributor submissions — user-scoped read access
+# ---------------------------------------------------------------------------
+
+submissions_router = APIRouter(prefix="/submissions", tags=["Submissions"])
 
 
+@submissions_router.get(
+    "/mine",
+    response_model=list[SubmissionRecord],
+    summary="List the current user's own submissions",
+)
+def get_my_submissions(
+    authorization: Annotated[str | None, Header()] = None,
+) -> list[SubmissionRecord]:
+    """
+    Return all submissions made by the currently authenticated user, newest first.
+
+    The caller must supply a valid Supabase or ORCID JWT as
+    ``Authorization: Bearer <token>``.  The ``user_id`` claim is used to
+    filter; no admin privileges are required.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    user_id, _ = _extract_user_from_token(authorization)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid or unrecognised token.")
+
+    # ── Supabase path ──────────────────────────────────────────────────────────
+    sb = _get_sb()
+    if sb is not None:
+        try:
+            result = sb.table(_SUBMISSIONS_TABLE) \
+                       .select("id,technology_name,domain,carrier,oeo_class,description,status,"
+                               "submitted_at,submitter_email,rejection_reason,payload") \
+                       .eq("user_id", user_id) \
+                       .order("submitted_at", desc=True) \
+                       .execute()
+            return [_row_to_record(row) for row in result.data]
+        except Exception as exc:
+            logger.error("Supabase /mine failed: %s", exc)
+            raise HTTPException(status_code=500, detail="Failed to fetch your submissions.")
+
+    # ── File fallback ──────────────────────────────────────────────────────────
+    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
+    records: list[SubmissionRecord] = []
+    for path in sorted(_PENDING_DIR.glob("*.json"), reverse=True):
+        try:
+            with path.open(encoding="utf-8") as fh:
+                import json as _json_f
+                raw = _json_f.load(fh)
+        except Exception:
+            continue
+        if raw.get("user_id") != user_id:
+            continue
+        p = raw.get("payload", {})
+        records.append(SubmissionRecord(
+            submission_id=raw.get("submission_id", path.stem),
+            technology_name=raw.get("technology_name", "—"),
+            submitted_at=raw.get("submitted_at", ""),
+            status=raw.get("status", "pending_review"),
+            domain=p.get("domain"),
+            oeo_class=p.get("oeo_class"),
+            description=p.get("description"),
+            submitter_email=raw.get("submitter_email"),
+            rejection_reason=raw.get("rejection_reason"),
+            filename=path.name,
+        ))
+    return records

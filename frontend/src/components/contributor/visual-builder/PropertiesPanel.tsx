@@ -48,7 +48,7 @@ const nodeSubmitSchema = z.object({
       capex_usd_per_kw:                        z.number().min(0),
       opex_fixed_usd_per_kw_yr:               z.number().min(0),
       opex_var_usd_per_mwh:                   z.number().min(0),
-      efficiency_percent:                      z.number().min(0).max(100),
+      efficiency_percent:                      z.number().min(0),
       lifetime_years:                          z.number().int().min(1),
       co2_emission_factor_operational_g_per_kwh: z.number().min(0),
       reference_source:                        z.string().min(1, "Reference source required"),

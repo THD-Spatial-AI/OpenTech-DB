@@ -721,7 +721,7 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
         domain,
         description: meta?.hint ?? "",
         variantName: `${label} — 2024 Reference`,
-        referenceSource: "",
+        referenceSource: "Contributor submission — please update with a published reference",
         // Keep inputPorts/outputPorts for submission payload
         inputPorts:  rawInputs.map((c, idx) => ({ id: `${techId}-in-${idx}`, carrier: c })),
         outputPorts: rawOutputs.map((c, idx) => ({ id: `${techId}-out-${idx}`, carrier: c })),

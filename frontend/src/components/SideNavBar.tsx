@@ -19,6 +19,8 @@ import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { TechnologyCategory } from "../types/api";
 import { useAuth } from "../context/AuthContext";
+import logoWithTitle from "../assets/icon_title.png";
+import logoIconOnly from "../assets/icon_no_title.png";
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace("/api/v1", "") ??
@@ -149,7 +151,6 @@ export default function SideNavBar({
     onFilterChange({ oeoCoverage: new Set(), instanceScale: new Set() });
 
   const activeFilterCount = filters.oeoCoverage.size + filters.instanceScale.size;
-  const activeCat = CATEGORIES.find((c) => c.value === activeCategory);
 
   // ── Collapsed: icon rail ──────────────────────────────────────────────────
 
@@ -161,28 +162,25 @@ export default function SideNavBar({
                    border-r border-outline-variant/15 flex-col items-center
                    pt-4 pb-6 z-[60] gap-3 hidden lg:flex"
       >
-        {/* Expand */}
-        <button
-          onClick={handleCollapseToggle}
-          aria-label="Expand sidebar"
-          title="Expand sidebar"
-          className="relative w-9 h-9 flex items-center justify-center rounded-full
-                     hover:bg-surface-container transition-colors"
-        >
-          <span className="material-symbols-outlined text-on-surface-variant text-lg">last_page</span>
+        {/* Logo icon + expand */}
+        <div className="relative flex items-center justify-center">
+          <img src={logoIconOnly} alt="OPENTECH|DB" className="w-9 h-9 object-contain" />
           {activeFilterCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary rounded-full text-[9px]
                               text-on-primary font-bold flex items-center justify-center">
               {activeFilterCount}
             </span>
           )}
-        </button>
-
-        {/* Active category icon */}
-        <div className="w-9 h-9 flex items-center justify-center rounded-full bg-primary/10 mt-1"
-             title={activeCat?.label}>
-          <span className="material-symbols-outlined text-primary text-lg">{activeCat?.icon}</span>
         </div>
+        <button
+          onClick={handleCollapseToggle}
+          aria-label="Expand sidebar"
+          title="Expand sidebar"
+          className="w-9 h-9 flex items-center justify-center rounded-full
+                     hover:bg-surface-container transition-colors"
+        >
+          <span className="material-symbols-outlined text-on-surface-variant text-lg">last_page</span>
+        </button>
 
         {/* Icons hints */}
         <div className="flex flex-col items-center gap-4 mt-2">
@@ -241,17 +239,12 @@ export default function SideNavBar({
                  border-r border-outline-variant/15 flex-col z-[60] hidden lg:flex"
     >
       {/* Brand + collapse */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-outline-variant/10 flex-shrink-0">
-        <div>
-          <span className="font-headline font-bold text-on-surface text-base">OpenTech DB</span>
-          <p className="text-[10px] text-on-surface-variant/60 mt-0.5 uppercase tracking-widest font-bold">
-            Navigation &amp; Filters
-          </p>
-        </div>
+      <div className="relative flex items-center justify-center px-4 py-2 border-b border-outline-variant/10 flex-shrink-0">
+        <img src={logoWithTitle} alt="OPENTECH|DB" className="h-16 w-auto object-contain" />
         <button
           onClick={handleCollapseToggle}
           aria-label="Collapse sidebar"
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors"
         >
           <span className="material-symbols-outlined text-on-surface-variant text-lg">first_page</span>
         </button>

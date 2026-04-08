@@ -191,13 +191,28 @@ export async function adminLogin(
   email: string,
   password: string
 ): Promise<AdminLoginResponse> {
-  const response = await fetch(`${BASE_URL}/auth/admin/login`, {
-    method: "POST",
-    headers: { ...HEADERS, "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}/auth/admin/login`, {
+      method: "POST",
+      headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+  } catch {
+    // Backend unreachable (server not running, CORS preflight failed, etc.)
+    const err = new Error("Backend unreachable — is the server running?");
+    (err as Error & { code: string }).code = "NETWORK_ERROR";
+    throw err;
+  }
+  if (response.status === 401) {
+    const err = new Error("Invalid admin credentials.");
+    (err as Error & { code: string }).code = "INVALID_CREDENTIALS";
+    throw err;
+  }
   if (!response.ok) {
-    throw new Error("Invalid admin credentials.");
+    const err = new Error(`Admin login failed (${response.status}).`);
+    (err as Error & { code: string }).code = "SERVER_ERROR";
+    throw err;
   }
   return response.json() as Promise<AdminLoginResponse>;
 }
@@ -212,7 +227,11 @@ export async function fetchAdminSubmissions(
   const response = await fetch(url, {
     headers: { ...HEADERS, Authorization: `Bearer ${token}` },
   });
-  if (!response.ok) throw new Error("Failed to fetch submissions.");
+  if (!response.ok) {
+    let detail = `Server error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
   return response.json() as Promise<SubmissionRecord[]>;
 }
 

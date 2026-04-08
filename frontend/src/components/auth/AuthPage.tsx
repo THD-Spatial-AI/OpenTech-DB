@@ -282,27 +282,17 @@ function LoginForm({ onSuccess, signIn }: { onSuccess: () => void; signIn: (toke
         return { status: "error", issues: result.error.issues };
       }
 
-      // ── Admin path: try the FastAPI admin endpoint first ─────────────────
-      // Error codes from adminLogin():
-      //   INVALID_CREDENTIALS → backend is up, wrong email/password for admin
-      //                         → show the error; do NOT fall through to Supabase
-      //                         (avoids confusing "Invalid login credentials"
-      //                          from Supabase when the backend explicitly said no)
-      //   NETWORK_ERROR / SERVER_ERROR → backend unreachable or broken
-      //                         → silently fall through to Supabase so regular
-      //                           users are not blocked when the API is down
+      // ── Admin path: try the FastAPI hardcoded-admin endpoint first ─────────
+      // If it succeeds, the user is the super-admin — done.
+      // Any failure (wrong credentials, backend down, etc.) → fall through to
+      // Supabase so regular users are never blocked by the admin check.
       try {
         const adminResp = await adminLogin(result.data.email, result.data.password);
         signIn(adminResp.token);
         onSuccess();
         return { status: "success" };
-      } catch (adminErr) {
-        const code = (adminErr as Error & { code?: string }).code;
-        if (code === "INVALID_CREDENTIALS") {
-          // Backend explicitly rejected the credentials — show the error directly
-          return { status: "error", issues: [], apiError: "Invalid admin credentials." };
-        }
-        // NETWORK_ERROR / SERVER_ERROR / unknown — fall through to Supabase
+      } catch {
+        // Not the hardcoded admin — fall through to Supabase
       }
 
       // ── Regular Supabase path ─────────────────────────────────────────────

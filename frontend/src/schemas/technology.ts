@@ -50,6 +50,11 @@ export const InstancePayloadSchema = z.object({
     .min(1, "Lifetime must be at least 1 year")
     .max(150, "Lifetime > 150 years is unrealistic — check your entry"),
 
+  capacity_mw: z
+    .number({ error: "Enter a numeric value for installed capacity" })
+    .min(0, "Capacity must be ≥ 0 MW")
+    .max(100_000, "Capacity value is implausibly large (> 100,000 MW)"),
+
   co2_emission_factor_operational_g_per_kwh: z
     .number({ error: "Enter a numeric value for CO₂ emission factor" })
     .min(0, "CO₂ emission factor must be ≥ 0 g/kWh"),

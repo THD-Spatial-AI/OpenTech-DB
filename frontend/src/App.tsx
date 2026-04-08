@@ -195,7 +195,7 @@ export default function App() {
 
           {/* ── Page content ─────────────────────────────────────────── */}
           {activeView === "contributor" ? (
-            <ContributorWorkspace />
+            <ContributorWorkspace key={user?.id ?? "anon"} />
           ) : activeView === "profile" ? (
             <ProfilePage onViewChange={setActiveView} />          ) : activeView === "admin" ? (
             <AdminPanel />          ) : (

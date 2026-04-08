@@ -71,6 +71,7 @@ function defaultInstance(): InstanceFormValues {
   return {
     _id: `inst-${++instanceCounter}`,
     variant_name: "",
+    capacity_mw: "",
     capex_usd_per_kw: "",
     opex_fixed_usd_per_kw_yr: "",
     opex_var_usd_per_mwh: "",
@@ -349,6 +350,7 @@ export default function AddTechnology({
       description: parent.description.trim(),
       instances: instances.map((inst) => ({
         variant_name: inst.variant_name.trim(),
+        capacity_mw: parseFloat(inst.capacity_mw),
         capex_usd_per_kw: parseFloat(inst.capex_usd_per_kw),
         opex_fixed_usd_per_kw_yr: parseFloat(inst.opex_fixed_usd_per_kw_yr),
         opex_var_usd_per_mwh: parseFloat(inst.opex_var_usd_per_mwh),

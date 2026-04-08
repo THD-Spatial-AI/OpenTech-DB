@@ -22,6 +22,7 @@
  */
 
 import { useActionState, useCallback, useState } from "react";
+import { useAuth } from "../../../context/AuthContext";
 import { z } from "zod/v4";
 import {
   useTechBuilderStore,
@@ -414,6 +415,7 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
   // useActionState wraps the form — we read from the Zustand store snapshot
   // inside the action so the <form> itself has no native inputs.
 
+  const { token } = useAuth();
   const [submitResult, formAction, isPending] = useActionState<SubmitResult, FormData>(
     async (_prev) => {
       const { nodes: currentNodes, selectedNodeId: selId } =
@@ -457,7 +459,7 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
       }
 
       try {
-        const result = await submitTechnology(parsed.data);
+        const result = await submitTechnology(parsed.data, token);
         onSubmitSuccess(result.technology_name);
         return { ok: true, techId: result.id, techName: result.technology_name };
       } catch (e: unknown) {

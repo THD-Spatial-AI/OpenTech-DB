@@ -58,7 +58,7 @@ interface TopNavBarProps {
 }
 
 export default function TopNavBar({ onLoginClick, onViewChange, activeView }: TopNavBarProps) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -115,6 +115,22 @@ export default function TopNavBar({ onLoginClick, onViewChange, activeView }: To
           </a>
 
           {/* ── Auth area ────────────────────────────────────────────────── */}
+          {/* Admin Panel quick-access — shown only to admins, right before the user card */}
+          {isAdmin && (
+            <button
+              onClick={() => onViewChange("admin")}
+              aria-label="Admin Panel"
+              title="Admin Panel"
+              className={[
+                "p-2 rounded-full transition-colors",
+                activeView === "admin"
+                  ? "bg-indigo-100 text-indigo-600"
+                  : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface",
+              ].join(" ")}
+            >
+              <span className="material-symbols-outlined text-[20px]">admin_panel_settings</span>
+            </button>
+          )}
           {user ? (
             // ─ Signed-in user pill + dropdown
             <div className="relative">

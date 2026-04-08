@@ -28,6 +28,7 @@ export interface InstanceFormValues {
   /** Unique stable key for React list rendering — never sent to API. */
   _id: string;
   variant_name: string;
+  capacity_mw: string;
   capex_usd_per_kw: string;
   opex_fixed_usd_per_kw_yr: string;
   opex_var_usd_per_mwh: string;
@@ -235,6 +236,17 @@ export default function InstanceSubForm({
 
           {/* ── Numeric fields ── 2-column grid on wider screens */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+            <NumberInput
+              id={`inst-${index}-capacity`}
+              label="Installed Capacity"
+              value={values.capacity_mw}
+              onChange={field("capacity_mw")}
+              error={err("capacity_mw")}
+              unit="MW"
+              hint="Rated installed power capacity of this variant"
+              min={0}
+            />
+
             <NumberInput
               id={`inst-${index}-capex`}
               label="CAPEX"

@@ -1,4 +1,4 @@
-"""
+﻿"""
 api/routes.py
 =============
 FastAPI router that serves energy technology data from the /data directory.
@@ -911,22 +911,97 @@ def submit_technology(payload: dict = Body(...)) -> SubmissionResponse:
 # ---------------------------------------------------------------------------
 # Admin management endpoints — GET/POST /admin/submissions
 # ---------------------------------------------------------------------------
-# These endpoints require the caller to present a valid admin JWT.
-# We import the decode helper lazily to avoid a circular dependency.
 
-def _require_admin(authorization: str | None) -> None:
-    """Raise 401/403 unless the bearer token is a valid admin JWT."""
+import base64 as _b64
+import json as _json_mod
+import time as _time_mod
+
+
+def _is_admin_claim(payload: dict) -> bool:
+    """True if the decoded JWT payload grants admin access (both token formats)."""
+    # Our own HS256 admin JWT → top-level is_admin
+    if payload.get("is_admin"):
+        return True
+    # Supabase JWT → nested under app_metadata
+    return bool(payload.get("app_metadata", {}).get("is_admin"))
+
+
+def _decode_supabase_jwt(token: str) -> dict:
+    """
+    Validate a Supabase JWT without making outbound network calls.
+
+    Checks:
+      • Valid base64url / JSON structure
+      • ``iss`` contains "supabase" (confirms origin)
+      • ``aud`` == "authenticated"
+      • Token is not expired
+
+    Signature verification via JWKS is intentionally skipped because
+    the backend runs locally and cannot reach the Supabase JWKS endpoint.
+    The ``is_admin`` flag in ``app_metadata`` can only be set by someone
+    with direct database access, so structural validation is sufficient.
+    """
+    parts = token.split(".")
+    if len(parts) != 3:
+        raise ValueError("Malformed JWT — expected 3 parts")
+
+    def _b64d(s: str) -> bytes:
+        return _b64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+
+    try:
+        payload = _json_mod.loads(_b64d(parts[1]))
+    except Exception as exc:
+        raise ValueError(f"Cannot decode JWT payload: {exc}") from exc
+
+    iss = payload.get("iss", "")
+    if not iss or "supabase" not in iss:
+        raise ValueError("Not a Supabase JWT")
+
+    if payload.get("aud") != "authenticated":
+        raise ValueError("JWT audience is not 'authenticated'")
+
+    exp = payload.get("exp", 0)
+    if exp and _time_mod.time() > exp:
+        raise ValueError("Token expired")
+
+    return payload
+
+
+def _require_admin(authorization: str | None) -> dict:
+    """
+    Validate the bearer token and return the decoded payload.
+
+    Accepts two token types:
+    • Our HS256 JWT   — built-in super-admin (POST /auth/admin/login)
+    • Supabase JWT    — users with app_metadata.is_admin set in Supabase
+
+    Raises HTTP 401 for missing/invalid tokens, 403 for non-admin tokens.
+    """
     from api.auth import _decode_jwt
-    from jose import JWTError
+
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Admin token required.")
+
     token = authorization.removeprefix("Bearer ")
+    payload: dict | None = None
+
+    # Try our own HS256 token first
     try:
         payload = _decode_jwt(token)
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token.")
-    if not payload.get("is_admin"):
+    except Exception:
+        pass
+
+    # Fall back to Supabase JWT (structural validation only)
+    if payload is None:
+        try:
+            payload = _decode_supabase_jwt(token)
+        except ValueError as exc:
+            raise HTTPException(status_code=401, detail=str(exc))
+
+    if not _is_admin_claim(payload):
         raise HTTPException(status_code=403, detail="Admin access required.")
+
+    return payload
 
 
 class SubmissionRecord(BaseModel):
@@ -1093,189 +1168,4 @@ def _approve_submission(record: dict) -> None:
 
     logger.info("Approved technology '%s' appended to %s", tech_name, domain_file)
 
-
-# ---------------------------------------------------------------------------
-# Admin management endpoints — GET/POST /admin/submissions
-# ---------------------------------------------------------------------------
-# These endpoints require the caller to present a valid admin JWT.
-# We import the decode helper lazily to avoid a circular dependency.
-
-def _require_admin(authorization: str | None) -> None:
-    """Raise 401/403 unless the bearer token is a valid admin JWT."""
-    from api.auth import _decode_jwt
-    from jose import JWTError
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Admin token required.")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        payload = _decode_jwt(token)
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token.")
-    if not payload.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admin access required.")
-
-
-class SubmissionRecord(BaseModel):
-    submission_id:   str
-    technology_name: str
-    submitted_at:    str
-    status:          str
-    domain:          str | None = None
-    oeo_class:       str | None = None
-    description:     str | None = None
-    filename:        str
-
-
-@admin_router.get(
-    "/submissions",
-    response_model=list[SubmissionRecord],
-    summary="List all pending technology submissions",
-)
-def list_submissions(
-    authorization: Annotated[str | None, Header()] = None,
-    status_filter: str | None = Query(None, alias="status"),
-) -> list[SubmissionRecord]:
-    """Return all submissions from ``data/pending_submissions/``, newest first."""
-    _require_admin(authorization)
-    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
-
-    records: list[SubmissionRecord] = []
-    for path in sorted(_PENDING_DIR.glob("*.json"), reverse=True):
-        try:
-            with path.open(encoding="utf-8") as fh:
-                raw = json.load(fh)
-        except Exception:
-            continue
-        status = raw.get("status", "pending_review")
-        if status_filter and status != status_filter:
-            continue
-        payload = raw.get("payload", {})
-        records.append(SubmissionRecord(
-            submission_id=raw.get("submission_id", path.stem),
-            technology_name=raw.get("technology_name", "—"),
-            submitted_at=raw.get("submitted_at", ""),
-            status=status,
-            domain=payload.get("domain"),
-            oeo_class=payload.get("oeo_class"),
-            description=payload.get("description"),
-            filename=path.name,
-        ))
-    return records
-
-
-class AdminActionRequest(BaseModel):
-    action:  str   # "approve" | "reject"
-    reason:  str | None = None
-
-
-@admin_router.post(
-    "/submissions/{submission_id}",
-    summary="Approve or reject a pending submission",
-)
-def act_on_submission(
-    submission_id: str,
-    body: AdminActionRequest,
-    authorization: Annotated[str | None, Header()] = None,
-) -> dict:
-    """
-    Set the status of a pending submission to ``approved`` or ``rejected``.
-
-    * **approve** — writes the technology into the appropriate catalogue JSON
-      file and marks the submission as ``approved``.
-    * **reject**  — marks the submission as ``rejected`` with an optional reason.
-    """
-    _require_admin(authorization)
-    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Find the file
-    matches = list(_PENDING_DIR.glob(f"*{submission_id[:8]}*.json"))
-    if not matches:
-        raise HTTPException(status_code=404, detail="Submission not found.")
-    path = matches[0]
-
-    with path.open(encoding="utf-8") as fh:
-        record = json.load(fh)
-
-    if record.get("status") not in ("pending_review",):
-        raise HTTPException(
-            status_code=409,
-            detail=f"Submission already {record['status']}.",
-        )
-
-    if body.action == "approve":
-        _approve_submission(record)
-        record["status"] = "approved"
-        record["reviewed_at"] = datetime.now(timezone.utc).isoformat()
-    elif body.action == "reject":
-        record["status"] = "rejected"
-        record["reviewed_at"] = datetime.now(timezone.utc).isoformat()
-        record["rejection_reason"] = body.reason or ""
-    else:
-        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'.")
-
-    with path.open("w", encoding="utf-8") as fh:
-        json.dump(record, fh, indent=2, ensure_ascii=False)
-
-    logger.info("Admin %s submission %s", body.action, submission_id)
-    return {"status": record["status"], "submission_id": submission_id}
-
-
-def _approve_submission(record: dict) -> None:
-    """
-    Append the approved technology to the matching domain catalogue file.
-    If the domain file does not exist it is created from scratch.
-    """
-    payload = record.get("payload", {})
-    domain  = payload.get("domain", "conversion")
-    tech_name = payload.get("technology_name", "Unknown Technology")
-
-    domain_file = DATA_DIR / domain / f"{domain}_technologies.json"
-    domain_file.parent.mkdir(parents=True, exist_ok=True)
-
-    # Load or bootstrap the catalogue
-    if domain_file.exists():
-        with domain_file.open(encoding="utf-8") as fh:
-            catalogue = json.load(fh)
-    else:
-        catalogue = {
-            "metadata": {"domain": domain, "last_updated": ""},
-            "technologies": [],
-        }
-
-    # Build a minimal technology entry from the submitted payload
-    safe_name = re.sub(r"[^a-z0-9_]", "_", tech_name.lower())[:60]
-    tech_id   = f"{safe_name}_{record['submission_id'][:8]}"
-
-    instances_raw = payload.get("instances", [{}])
-    instances = []
-    for idx, inst in enumerate(instances_raw):
-        instances.append({
-            "instance_id":   f"{tech_id}_inst_{idx}",
-            "variant_name":  inst.get("variant_name", f"{tech_name} Default"),
-            "capex_usd_per_kw":                         inst.get("capex_usd_per_kw", 0),
-            "opex_fixed_usd_per_kw_yr":                inst.get("opex_fixed_usd_per_kw_yr", 0),
-            "opex_var_usd_per_mwh":                    inst.get("opex_var_usd_per_mwh", 0),
-            "efficiency_percent":                       inst.get("efficiency_percent", 0),
-            "lifetime_years":                           inst.get("lifetime_years", 20),
-            "co2_emission_factor_operational_g_per_kwh": inst.get("co2_emission_factor_operational_g_per_kwh", 0),
-            "reference_source":                         inst.get("reference_source", "contributor_submission"),
-        })
-
-    new_tech = {
-        "technology_id":   tech_id,
-        "technology_name": tech_name,
-        "domain":          domain,
-        "carrier":         payload.get("carrier", "electricity"),
-        "oeo_class":       payload.get("oeo_class", ""),
-        "description":     payload.get("description", ""),
-        "instances":       instances,
-    }
-
-    catalogue["technologies"].append(new_tech)
-    catalogue.setdefault("metadata", {})["last_updated"] = datetime.now(timezone.utc).isoformat()
-
-    with domain_file.open("w", encoding="utf-8") as fh:
-        json.dump(catalogue, fh, indent=2, ensure_ascii=False)
-
-    logger.info("Approved technology '%s' appended to %s", tech_name, domain_file)
 

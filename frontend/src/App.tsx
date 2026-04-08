@@ -34,6 +34,7 @@
 import { startTransition, Suspense, use, useDeferredValue, useState } from "react";
 import type { TechnologyCategory, TechnologySummary } from "./types/api";
 import { fetchCategoryTechnologies, invalidateCategory } from "./services/api";
+import logoWithTitle from "./assets/icon_title.png";
 
 import SideNavBar, { type FilterState, type ActiveView } from "./components/SideNavBar";
 import TopNavBar from "./components/TopNavBar";
@@ -251,9 +252,10 @@ export default function App() {
           <footer className="bg-surface-container-low border-t border-outline-variant/15 px-8 py-12">
             <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between gap-8">
               <div className="max-w-xs">
-                <span className="font-headline font-bold text-on-surface text-lg">
-                  opentech-db
-                </span>
+                <div className="flex items-center gap-3 mb-1">
+                  <img src={logoWithTitle} alt="OPENTECH|DB" className="h-14 w-auto object-contain" />
+                  <span className="font-headline font-bold text-on-surface text-lg">OPENTECH | DB</span>
+                </div>
                 <p className="text-sm text-on-surface-variant mt-2 leading-relaxed">
                   Open-source energy technology database for researchers, policymakers, and
                   energy system modellers worldwide.

@@ -9,6 +9,7 @@ via the Supabase JS client.  This module only provides:
   GET  /auth/orcid              — redirect browser to ORCID authorization page
   GET  /auth/orcid/callback     — ORCID redirects here; exchange code → JWT → SPA
   GET  /auth/me                 — validate the custom ORCID JWT; return AuthUser
+  POST /auth/admin/login        — credential login for the built-in super-admin
 
 ORCID OAuth flow
 ----------------
@@ -27,6 +28,35 @@ ORCID OAuth flow
 4.  On reload, AuthContext reads the JWT from sessionStorage and re-validates
     it via GET /auth/me.
 
+Admin authentication — TWO PATHS
+----------------------------------
+PATH 1 — Built-in super-admin (env-var credentials, this file)
+  • Credentials: ADMIN_EMAIL + ADMIN_PASSWORD_HASH (bcrypt, see below)
+  • The login form (AuthPage.tsx) tries POST /auth/admin/login first.
+    On success it receives a FastAPI JWT with is_admin=true.
+  • Use for the initial operator account or headless/CI scenarios.
+
+PATH 2 — Supabase-managed admins (RECOMMENDED for adding more admins)
+  • Any Supabase user (email / GitHub) can be promoted to admin without
+    touching env vars or redeploying.
+  • How to promote a user (Supabase Dashboard → SQL Editor):
+
+      -- 1. Find the user's UUID
+      SELECT id, email FROM auth.users WHERE email = 'newadmin@example.org';
+
+      -- 2. Set the admin flag in app_metadata
+      UPDATE auth.users
+      SET raw_app_meta_data = raw_app_meta_data || '{"is_admin": true}'::jsonb
+      WHERE email = 'newadmin@example.org';
+
+  • Alternatively: Dashboard → Authentication → Users → click the user →
+    "Edit" → App Metadata → paste { "is_admin": true } → Save.
+
+  • To REVOKE admin: set raw_app_meta_data back to '{"is_admin": false}'.
+
+  • The frontend (AuthContext.tsx → mapSupabaseUser) reads
+    session.user.app_metadata.is_admin automatically on every sign-in.
+
 Required environment variables (set in .env or Docker)
 -------------------------------------------------------
 ORCID_CLIENT_ID      — From https://orcid.org/developer-tools (public API app)
@@ -36,6 +66,11 @@ ORCID_REDIRECT_URI   — Must exactly match what you registered with ORCID, e.g.
 FRONTEND_URL         — SPA origin, e.g. http://localhost:5173
 JWT_SECRET_KEY       — Random secret for signing JWTs (generate once with:
                         python -c "import secrets; print(secrets.token_urlsafe(32))")
+
+ADMIN_EMAIL          — Super-admin email (defaults to the built-in value)
+ADMIN_PASSWORD_HASH  — bcrypt hash of the super-admin password.
+                       To generate a hash for a new password:
+                         python -c "import bcrypt; print(bcrypt.hashpw(b'<pw>', bcrypt.gensalt(12)).decode())"
 """
 
 from __future__ import annotations
@@ -44,6 +79,7 @@ import os
 import time
 import secrets
 import hashlib
+import bcrypt
 from urllib.parse import urlencode
 
 import httpx
@@ -78,12 +114,19 @@ else:
     ORCID_TOKEN_URL = "https://sandbox.orcid.org/oauth/token"
 
 # ── Admin credentials ─────────────────────────────────────────────────────────
-# Stored as a SHA-256 hash so the plaintext never lives in memory at runtime.
-# To change the password: replace _ADMIN_PASSWORD_HASH with
-#   hashlib.sha256("<new_password>".encode()).hexdigest()
+# Loaded from environment variables at startup so the plaintext password never
+# lives in source code.  A built-in default is provided for local development;
+# override both vars in production / Docker.
+#
+# To regenerate the hash for a new password:
+#   python -c "import bcrypt; print(bcrypt.hashpw(b'<pw>', bcrypt.gensalt(12)).decode())"
 
-_ADMIN_EMAIL         = "ricardo.miranda-castillo@th-deg.de"
-_ADMIN_PASSWORD_HASH = hashlib.sha256("5893Rmc11@1.".encode()).hexdigest()
+_ADMIN_EMAIL         = os.getenv("ADMIN_EMAIL",  "ricardo.miranda-castillo@th-deg.de").strip().lower()
+# Default is the bcrypt hash of "5893Rmc11@1." (rounds=12, safe to store — it's a one-way hash)
+_ADMIN_PASSWORD_HASH = os.getenv(
+    "ADMIN_PASSWORD_HASH",
+    "$2b$12$.LX15d8vQn.SRpGlUU3VyecDTIORq8Ko8CjMACxmnKxJbj79iQk3y",
+).strip()
 
 # ── Response model ─────────────────────────────────────────────────────────────
 
@@ -224,18 +267,29 @@ class AdminLoginResponse(BaseModel):
 @router.post("/admin/login", response_model=AdminLoginResponse, summary="Admin credential login")
 def admin_login(body: AdminLoginRequest):
     """
-    Authenticate with the hardcoded admin credentials.
+    Authenticate with the admin credentials stored in environment variables.
     Returns a signed JWT with ``is_admin: true`` if correct.
-    Intentionally slow hash comparison to resist brute-force.
+    Uses bcrypt for timing-safe, salted password comparison.
     """
+    if not _ADMIN_EMAIL or not _ADMIN_PASSWORD_HASH:
+        raise HTTPException(status_code=401, detail="Invalid admin credentials.")
+
     email_match = secrets.compare_digest(
         body.email.strip().lower(),
-        _ADMIN_EMAIL.lower(),
+        _ADMIN_EMAIL,
     )
-    pw_hash  = hashlib.sha256(body.password.encode()).hexdigest()
-    pw_match = secrets.compare_digest(pw_hash, _ADMIN_PASSWORD_HASH)
 
-    if not (email_match and pw_match):
+    # bcrypt.checkpw is inherently timing-safe and handles its own salt.
+    # We still gate on email_match first to avoid leaking timing on unknown emails.
+    try:
+        pw_match = email_match and bcrypt.checkpw(
+            body.password.encode("utf-8"),
+            _ADMIN_PASSWORD_HASH.encode("utf-8"),
+        )
+    except Exception:
+        pw_match = False
+
+    if not pw_match:
         raise HTTPException(status_code=401, detail="Invalid admin credentials.")
 
     token = _create_jwt({

@@ -68,7 +68,7 @@ export default function TopNavBar({ onLoginClick, onViewChange, activeView }: To
         {/* Brand + Nav links */}
         <div className="flex items-center gap-6 min-w-0 flex-1">
           <div className="flex flex-col leading-none flex-shrink-0">
-            <span className="text-xl font-bold tracking-tighter text-on-surface">OpenTech DB</span>
+            <span className="text-xl font-bold tracking-tighter text-on-surface">OPENTECH | DB</span>
             <span className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 mt-0.5">
               OEO-aligned Energy Parameters
             </span>

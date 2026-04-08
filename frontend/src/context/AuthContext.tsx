@@ -45,7 +45,7 @@ import { fetchCurrentUser } from "../services/api";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** sessionStorage key for the ORCID custom JWT (Supabase sessions self-manage) */
+/** sessionStorage key for custom backend JWTs (ORCID, admin) */
 const ORCID_TOKEN_KEY = "opentech_orcid_token";
 
 // ── Supabase user mapper ───────────────────────────────────────────────────────
@@ -66,6 +66,10 @@ function mapSupabaseUser(sbUser: SupabaseUser): AuthUser {
     auth_provider: (appMeta.provider as string) ?? "email",
     // Stored in user_metadata by backend triggers; defaults false
     is_contributor: (meta.is_contributor as boolean) ?? false,
+    // Set via Supabase dashboard → Authentication → Users → App Metadata
+    // e.g.  { "is_admin": true }
+    // OR via SQL: UPDATE auth.users SET raw_app_meta_data = raw_app_meta_data || '{"is_admin":true}' WHERE email = '...'
+    is_admin: (appMeta.is_admin as boolean) ?? false,
   };
 }
 
@@ -76,10 +80,12 @@ interface AuthContextValue {
   /** Access token for Authorization: Bearer <token> headers to FastAPI */
   token: string | null;
   isLoading: boolean;
+  /** True when the authenticated user has admin privileges */
+  isAdmin: boolean;
   /**
-   * ORCID path only: store the custom backend JWT and fetch the user profile.
-   * Supabase paths (email/password, GitHub) update the context automatically
-   * via onAuthStateChange — no manual signIn() call needed.
+   * Custom backend JWT path (ORCID, admin): store the JWT and fetch the user
+   * profile. Supabase paths (email/password, GitHub) update the context
+   * automatically via onAuthStateChange — no manual signIn() call needed.
    */
   signIn: (token: string) => void;
   signOut: () => void;
@@ -89,6 +95,7 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   token: null,
   isLoading: true,
+  isAdmin: false,
   signIn: () => {},
   signOut: () => {},
 });
@@ -102,7 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // ── 1. Bootstrap: check Supabase session first, then ORCID fallback ────────
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // We call refreshSession() instead of getSession() so that any changes to
+    // app_metadata (e.g. granting is_admin via Supabase SQL/dashboard) are
+    // reflected immediately on the next page load without requiring a sign-out.
+    supabase.auth.refreshSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(mapSupabaseUser(session.user));
         setToken(session.access_token);
@@ -170,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // React 19: render context directly without .Provider
   return (
-    <AuthContext value={{ user, token, isLoading, signIn, signOut }}>
+    <AuthContext value={{ user, token, isLoading, isAdmin: user?.is_admin ?? false, signIn, signOut }}>
       {children}
     </AuthContext>
   );

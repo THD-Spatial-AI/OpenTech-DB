@@ -1,39 +1,20 @@
-/**
+﻿/**
  * components/admin/AdminPanel.tsx
  * ────────────────────────────────
  * Admin review dashboard for pending technology submissions.
  *
- * Layout
- * ──────
- * • If not logged in as admin: shows the admin login form.
- * • If logged in as admin:
- *   - Stat bar (total / pending / approved / rejected counts)
- *   - Tab filter (All | Pending | Approved | Rejected)
- *   - Submission cards with Approve / Reject actions + reject reason
- *
- * Auth
- * ────
- * Admin token is stored in sessionStorage under "opentech_admin_token".
- * On approve/reject the token is sent as Authorization: Bearer <token>.
+ * Auth is handled by AuthContext — the user must be logged in with
+ * is_admin: true (set when signing in with admin credentials via the
+ * standard Sign In form).  No separate login form in this component.
  */
 
-import { useState, useCallback, useTransition } from "react";
-import { z } from "zod";
+import { useState, useCallback, useTransition, useEffect } from "react";
 import {
-  adminLogin,
   fetchAdminSubmissions,
   actOnSubmission,
 } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 import type { SubmissionRecord } from "../../types/api";
-
-const ADMIN_TOKEN_KEY = "opentech_admin_token";
-
-// ── Zod schema ────────────────────────────────────────────────────────────────
-
-const LoginSchema = z.object({
-  email:    z.email("Enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
-});
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -226,116 +207,6 @@ function SubmissionCard({
   );
 }
 
-// ── Login form ────────────────────────────────────────────────────────────────
-
-function AdminLoginForm({ onLogin }: { onLogin: (token: string) => void }) {
-  const [email,    setEmail]    = useState("");
-  const [password, setPassword] = useState("");
-  const [error,    setError]    = useState<string | null>(null);
-  const [pending,  startLogin]  = useTransition();
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const result = LoginSchema.safeParse({ email, password });
-    if (!result.success) {
-      setError(result.error.issues[0].message);
-      return;
-    }
-    startLogin(async () => {
-      try {
-        const resp = await adminLogin(email, password);
-        sessionStorage.setItem(ADMIN_TOKEN_KEY, resp.token);
-        onLogin(resp.token);
-      } catch {
-        setError("Invalid admin credentials. Please try again.");
-      }
-    });
-  };
-
-  return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl p-8 w-full max-w-md">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
-            <span className="material-symbols-outlined text-white text-[20px]">
-              admin_panel_settings
-            </span>
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">Admin Login</h2>
-            <p className="text-xs text-slate-400">OpenTech DB administration panel</p>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Email */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(null); }}
-              className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5
-                         focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              placeholder="admin@example.com"
-              required
-            />
-          </div>
-
-          {/* Password */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(null); }}
-              className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5
-                         focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
-              <span className="material-symbols-outlined text-[14px] text-red-500">error</span>
-              <p className="text-xs text-red-700">{error}</p>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={pending}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600
-                       text-white rounded-xl text-sm font-bold hover:bg-indigo-700
-                       active:scale-[0.98] transition-all disabled:opacity-60"
-          >
-            {pending ? (
-              <>
-                <span className="material-symbols-outlined text-[16px] animate-spin">autorenew</span>
-                Signing in…
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-[16px]">login</span>
-                Sign In
-              </>
-            )}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
 function StatCard({
@@ -364,9 +235,7 @@ function StatCard({
 type StatusTab = "all" | "pending_review" | "approved" | "rejected";
 
 export default function AdminPanel() {
-  const [token,       setToken]       = useState<string | null>(
-    () => sessionStorage.getItem(ADMIN_TOKEN_KEY)
-  );
+  const { user, token, isAdmin } = useAuth();
   const [submissions, setSubmissions] = useState<SubmissionRecord[] | null>(null);
   const [loadError,   setLoadError]   = useState<string | null>(null);
   const [activeTab,   setActiveTab]   = useState<StatusTab>("all");
@@ -380,24 +249,19 @@ export default function AdminPanel() {
         setSubmissions(data);
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : "Failed to load submissions.");
-        // Token might be expired
-        sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-        setToken(null);
       }
     });
   }, []);
 
-  const handleLogin = useCallback((tok: string) => {
-    setToken(tok);
-    load(tok);
-  }, [load]);
-
-  // Auto-load when we already have a stored token
-  const [autoLoaded, setAutoLoaded] = useState(false);
-  if (token && !autoLoaded && submissions === null && !loading) {
-    setAutoLoaded(true);
-    load(token);
-  }
+  // Auto-load once when admin is confirmed and token is available.
+  // Must be inside useEffect — calling startTransition during render is illegal.
+  useEffect(() => {
+    if (isAdmin && token) {
+      load(token);
+    }
+    // Run only once on mount (or when isAdmin/token first become truthy)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, token]);
 
   const handleAction = useCallback(
     (id: string, action: "approve" | "reject") => {
@@ -414,18 +278,21 @@ export default function AdminPanel() {
     []
   );
 
-  const handleSignOut = useCallback(() => {
-    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-    setToken(null);
-    setSubmissions(null);
-    setAutoLoaded(false);
-  }, []);
-
-  // ── Not logged in ─────────────────────────────────────────────────────────
-  if (!token) {
+  // ── Not an admin ──────────────────────────────────────────────────────────
+  if (!isAdmin) {
     return (
-      <div className="max-w-[1200px] mx-auto px-8 py-12 w-full">
-        <AdminLoginForm onLogin={handleLogin} />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-8">
+        <span className="material-symbols-outlined text-6xl text-slate-200">lock</span>
+        <div>
+          <h2 className="text-xl font-bold text-slate-700">
+            {user ? "Admin access required" : "Sign in to access this page"}
+          </h2>
+          <p className="text-slate-400 text-sm mt-2 max-w-sm">
+            {user
+              ? "Your account does not have admin privileges. Sign out and use the admin credentials to continue."
+              : "Use the Sign In button and enter your admin credentials to access this panel."}
+          </p>
+        </div>
       </div>
     );
   }
@@ -463,29 +330,18 @@ export default function AdminPanel() {
             Manage technology submissions — approve or reject before they enter the catalogue.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => token && load(token)}
-            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
-                       border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
-          >
-            <span className={`material-symbols-outlined text-[16px] ${loading ? "animate-spin" : ""}`}>
-              refresh
-            </span>
-            Refresh
-          </button>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-600
-                       border border-slate-200 px-3 py-2 rounded-xl hover:bg-red-50 transition-colors"
-          >
-            <span className="material-symbols-outlined text-[16px]">logout</span>
-            Sign out
-          </button>
-        </div>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => token && load(token)}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
+                     border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
+        >
+          <span className={`material-symbols-outlined text-[16px] ${loading ? "animate-spin" : ""}`}>
+            refresh
+          </span>
+          Refresh
+        </button>
       </div>
 
       {/* Error loading */}
@@ -563,7 +419,7 @@ export default function AdminPanel() {
             <SubmissionCard
               key={record.submission_id}
               record={record}
-              token={token}
+              token={token!}
               onAction={handleAction}
             />
           ))}

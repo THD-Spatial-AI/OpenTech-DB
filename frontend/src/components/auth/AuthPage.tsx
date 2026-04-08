@@ -33,8 +33,9 @@
 import { useState, useActionState, useId } from "react";
 import { useFormStatus } from "react-dom";
 import { z } from "zod";
-import { getOrcidOAuthUrl } from "../../services/api";
+import { getOrcidOAuthUrl, adminLogin } from "../../services/api";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../context/AuthContext";
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
@@ -265,7 +266,7 @@ function OrDivider() {
 
 // ── Login form ────────────────────────────────────────────────────────────────
 
-function LoginForm({ onSuccess }: { onSuccess: () => void }) {
+function LoginForm({ onSuccess, signIn }: { onSuccess: () => void; signIn: (token: string) => void }) {
   const emailId = useId();
   const passwordId = useId();
 
@@ -281,6 +282,30 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         return { status: "error", issues: result.error.issues };
       }
 
+      // ── Admin path: try the FastAPI admin endpoint first ─────────────────
+      // Error codes from adminLogin():
+      //   INVALID_CREDENTIALS → backend is up, wrong email/password for admin
+      //                         → show the error; do NOT fall through to Supabase
+      //                         (avoids confusing "Invalid login credentials"
+      //                          from Supabase when the backend explicitly said no)
+      //   NETWORK_ERROR / SERVER_ERROR → backend unreachable or broken
+      //                         → silently fall through to Supabase so regular
+      //                           users are not blocked when the API is down
+      try {
+        const adminResp = await adminLogin(result.data.email, result.data.password);
+        signIn(adminResp.token);
+        onSuccess();
+        return { status: "success" };
+      } catch (adminErr) {
+        const code = (adminErr as Error & { code?: string }).code;
+        if (code === "INVALID_CREDENTIALS") {
+          // Backend explicitly rejected the credentials — show the error directly
+          return { status: "error", issues: [], apiError: "Invalid admin credentials." };
+        }
+        // NETWORK_ERROR / SERVER_ERROR / unknown — fall through to Supabase
+      }
+
+      // ── Regular Supabase path ─────────────────────────────────────────────
       const { error } = await supabase.auth.signInWithPassword(result.data);
       if (error) {
         return { status: "error", issues: [], apiError: error.message };
@@ -575,6 +600,7 @@ type Tab = "login" | "register";
 
 export default function AuthPage({ onSuccess, initialError }: { onSuccess: () => void; initialError?: string }) {
   const [tab, setTab] = useState<Tab>("login");
+  const { signIn } = useAuth();
 
   return (
     <>
@@ -657,7 +683,7 @@ export default function AuthPage({ onSuccess, initialError }: { onSuccess: () =>
 
             {/* Form panel — keyed so state resets on tab switch */}
             {tab === "login" ? (
-              <LoginForm key="login" onSuccess={onSuccess} />
+              <LoginForm key="login" onSuccess={onSuccess} signIn={signIn} />
             ) : (
               <RegisterForm key="register" onSuccess={onSuccess} />
             )}

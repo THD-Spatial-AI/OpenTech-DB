@@ -8,15 +8,15 @@
  * CSV expected format
  * ───────────────────
  *   timestamp,value
- *   2019-01-01T00:00:00Z,0.142
- *   2019-01-01T01:00:00Z,0.198
+ *   2019-01-01 00:00:00,0.142
+ *   2019-01-01 01:00:00,0.198
  *
  * JSON accepted shapes
  * ────────────────────
  *   [{timestamp,value}, ...]
- *   {points:[{timestamp,value},...]}
+ *   {points:[{timestamp,value},...]}  
  *   [[timestamp, value], ...]
- *   {"2019-01-01T00:00:00Z": 0.142, ...}
+ *   {"2019-01-01 00:00:00": 0.142, ...}
  *
  * React 19 patterns
  * ─────────────────
@@ -29,7 +29,6 @@ import { useFormStatus } from "react-dom";
 import { z } from "zod";
 import {
   uploadTimeSeriesProfile,
-  invalidateTimeSeriesCatalogue,
 } from "../../services/timeseries";
 import { useAuth } from "../../context/AuthContext";
 import type { ProfileType, ProfileResolution } from "../../types/timeseries";
@@ -281,14 +280,14 @@ function DropZone({
 // Format samples
 // ─────────────────────────────────────────────────────────────────────
 const CSV_SAMPLE = `timestamp,value
-2019-01-01T00:00:00Z,0.142
-2019-01-01T01:00:00Z,0.198
-2019-01-01T02:00:00Z,0.231
+2019-01-01 00:00:00,0.142
+2019-01-01 01:00:00,0.198
+2019-01-01 02:00:00,0.231
 …`;
 
 const JSON_SAMPLE = `[
-  { "timestamp": "2019-01-01T00:00:00Z", "value": 0.142 },
-  { "timestamp": "2019-01-01T01:00:00Z", "value": 0.198 },
+  { "timestamp": "2019-01-01 00:00:00", "value": 0.142 },
+  { "timestamp": "2019-01-01 01:00:00", "value": 0.198 },
   …
 ]
 // also accepted: {points:[...]}, [[ts,v],...], {"ts":v,...}`;
@@ -355,9 +354,8 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
 
       try {
         const result = await uploadTimeSeriesProfile(fd, token);
-        invalidateTimeSeriesCatalogue();
-        onUploadSuccess?.(result.profile_id, result.name);
-        return { status: "success", profileId: result.profile_id, name: result.name, n: result.n_timesteps };
+        onUploadSuccess?.(result.submission_id, result.name);
+        return { status: "success", profileId: result.submission_id, name: result.name, n: result.n_timesteps };
       } catch (err) {
         return { status: "error", message: err instanceof Error ? err.message : "Upload failed." };
       }
@@ -372,16 +370,17 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center overflow-y-auto">
         <div className="flex flex-col items-center gap-6 max-w-md text-center py-16 px-8">
-          <div className="w-20 h-20 rounded-3xl bg-green-100 flex items-center justify-center">
-            <span className="material-symbols-outlined text-4xl text-green-600">check_circle</span>
+          <div className="w-20 h-20 rounded-3xl bg-amber-100 flex items-center justify-center">
+            <span className="material-symbols-outlined text-4xl text-amber-600">pending</span>
           </div>
           <div>
-            <h3 className="font-headline text-2xl font-bold text-on-surface">Profile Uploaded</h3>
+            <h3 className="font-headline text-2xl font-bold text-on-surface">Submitted for Review</h3>
             <p className="text-sm text-on-surface-variant mt-2 leading-relaxed">
               <strong>{formState.name}</strong> with {formState.n.toLocaleString()} time steps
-              is now available in the Time Series catalogue.
+              has been submitted for admin review. It will appear in the Time Series catalogue
+              once an administrator approves it.
             </p>
-            <p className="text-[11px] font-mono text-on-surface-variant/30 mt-2">ID: {formState.profileId}</p>
+            <p className="text-[11px] font-mono text-on-surface-variant/30 mt-2">Submission ID: {formState.profileId}</p>
           </div>
           <div className="flex gap-3">
             <button
@@ -426,20 +425,18 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-5">
+          <div className="space-y-7">
 
             {/* Name */}
-            <div className="md:col-span-2">
-              <LF id="up-name" label="Profile Name" required error={errors.name}
-                hint="Descriptive name, e.g. DE Onshore Wind CF 2023">
-                <input id="up-name" type="text" value={fields.name} onChange={set("name")}
-                  placeholder="DE Offshore Wind Capacity Factor 2023"
-                  className={`${INPUT} ${errors.name ? INPUT_ERR : ""}`} />
-              </LF>
-            </div>
+            <LF id="up-name" label="Profile Name" required error={errors.name}
+              hint="Descriptive name, e.g. DE Onshore Wind CF 2023">
+              <input id="up-name" type="text" value={fields.name} onChange={set("name")}
+                placeholder="DE Offshore Wind Capacity Factor 2023"
+                className={`${INPUT} ${errors.name ? INPUT_ERR : ""}`} />
+            </LF>
 
             {/* Profile type — card picker */}
-            <div className="md:col-span-2">
+            <div>
               <p className="block text-xs font-bold text-on-surface-variant uppercase tracking-wide mb-2">
                 Profile Type <span className="text-primary">*</span>
               </p>
@@ -470,7 +467,7 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
             </div>
 
             {/* Resolution — button group */}
-            <div className="md:col-span-2">
+            <div>
               <p className="block text-xs font-bold text-on-surface-variant uppercase tracking-wide mb-2">
                 Temporal Resolution <span className="text-primary">*</span>
               </p>
@@ -500,8 +497,11 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
               )}
             </div>
 
+            {/* ── divider ──────────────────────────────────────── */}
+            <div className="border-t border-outline-variant/15" />
+
             {/* ── 2-col grid for smaller fields ────────────────── */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-5">
 
               {/* Carrier — full width */}
               <div className="col-span-2">
@@ -555,7 +555,7 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
             {/* Description — full width */}
             <LF id="up-desc" label="Description" error={errors.description}
               hint="Optional methodology notes or caveats (max 500 chars)">
-              <textarea id="up-desc" rows={3} maxLength={500}
+              <textarea id="up-desc" rows={4} maxLength={500}
                 value={fields.description} onChange={set("description")}
                 placeholder="Hourly capacity factor derived from ERA5 for Germany, weather year 2023."
                 className={`${INPUT} resize-none ${errors.description ? INPUT_ERR : ""}`} />
@@ -574,7 +574,7 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
       </div>
 
       {/* ─── RIGHT PANEL: file upload ──────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
 
         {/* Right header — format toggle lives here */}
         <div className="flex-shrink-0 flex items-center gap-2.5 px-6 py-3.5
@@ -600,7 +600,7 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
         </div>
 
         {/* Right body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5 space-y-5">
 
           {/* Format hint */}
           <div className="bg-surface-container rounded-xl border border-outline-variant/15 px-4 py-3">

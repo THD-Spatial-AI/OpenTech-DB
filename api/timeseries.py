@@ -7,11 +7,19 @@ Endpoints
 ---------
 GET  /timeseries                         → list catalogue metadata (paginated)
 GET  /timeseries/{profile_id}/data       → full data points for one profile
-POST /timeseries/upload                  → contributor upload (multipart CSV)
+POST /timeseries/upload                  → contributor upload (multipart CSV/JSON) → pending review
+DELETE /timeseries/{profile_id}          → delete an approved profile
 
-Data is stored as JSON in  data/timeseries/:
-  timeseries_catalogue.json              – profile metadata (no raw values)
-  {profile_id}.json                      – per-profile data file
+Admin endpoints (require admin JWT)
+------------------------------------
+GET  /admin/timeseries/submissions         → list pending/approved/rejected profile submissions
+POST /admin/timeseries/submissions/{id}    → approve or reject a submission
+
+Data layout in  data/timeseries/:
+  timeseries_catalogue.json              – approved profile metadata (no raw values)
+  {profile_id}.json                      – approved per-profile data file
+  pending/                               – pending submissions (not yet in catalogue)
+    {submission_id}.json                 – full submission record incl. data points
 
 Profile types : capacity_factor | load | generation | weather | price
 Resolutions   : 15min | 30min | hourly | daily
@@ -40,8 +48,9 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-_DATA_DIR      = Path(__file__).resolve().parent.parent / "data" / "timeseries"
+_DATA_DIR       = Path(__file__).resolve().parent.parent / "data" / "timeseries"
 _CATALOGUE_FILE = _DATA_DIR / "timeseries_catalogue.json"
+_PENDING_DIR    = _DATA_DIR / "pending"
 
 _ALLOWED_TYPES       = {"capacity_factor", "load", "generation", "weather", "price"}
 _ALLOWED_RESOLUTIONS = {"15min", "30min", "hourly", "daily"}
@@ -84,10 +93,40 @@ class TimeSeriesDataResponse(BaseModel):
 
 
 class TimeSeriesUploadResponse(BaseModel):
-    profile_id:  str
-    name:        str
-    n_timesteps: int
-    status:      str = "stored"
+    submission_id: str
+    name:          str
+    n_timesteps:   int
+    status:        str = "pending_review"
+
+
+class ProfileStats(BaseModel):
+    v_min:         float
+    v_max:         float
+    v_mean:        float
+    v_std:         float
+    v_p10:         float
+    v_p90:         float
+    first_ts:      str
+    last_ts:       str
+
+
+class ProfileSubmissionRecord(BaseModel):
+    submission_id:    str
+    name:             str
+    type:             str
+    resolution:       str
+    location:         str
+    source:           str
+    carrier:          str
+    year:             int
+    unit:             str
+    description:      str
+    n_timesteps:      int
+    submitted_at:     str
+    submitter_email:  str | None = None
+    status:           str        = "pending_review"
+    rejection_reason: str | None = None
+    stats:            ProfileStats | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -188,9 +227,9 @@ def get_profile_data(profile_id: str) -> TimeSeriesDataResponse:
 @router.post(
     "/upload",
     response_model=TimeSeriesUploadResponse,
-    status_code=201,
-    summary="Upload a new time-series profile (CSV)",
-    response_description="Confirmation with assigned profile_id.",
+    status_code=202,
+    summary="Submit a new time-series profile for admin review",
+    response_description="Confirmation with assigned submission_id — profile is pending review.",
 )
 async def upload_profile(
     name:        Annotated[str, Form(description="Human-readable profile name")],
@@ -206,13 +245,9 @@ async def upload_profile(
     authorization: Annotated[str | None, Header()] = None,
 ) -> TimeSeriesUploadResponse:
     """
-    Accept a CSV file where every row is ``timestamp,value``.
-    A header row is optional — if the first cell is not a valid ISO-8601
-    timestamp it is treated as a header and skipped.
-
-    The profile is stored immediately as a JSON data file and its metadata
-    is appended to the catalogue.  No admin review is required for
-    time-series uploads.
+    Accept a contributor-submitted time-series profile for admin review.
+    The data is stored in data/timeseries/pending/ and NOT added to the
+    public catalogue until an admin approves it.
     """
     # --- Validate enum fields ---
     if type not in _ALLOWED_TYPES:
@@ -237,12 +272,6 @@ async def upload_profile(
     points: list[dict[str, Any]] = []
 
     if filename_lower.endswith(".json"):
-        # ── JSON format ──────────────────────────────────────────────
-        # Accepted shapes:
-        #   1. Array of {timestamp, value} objects
-        #   2. {points: [{timestamp, value}, ...]}
-        #   3. Array of [timestamp, value] two-element arrays
-        #   4. Object mapping ISO timestamp → numeric value
         try:
             parsed = json.loads(text)
         except json.JSONDecodeError as exc:
@@ -253,7 +282,6 @@ async def upload_profile(
         elif isinstance(parsed, list):
             rows = parsed
         elif isinstance(parsed, dict):
-            # mapping {timestamp: value}
             rows = [{"timestamp": k, "value": v} for k, v in parsed.items()]
         else:
             raise HTTPException(status_code=422, detail="Unrecognised JSON structure.")
@@ -271,7 +299,6 @@ async def upload_profile(
             except (TypeError, ValueError):
                 raise HTTPException(status_code=422, detail=f"Row {idx}: value '{val}' is not a number.")
     else:
-        # ── CSV format (default) ──────────────────────────────────────
         reader = csv.reader(io.StringIO(text))
         for row_num, row in enumerate(reader, start=1):
             if not row or row[0].strip().lower() in {"timestamp", "time", "datetime", "date"}:
@@ -287,36 +314,176 @@ async def upload_profile(
     if len(points) < 2:
         raise HTTPException(status_code=422, detail="File must contain at least 2 data rows.")
 
-    # --- Build profile_id ---
-    safe_name  = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")[:40]
-    short_id   = str(_uuid_mod.uuid4())[:8]
+    # --- Extract submitter email from token (best-effort) ---
+    submitter_email: str | None = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ")
+        try:
+            from api.auth import _decode_jwt
+            submitter_email = _decode_jwt(token).get("email")
+        except Exception:
+            pass
+        if not submitter_email:
+            try:
+                import base64 as _b64, json as _j
+                part = token.split(".")[1]
+                pl = _j.loads(_b64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
+                submitter_email = pl.get("email")
+            except Exception:
+                pass
+
+    # --- Build submission_id ---
+    submission_id = str(_uuid_mod.uuid4())
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+    # --- Write pending submission file (includes full data points) ---
+    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
+    pending_path = _PENDING_DIR / f"{submission_id}.json"
+    with pending_path.open("w", encoding="utf-8") as fh:
+        json.dump({
+            "submission_id":   submission_id,
+            "submitted_at":    now_str,
+            "status":          "pending_review",
+            "submitter_email": submitter_email,
+            "name":            name,
+            "type":            type,
+            "resolution":      resolution,
+            "location":        location.upper(),
+            "source":          source,
+            "carrier":         carrier,
+            "year":            year,
+            "unit":            unit,
+            "description":     description,
+            "n_timesteps":     len(points),
+            "points":          points,
+        }, fh, indent=2)
+
+    logger.info("Timeseries submission queued for review: %s (%d points)", submission_id, len(points))
+
+    return TimeSeriesUploadResponse(
+        submission_id = submission_id,
+        name          = name,
+        n_timesteps   = len(points),
+        status        = "pending_review",
+    )
+
+
+@router.delete(
+    "/{profile_id}",
+    status_code=204,
+    summary="Delete a time-series profile",
+    response_description="Profile metadata and data file removed.",
+)
+def delete_profile(
+    profile_id:    str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> None:
+    """
+    Remove a profile from the catalogue index and delete its data file.
+    """
+    # Guard against path traversal
+    safe_id = re.sub(r"[^a-z0-9_\-]", "", profile_id)
+    if safe_id != profile_id:
+        raise HTTPException(status_code=422, detail="Invalid profile_id format.")
+
+    if not _CATALOGUE_FILE.exists():
+        raise HTTPException(status_code=404, detail=f"Profile '{safe_id}' not found.")
+
+    with _CATALOGUE_FILE.open(encoding="utf-8") as fh:
+        catalogue_doc = json.load(fh)
+
+    profiles = catalogue_doc.get("profiles", [])
+    if not any(p.get("profile_id") == safe_id for p in profiles):
+        raise HTTPException(status_code=404, detail=f"Profile '{safe_id}' not found.")
+
+    catalogue_doc["profiles"] = [p for p in profiles if p.get("profile_id") != safe_id]
+    with _CATALOGUE_FILE.open("w", encoding="utf-8") as fh:
+        json.dump(catalogue_doc, fh, indent=2)
+
+    data_path = _DATA_DIR / f"{safe_id}.json"
+    if data_path.exists():
+        data_path.unlink()
+
+    _reload_catalogue()
+    logger.info("Timeseries profile deleted: %s", safe_id)
+
+
+# ---------------------------------------------------------------------------
+# Admin router — review pending profile submissions
+# ---------------------------------------------------------------------------
+
+import math as _math
+from api.routes import _require_admin  # noqa: E402  (reuse existing admin auth helper)
+
+
+def _compute_stats(points: list[dict]) -> "ProfileStats | None":
+    """Compute summary statistics from a list of {timestamp, value} dicts."""
+    vals = [p["value"] for p in points if isinstance(p.get("value"), (int, float))]
+    if not vals:
+        return None
+    n    = len(vals)
+    s    = sorted(vals)
+    mean = sum(s) / n
+    var  = sum((v - mean) ** 2 for v in s) / n
+    def pct(p: float) -> float:
+        idx = (p / 100) * (n - 1)
+        lo, hi = int(idx), min(int(idx) + 1, n - 1)
+        return s[lo] + (s[hi] - s[lo]) * (idx - lo)
+    return ProfileStats(
+        v_min  = round(s[0],           6),
+        v_max  = round(s[-1],          6),
+        v_mean = round(mean,           6),
+        v_std  = round(_math.sqrt(var), 6),
+        v_p10  = round(pct(10),        6),
+        v_p90  = round(pct(90),        6),
+        first_ts = points[0]["timestamp"]  if points else "",
+        last_ts  = points[-1]["timestamp"] if points else "",
+    )
+
+admin_ts_router = APIRouter(prefix="/admin/timeseries", tags=["Admin – Time Series"])
+
+
+def _load_pending_submission(submission_id: str) -> dict:
+    safe_id = re.sub(r"[^a-z0-9\-]", "", submission_id)
+    path = _PENDING_DIR / f"{safe_id}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"Submission '{safe_id}' not found.")
+    with path.open(encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _approve_profile_submission(record: dict) -> str:
+    """Write the approved profile to the catalogue and data file. Returns profile_id."""
+    safe_name  = re.sub(r"[^a-z0-9]+", "_", record["name"].lower()).strip("_")[:40]
+    short_id   = record["submission_id"][:8]
     profile_id = f"{safe_name}_{short_id}"
+    now_str    = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    # --- Write data file ---
+    # Write data file
     _DATA_DIR.mkdir(parents=True, exist_ok=True)
     data_path = _DATA_DIR / f"{profile_id}.json"
     with data_path.open("w", encoding="utf-8") as fh:
-        json.dump(
-            {"profile_id": profile_id, "name": name, "unit": unit, "points": points},
-            fh,
-        )
+        json.dump({
+            "profile_id": profile_id,
+            "name":       record["name"],
+            "unit":       record["unit"],
+            "points":     record["points"],
+        }, fh)
 
-    # --- Update catalogue ---
+    # Update catalogue
     catalogue_entry: dict = {
         "profile_id":  profile_id,
-        "name":        name,
-        "type":        type,
-        "resolution":  resolution,
-        "location":    location.upper(),
-        "source":      source,
-        "carrier":     carrier,
-        "year":        year,
-        "n_timesteps": len(points),
-        "description": description,
+        "name":        record["name"],
+        "type":        record["type"],
+        "resolution":  record["resolution"],
+        "location":    record["location"],
+        "source":      record["source"],
+        "carrier":     record["carrier"],
+        "year":        record.get("year", 0),
+        "n_timesteps": record["n_timesteps"],
+        "description": record.get("description", ""),
         "uploaded_at": now_str,
-        "unit":        unit,
+        "unit":        record["unit"],
     }
     if _CATALOGUE_FILE.exists():
         with _CATALOGUE_FILE.open(encoding="utf-8") as fh:
@@ -329,11 +496,121 @@ async def upload_profile(
         json.dump(catalogue_doc, fh, indent=2)
 
     _reload_catalogue()
-    logger.info("Timeseries upload: %s (%d points)", profile_id, len(points))
+    return profile_id
 
-    return TimeSeriesUploadResponse(
-        profile_id  = profile_id,
-        name        = name,
-        n_timesteps = len(points),
-        status      = "stored",
-    )
+
+@admin_ts_router.get(
+    "/submissions",
+    response_model=list[ProfileSubmissionRecord],
+    summary="List all profile submissions (admin only)",
+)
+def list_profile_submissions(
+    status: Annotated[str | None, Query(description="Filter by status")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> list[ProfileSubmissionRecord]:
+    _require_admin(authorization)
+    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
+    records: list[ProfileSubmissionRecord] = []
+    for path in sorted(_PENDING_DIR.glob("*.json"), reverse=True):
+        try:
+            with path.open(encoding="utf-8") as fh:
+                raw = json.load(fh)
+        except Exception:
+            continue
+        if status and raw.get("status") != status:
+            continue
+        stats = _compute_stats(raw.get("points", []))
+        records.append(ProfileSubmissionRecord(
+            submission_id    = raw.get("submission_id", path.stem),
+            name             = raw.get("name", "—"),
+            type             = raw.get("type", ""),
+            resolution       = raw.get("resolution", ""),
+            location         = raw.get("location", ""),
+            source           = raw.get("source", ""),
+            carrier          = raw.get("carrier", ""),
+            year             = raw.get("year", 0),
+            unit             = raw.get("unit", ""),
+            description      = raw.get("description", ""),
+            n_timesteps      = raw.get("n_timesteps", 0),
+            submitted_at     = raw.get("submitted_at", ""),
+            submitter_email  = raw.get("submitter_email"),
+            status           = raw.get("status", "pending_review"),
+            rejection_reason = raw.get("rejection_reason"),
+            stats            = stats,
+        ))
+    return records
+
+
+@admin_ts_router.get(
+    "/submissions/{submission_id}/data",
+    summary="Get full data points for a pending submission (admin only)",
+)
+def get_profile_submission_data(
+    submission_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict:
+    _require_admin(authorization)
+    safe_id = re.sub(r"[^a-z0-9\-]", "", submission_id)
+    path    = _PENDING_DIR / f"{safe_id}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Submission not found.")
+    with path.open(encoding="utf-8") as fh:
+        raw = json.load(fh)
+    return {
+        "submission_id": safe_id,
+        "name":          raw.get("name", ""),
+        "unit":          raw.get("unit", ""),
+        "points":        raw.get("points", []),
+    }
+
+
+class ProfileAdminAction(BaseModel):
+    action: str           # "approve" | "reject"
+    reason: str | None = None
+
+
+@admin_ts_router.post(
+    "/submissions/{submission_id}",
+    summary="Approve or reject a pending profile submission",
+)
+def act_on_profile_submission(
+    submission_id: str,
+    body: ProfileAdminAction,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict:
+    admin_payload = _require_admin(authorization)
+    admin_email   = admin_payload.get("email", "admin")
+
+    if body.action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'.")
+
+    safe_id = re.sub(r"[^a-z0-9\-]", "", submission_id)
+    path    = _PENDING_DIR / f"{safe_id}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Submission not found.")
+
+    with path.open(encoding="utf-8") as fh:
+        record = json.load(fh)
+
+    if record.get("status") != "pending_review":
+        raise HTTPException(status_code=409, detail=f"Submission already {record['status']}.")
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+    if body.action == "approve":
+        profile_id = _approve_profile_submission(record)
+        record["status"]      = "approved"
+        record["profile_id"]  = profile_id
+        logger.info("Admin approved profile submission %s → %s", safe_id, profile_id)
+    else:
+        record["status"]           = "rejected"
+        record["rejection_reason"] = body.reason or ""
+        logger.info("Admin rejected profile submission %s", safe_id)
+
+    record["reviewed_at"] = now_str
+    record["reviewed_by"] = admin_email
+
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(record, fh, indent=2)
+
+    return {"status": record["status"], "submission_id": safe_id}

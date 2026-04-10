@@ -81,10 +81,10 @@ export interface TimeSeriesData {
 // ── Upload response ───────────────────────────────────────────────────────────
 
 export interface TimeSeriesUploadResponse {
-  profile_id:  string;
-  name:        string;
-  n_timesteps: number;
-  status:      string;
+  submission_id: string;
+  name:          string;
+  n_timesteps:   number;
+  status:        string;
 }
 
 // ── Filter state used by TimeSeriesCatalogue ──────────────────────────────────

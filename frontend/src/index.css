@@ -9,6 +9,7 @@
 /* ── Base resets ──────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html { font-family: Inter, sans-serif; }
+html, body { overflow-x: hidden; }
 
 /* ── Material Symbols defaults ────────────────────────────────────────────── */
 .material-symbols-outlined {

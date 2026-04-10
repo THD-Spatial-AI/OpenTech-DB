@@ -346,3 +346,98 @@ export async function adminDeleteTechnology(
   }
   return response.json() as Promise<{ status: string; technology_id: string; technology_name: string }>;
 }
+
+// ── Admin time-series profile submissions ─────────────────────────────────────
+
+export interface ProfileStats {
+  v_min:    number;
+  v_max:    number;
+  v_mean:   number;
+  v_std:    number;
+  v_p10:    number;
+  v_p90:    number;
+  first_ts: string;
+  last_ts:  string;
+}
+
+export interface ProfileSubmissionRecord {
+  submission_id:    string;
+  name:             string;
+  type:             string;
+  resolution:       string;
+  location:         string;
+  source:           string;
+  carrier:          string;
+  year:             number;
+  unit:             string;
+  description:      string;
+  n_timesteps:      number;
+  submitted_at:     string;
+  submitter_email?: string | null;
+  status:           string;
+  rejection_reason?: string | null;
+  stats?:           ProfileStats | null;
+}
+
+export interface ProfileSubmissionData {
+  submission_id: string;
+  name:          string;
+  unit:          string;
+  points:        { timestamp: string; value: number }[];
+}
+
+export async function fetchAdminProfileSubmissions(
+  token: string,
+  statusFilter?: string
+): Promise<ProfileSubmissionRecord[]> {
+  const url = statusFilter
+    ? `${BASE_URL}/admin/timeseries/submissions?status=${encodeURIComponent(statusFilter)}`
+    : `${BASE_URL}/admin/timeseries/submissions`;
+  const response = await fetch(url, {
+    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    let detail = `Server error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<ProfileSubmissionRecord[]>;
+}
+
+export async function fetchAdminProfileSubmissionData(
+  token: string,
+  submissionId: string,
+): Promise<ProfileSubmissionData> {
+  const response = await fetch(
+    `${BASE_URL}/admin/timeseries/submissions/${encodeURIComponent(submissionId)}/data`,
+    { headers: { ...HEADERS, Authorization: `Bearer ${token}` } },
+  );
+  if (!response.ok) {
+    let detail = `Server error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<ProfileSubmissionData>;
+}
+
+export async function actOnProfileSubmission(
+  token: string,
+  submissionId: string,
+  action: "approve" | "reject",
+  reason?: string,
+): Promise<{ status: string; submission_id: string }> {
+  const response = await fetch(
+    `${BASE_URL}/admin/timeseries/submissions/${encodeURIComponent(submissionId)}`,
+    {
+      method: "POST",
+      headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action, reason: reason || undefined }),
+    }
+  );
+  if (!response.ok) {
+    let detail = `API error ${response.status}`;
+    try { const b = (await response.json()) as { detail?: string }; if (b.detail) detail = b.detail; } catch { /**/ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<{ status: string; submission_id: string }>;
+}

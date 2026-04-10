@@ -8,15 +8,21 @@
  * standard Sign In form).  No separate login form in this component.
  */
 
-import { useState, useCallback, useTransition, useEffect } from "react";
+import { useState, useCallback, useTransition, useEffect, useRef } from "react";
+import * as echarts from "echarts";
 import {
   fetchAdminSubmissions,
   actOnSubmission,
   fetchAdminCatalogueTechnologies,
   adminEditTechnology,
   adminDeleteTechnology,
+  fetchAdminProfileSubmissions,
+  actOnProfileSubmission,
+  fetchAdminProfileSubmissionData,
 } from "../../services/api";
-import type { CatalogueTechEntry } from "../../services/api";
+import type { CatalogueTechEntry, ProfileSubmissionRecord, ProfileSubmissionData } from "../../services/api";
+import { deleteTimeSeriesProfile, invalidateTimeSeriesCatalogue } from "../../services/timeseries";
+import type { TimeSeriesProfile } from "../../types/timeseries";
 import { useAuth } from "../../context/AuthContext";
 import type { SubmissionRecord, CreateTechnologyInstancePayload } from "../../types/api";
 
@@ -574,9 +580,222 @@ function CatalogueTechModal({
   );
 }
 
+// ── Catalogue: Profiles sub-tab ─────────────────────────────────────────────
+
+const PROFILE_TYPE_COLOR: Record<string, string> = {
+  capacity_factor: "bg-amber-100 text-amber-800",
+  generation:      "bg-emerald-100 text-emerald-800",
+  load:            "bg-blue-100 text-blue-800",
+  weather:         "bg-sky-100 text-sky-800",
+  price:           "bg-purple-100 text-purple-800",
+};
+
+function CatalogueProfilesTab({ token }: { token: string }) {
+  const [profiles,      setProfiles]      = useState<TimeSeriesProfile[] | null>(null);
+  const [loadError,     setLoadError]     = useState<string | null>(null);
+  const [loading,       startLoad]        = useTransition();
+  const [deleteConfirm, setDeleteConfirm] = useState<TimeSeriesProfile | null>(null);
+  const [deleting,      setDeleting]      = useState(false);
+  const [search,        setSearch]        = useState("");
+
+  const BASE_URL =
+    (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+    "http://localhost:8000/api/v1";
+
+  const load = useCallback(() => {
+    startLoad(async () => {
+      setLoadError(null);
+      try {
+        const res = await fetch(`${BASE_URL}/timeseries?limit=1000`, {
+          headers: {
+            "ngrok-skip-browser-warning": "true",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) throw new Error(`API error ${res.status}`);
+        const data = await res.json() as { profiles: TimeSeriesProfile[] };
+        setProfiles(data.profiles);
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : "Failed to load profiles.");
+      }
+    });
+  }, [token, BASE_URL]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
+    try {
+      await deleteTimeSeriesProfile(deleteConfirm.profile_id, token);
+      invalidateTimeSeriesCatalogue();
+      setProfiles((prev) => prev ? prev.filter((p) => p.profile_id !== deleteConfirm.profile_id) : prev);
+      setDeleteConfirm(null);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const filtered = (profiles ?? []).filter(
+    (p) =>
+      search === "" ||
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.type.toLowerCase().includes(search.toLowerCase()) ||
+      p.location.toLowerCase().includes(search.toLowerCase()) ||
+      (p.carrier ?? "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[180px] max-w-sm">
+          <span className="material-symbols-outlined absolute left-3 top-2.5 text-[16px] text-slate-400">search</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search profiles…"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50
+                       focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white"
+          />
+        </div>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={load}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
+                     border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
+        >
+          <span className={`material-symbols-outlined text-[16px] ${loading ? "animate-spin" : ""}`}>refresh</span>
+          Refresh
+        </button>
+        {profiles && (
+          <p className="text-xs text-slate-400 ml-auto">{filtered.length} of {profiles.length} profiles</p>
+        )}
+      </div>
+
+      {loadError && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <span className="material-symbols-outlined text-red-500">error</span>
+          <p className="text-sm text-red-700">{loadError}</p>
+        </div>
+      )}
+
+      {loading && !profiles && (
+        <div className="flex items-center gap-3 py-16 justify-center">
+          <span className="material-symbols-outlined text-[28px] text-indigo-400 animate-spin">autorenew</span>
+          <p className="text-slate-400 text-sm">Loading profiles…</p>
+        </div>
+      )}
+
+      {profiles && (
+        <div className="rounded-2xl border border-slate-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Profile</th>
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:table-cell">Type</th>
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:table-cell">Location</th>
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden lg:table-cell">Resolution</th>
+                <th className="text-center px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Points</th>
+                <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center py-12 text-slate-400 text-sm">
+                    {search ? "No matching profiles" : "No profiles in catalogue yet"}
+                  </td>
+                </tr>
+              )}
+              {filtered.map((p) => (
+                <tr key={p.profile_id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-slate-800 text-sm">{p.name}</p>
+                    <p className="text-[10px] font-mono text-slate-300 truncate max-w-[220px]">{p.profile_id}</p>
+                    {p.unit && (
+                      <span className="text-[10px] text-slate-400">{p.unit}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 hidden sm:table-cell">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${PROFILE_TYPE_COLOR[p.type] ?? "bg-slate-100 text-slate-500"}`}>
+                      {p.type.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-slate-500 uppercase hidden md:table-cell">{p.location || "—"}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500 hidden lg:table-cell">{p.resolution}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="text-xs font-bold text-slate-600 tabular-nums">{p.n_timesteps.toLocaleString()}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirm(p)}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-700
+                                   bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[13px]">delete</span>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-[28px] text-red-500 flex-shrink-0">delete_forever</span>
+              <div>
+                <h3 className="font-bold text-slate-800">Delete Profile?</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  <span className="font-semibold text-slate-700">{deleteConfirm.name}</span>{" "}
+                  will be permanently removed from the catalogue. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-1.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700
+                           px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+              >
+                <span className={`material-symbols-outlined text-[15px] ${deleting ? "animate-spin" : ""}`}>
+                  {deleting ? "progress_activity" : "delete"}
+                </span>
+                {deleting ? "Deleting…" : "Delete Permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Catalogue management tab ──────────────────────────────────────────────────
 
+type CatalogueSubTab = "technologies" | "profiles";
+
 function CatalogueManager({ token }: { token: string }) {
+  const [subTab,        setSubTab]        = useState<CatalogueSubTab>("technologies");
   const [techs,         setTechs]         = useState<CatalogueTechEntry[] | null>(null);
   const [loadError,     setLoadError]     = useState<string | null>(null);
   const [loading,       startLoad]        = useTransition();
@@ -630,158 +849,188 @@ function CatalogueManager({ token }: { token: string }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <span className="material-symbols-outlined absolute left-3 top-2.5 text-[16px] text-slate-400">search</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search technologies…"
-            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50
-                       focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white"
-          />
-        </div>
-        <button
-          type="button"
-          disabled={loading}
-          onClick={load}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
-                     border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
-        >
-          <span className={`material-symbols-outlined text-[16px] ${loading ? "animate-spin" : ""}`}>refresh</span>
-          Refresh
-        </button>
-        {techs && (
-          <p className="text-xs text-slate-400 ml-auto">{filtered.length} of {techs.length} technologies</p>
-        )}
+
+      {/* ── Sub-tab switcher ── */}
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+        {([
+          { id: "technologies" as CatalogueSubTab, label: "Technologies", icon: "bolt"      },
+          { id: "profiles"     as CatalogueSubTab, label: "Time-Series Profiles", icon: "ssid_chart" },
+        ] as { id: CatalogueSubTab; label: string; icon: string }[]).map(({ id, label, icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setSubTab(id)}
+            className={[
+              "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+              subTab === id
+                ? "bg-white text-indigo-700 shadow-sm"
+                : "text-slate-500 hover:text-slate-700",
+            ].join(" ")}
+          >
+            <span className="material-symbols-outlined text-[15px]">{icon}</span>
+            {label}
+          </button>
+        ))}
       </div>
 
-      {loadError && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          <span className="material-symbols-outlined text-red-500">error</span>
-          <p className="text-sm text-red-700">{loadError}</p>
-        </div>
-      )}
+      {/* ── Profiles sub-tab ── */}
+      {subTab === "profiles" && <CatalogueProfilesTab token={token} />}
 
-      {loading && !techs && (
-        <div className="flex items-center gap-3 py-16 justify-center">
-          <span className="material-symbols-outlined text-[28px] text-indigo-400 animate-spin">autorenew</span>
-          <p className="text-slate-400 text-sm">Loading catalogue…</p>
+      {/* ── Technologies sub-tab ── */}
+      {subTab === "technologies" && (<>
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <span className="material-symbols-outlined absolute left-3 top-2.5 text-[16px] text-slate-400">search</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search technologies…"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50
+                         focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={load}
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
+                       border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
+          >
+            <span className={`material-symbols-outlined text-[16px] ${loading ? "animate-spin" : ""}`}>refresh</span>
+            Refresh
+          </button>
+          {techs && (
+            <p className="text-xs text-slate-400 ml-auto">{filtered.length} of {techs.length} technologies</p>
+          )}
         </div>
-      )}
 
-      {techs && (
-        <div className="rounded-2xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Technology</th>
-                <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:table-cell">Domain</th>
-                <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:table-cell">Carrier</th>
-                <th className="text-center px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Variants</th>
-                <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 && (
+        {loadError && (
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <span className="material-symbols-outlined text-red-500">error</span>
+            <p className="text-sm text-red-700">{loadError}</p>
+          </div>
+        )}
+
+        {loading && !techs && (
+          <div className="flex items-center gap-3 py-16 justify-center">
+            <span className="material-symbols-outlined text-[28px] text-indigo-400 animate-spin">autorenew</span>
+            <p className="text-slate-400 text-sm">Loading catalogue…</p>
+          </div>
+        )}
+
+        {techs && (
+          <div className="rounded-2xl border border-slate-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-slate-400 text-sm">
-                    {search ? "No matching technologies" : "Catalogue is empty"}
-                  </td>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Technology</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:table-cell">Domain</th>
+                  <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:table-cell">Carrier</th>
+                  <th className="text-center px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Variants</th>
+                  <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</th>
                 </tr>
-              )}
-              {filtered.map((tech) => (
-                <tr key={tech.technology_id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-slate-800 text-sm">{tech.technology_name}</p>
-                    <p className="text-[10px] font-mono text-slate-300 truncate max-w-[200px]">{tech.technology_id}</p>
-                    {tech.source === "contributor_submission" && (
-                      <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full">contributed</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${domainColor[tech.domain] ?? "bg-slate-100 text-slate-500"}`}>
-                      {tech.domain}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500 capitalize hidden md:table-cell">{tech.carrier || "—"}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="text-xs font-bold text-slate-600 tabular-nums">{tech.instances.length}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setEditTarget(tech)}
-                        className="flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800
-                                   bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[13px]">edit</span>
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteConfirm(tech)}
-                        className="flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-700
-                                   bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[13px]">delete</span>
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="text-center py-12 text-slate-400 text-sm">
+                      {search ? "No matching technologies" : "Catalogue is empty"}
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((tech) => (
+                  <tr key={tech.technology_id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="px-4 py-3">
+                      <p className="font-semibold text-slate-800 text-sm">{tech.technology_name}</p>
+                      <p className="text-[10px] font-mono text-slate-300 truncate max-w-[200px]">{tech.technology_id}</p>
+                      {tech.source === "contributor_submission" && (
+                        <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full">contributed</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${domainColor[tech.domain] ?? "bg-slate-100 text-slate-500"}`}>
+                        {tech.domain}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-500 capitalize hidden md:table-cell">{tech.carrier || "—"}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-xs font-bold text-slate-600 tabular-nums">{tech.instances.length}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditTarget(tech)}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800
+                                     bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">edit</span>
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirm(tech)}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-700
+                                     bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">delete</span>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-      {editTarget && (
-        <CatalogueTechModal
-          tech={editTarget}
-          token={token}
-          onSave={load}
-          onClose={() => setEditTarget(null)}
-        />
-      )}
+        {editTarget && (
+          <CatalogueTechModal
+            tech={editTarget}
+            token={token}
+            onSave={load}
+            onClose={() => setEditTarget(null)}
+          />
+        )}
 
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-[28px] text-red-500 flex-shrink-0">delete_forever</span>
-              <div>
-                <h3 className="font-bold text-slate-800">Delete Technology?</h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  <span className="font-semibold text-slate-700">{deleteConfirm.technology_name}</span>{" "}
-                  will be permanently removed from the catalogue. This cannot be undone.
-                </p>
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-[28px] text-red-500 flex-shrink-0">delete_forever</span>
+                <div>
+                  <h3 className="font-bold text-slate-800">Delete Technology?</h3>
+                  <p className="text-sm text-slate-500 mt-1">
+                    <span className="font-semibold text-slate-700">{deleteConfirm.technology_name}</span>{" "}
+                    will be permanently removed from the catalogue. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex items-center gap-1.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700
+                             px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  <span className={`material-symbols-outlined text-[15px] ${deleting ? "animate-spin" : ""}`}>
+                    {deleting ? "progress_activity" : "delete"}
+                  </span>
+                  {deleting ? "Deleting…" : "Delete Permanently"}
+                </button>
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-100 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex items-center gap-1.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700
-                           px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
-              >
-                <span className={`material-symbols-outlined text-[15px] ${deleting ? "animate-spin" : ""}`}>
-                  {deleting ? "progress_activity" : "delete"}
-                </span>
-                {deleting ? "Deleting…" : "Delete Permanently"}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </>)}
     </div>
   );
 }
@@ -809,18 +1058,337 @@ function StatCard({
   );
 }
 
+// ── Mini ECharts canvas for profile preview ────────────────────────────────────
+
+function MiniChart({ data, unit, color }: { data: ProfileSubmissionData; unit: string; color: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef     = useRef<echarts.ECharts | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    if (!chartRef.current) {
+      chartRef.current = echarts.init(containerRef.current, undefined, { renderer: "canvas" });
+    }
+    const chart = chartRef.current;
+
+    // Downsample to ≤500 points for performance
+    const pts  = data.points;
+    const step = Math.max(1, Math.floor(pts.length / 500));
+    const xs: string[] = [];
+    const ys: number[] = [];
+    for (let i = 0; i < pts.length; i += step) {
+      xs.push(pts[i].timestamp);
+      ys.push(pts[i].value);
+    }
+
+    chart.setOption({
+      animation: false,
+      grid:      { top: 8, right: 8, bottom: 30, left: 50 },
+      tooltip:   { trigger: "axis", formatter: (p: unknown) => {
+        const params = p as { axisValue: string; value: number }[];
+        return params[0] ? `${params[0].axisValue}<br/>${params[0].value.toFixed(4)} ${unit}` : "";
+      }},
+      xAxis: {
+        type:        "category",
+        data:        xs,
+        axisLabel:   { show: true, fontSize: 10, rotate: 30, interval: Math.floor(xs.length / 6) },
+        axisLine:    { lineStyle: { color: "#e2e8f0" } },
+        axisTick:    { show: false },
+      },
+      yAxis: {
+        type:       "value",
+        axisLabel:  { fontSize: 10 },
+        splitLine:  { lineStyle: { color: "#f1f5f9" } },
+      },
+      series: [{
+        type:      "line",
+        data:      ys,
+        smooth:    false,
+        symbol:    "none",
+        lineStyle: { color, width: 1.5 },
+        areaStyle: { color: `${color}18` },
+      }],
+    } as echarts.EChartsOption);
+
+    const ro = new ResizeObserver(() => chart.resize());
+    ro.observe(containerRef.current);
+    return () => { ro.disconnect(); };
+  }, [data, unit, color]);
+
+  return <div ref={containerRef} className="w-full h-48" />;
+}
+
+// ── Profile Submission Card ───────────────────────────────────────────────────
+
+const TYPE_COLOR: Record<string, string> = {
+  capacity_factor: "#f59e0b",
+  generation:      "#22c55e",
+  load:            "#3b82f6",
+  weather:         "#0ea5e9",
+  price:           "#a855f7",
+};
+
+function StatPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col items-center bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 min-w-[80px]">
+      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</span>
+      <span className="text-sm font-semibold text-slate-700 mt-0.5">{value}</span>
+    </div>
+  );
+}
+
+function fmtVal(v: number): string {
+  const a = Math.abs(v);
+  if (a >= 10_000) return `${(v / 1000).toFixed(1)}k`;
+  if (a >= 100)    return v.toFixed(2);
+  if (a >= 1)      return v.toFixed(4);
+  return v.toFixed(5);
+}
+
+function ProfileSubmissionCard({
+  record,
+  token,
+  onAction,
+}: {
+  record: ProfileSubmissionRecord;
+  token: string;
+  onAction: (id: string, action: "approve" | "reject") => void;
+}) {
+  const [expanded,     setExpanded]   = useState(false);
+  const [confirming,   setConfirming] = useState<"approve" | "reject" | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [actionError,  setActionError]  = useState<string | null>(null);
+  const [acting,       startAct]       = useTransition();
+
+  // Lazy data fetch for chart
+  const [chartData,    setChartData]   = useState<ProfileSubmissionData | null>(null);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [chartError,   setChartError]   = useState<string | null>(null);
+
+  const isPending = record.status === "pending_review";
+  const typeColor = TYPE_COLOR[record.type] ?? "#6366f1";
+
+  // Load chart data when first expanded
+  useEffect(() => {
+    if (!expanded || chartData || chartLoading) return;
+    setChartLoading(true);
+    setChartError(null);
+    fetchAdminProfileSubmissionData(token, record.submission_id)
+      .then((d) => { setChartData(d); setChartLoading(false); })
+      .catch((e) => { setChartError(e instanceof Error ? e.message : "Failed to load data."); setChartLoading(false); });
+  }, [expanded, chartData, chartLoading, token, record.submission_id]);
+
+  const doAction = (action: "approve" | "reject") => {
+    setActionError(null);
+    startAct(async () => {
+      try {
+        await actOnProfileSubmission(token, record.submission_id, action, action === "reject" ? rejectReason : undefined);
+        onAction(record.submission_id, action);
+        setConfirming(null);
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : "Action failed.");
+      }
+    });
+  };
+
+  const s = record.stats;
+
+  return (
+    <div className={[
+      "border rounded-2xl bg-white shadow-sm transition-all",
+      isPending ? "border-amber-200" : record.status === "approved" ? "border-emerald-200" : "border-red-200",
+    ].join(" ")}>
+      {/* Header row */}
+      <button
+        type="button"
+        className="w-full text-left px-6 py-4 flex items-center justify-between gap-4"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="material-symbols-outlined text-[20px] shrink-0" style={{ color: typeColor }}>ssid_chart</span>
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-800 text-sm truncate">{record.name}</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {record.type} · {record.resolution} · {record.location} · {record.n_timesteps.toLocaleString()} points
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {s && (
+            <span className="hidden md:flex items-center gap-2 text-[11px] text-slate-500 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100">
+              <span>min {fmtVal(s.v_min)}</span>
+              <span className="text-slate-300">·</span>
+              <span>mean {fmtVal(s.v_mean)}</span>
+              <span className="text-slate-300">·</span>
+              <span>max {fmtVal(s.v_max)}</span>
+              <span className="ml-1 text-slate-400">{record.unit}</span>
+            </span>
+          )}
+          <StatusBadge status={record.status as "pending_review" | "approved" | "rejected"} />
+          <span className="material-symbols-outlined text-slate-400 text-[18px]">
+            {expanded ? "expand_less" : "expand_more"}
+          </span>
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="px-6 pb-6 border-t border-slate-100 space-y-5 pt-5">
+
+          {/* ── Metadata grid ── */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+            {([
+              ["Source",    record.source],
+              ["Carrier",   record.carrier],
+              ["Year",      String(record.year)],
+              ["Unit",      record.unit],
+              ["Submitted", record.submitted_at],
+              ["Submitter", record.submitter_email ?? "—"],
+              ...(s ? [["From", s.first_ts], ["To", s.last_ts]] : []),
+            ] as [string, string][]).map(([label, val]) => (
+              <div key={label}>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
+                <p className="text-slate-700 text-[13px] truncate">{val || "—"}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Statistical summary ── */}
+          {s && (
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Statistics</p>
+              <div className="flex flex-wrap gap-2">
+                <StatPill label="Min"    value={`${fmtVal(s.v_min)} ${record.unit}`}  />
+                <StatPill label="P10"    value={`${fmtVal(s.v_p10)} ${record.unit}`}  />
+                <StatPill label="Mean"   value={`${fmtVal(s.v_mean)} ${record.unit}`} />
+                <StatPill label="P90"    value={`${fmtVal(s.v_p90)} ${record.unit}`}  />
+                <StatPill label="Max"    value={`${fmtVal(s.v_max)} ${record.unit}`}  />
+                <StatPill label="Std"    value={`${fmtVal(s.v_std)} ${record.unit}`}  />
+                <StatPill label="Points" value={record.n_timesteps.toLocaleString()}  />
+              </div>
+            </div>
+          )}
+
+          {/* ── Chart preview ── */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Data Preview</p>
+            {chartLoading && (
+              <div className="h-48 flex items-center justify-center gap-2 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="material-symbols-outlined text-indigo-400 animate-spin text-[22px]">autorenew</span>
+                <span className="text-sm text-slate-400">Loading chart…</span>
+              </div>
+            )}
+            {chartError && (
+              <div className="h-16 flex items-center justify-center bg-red-50 rounded-xl border border-red-100">
+                <span className="text-sm text-red-500">{chartError}</span>
+              </div>
+            )}
+            {chartData && !chartLoading && (
+              <div className="rounded-xl border border-slate-100 overflow-hidden bg-white">
+                <MiniChart data={chartData} unit={record.unit} color={typeColor} />
+              </div>
+            )}
+          </div>
+
+          {record.description && (
+            <p className="text-sm text-slate-600 bg-slate-50 px-4 py-3 rounded-xl">{record.description}</p>
+          )}
+
+          {record.rejection_reason && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 px-4 py-3 rounded-xl">
+              Rejection reason: {record.rejection_reason}
+            </p>
+          )}
+
+          {actionError && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 px-4 py-2 rounded-xl">{actionError}</p>
+          )}
+
+          {/* ── Actions ── */}
+          {isPending && !confirming && (
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => setConfirming("approve")}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600
+                           text-white text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                Approve
+              </button>
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => setConfirming("reject")}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-100 hover:bg-red-200
+                           text-red-700 text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[16px]">cancel</span>
+                Reject
+              </button>
+            </div>
+          )}
+
+          {confirming === "approve" && (
+            <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+              <p className="text-sm text-emerald-800 flex-1">Approve this profile and publish it to the catalogue?</p>
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => doAction("approve")}
+                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
+              >
+                {acting ? "…" : "Confirm"}
+              </button>
+              <button type="button" onClick={() => setConfirming(null)} className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700">Cancel</button>
+            </div>
+          )}
+
+          {confirming === "reject" && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 space-y-3">
+              <p className="text-sm text-red-800 font-semibold">Reject this profile submission?</p>
+              <textarea
+                rows={2}
+                placeholder="Reason for rejection (optional)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="w-full text-sm border border-red-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-400"
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  disabled={acting}
+                  onClick={() => doAction("reject")}
+                  className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {acting ? "…" : "Confirm Reject"}
+                </button>
+                <button type="button" onClick={() => setConfirming(null)} className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700">Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 type StatusTab = "all" | "pending_review" | "approved" | "rejected";
-type PanelTab  = "submissions" | "catalogue";
+type PanelTab  = "submissions" | "catalogue" | "profiles";
 
 export default function AdminPanel() {
   const { user, token, isAdmin } = useAuth();
-  const [submissions, setSubmissions] = useState<SubmissionRecord[] | null>(null);
-  const [loadError,   setLoadError]   = useState<string | null>(null);
-  const [activeTab,   setActiveTab]   = useState<StatusTab>("all");
-  const [panelTab,    setPanelTab]    = useState<PanelTab>("submissions");
-  const [loading,     startLoad]      = useTransition();
+  const [submissions,        setSubmissions]        = useState<SubmissionRecord[] | null>(null);
+  const [profileSubmissions, setProfileSubmissions] = useState<ProfileSubmissionRecord[] | null>(null);
+  const [loadError,          setLoadError]          = useState<string | null>(null);
+  const [profileLoadError,   setProfileLoadError]   = useState<string | null>(null);
+  const [activeTab,          setActiveTab]          = useState<StatusTab>("all");
+  const [panelTab,           setPanelTab]           = useState<PanelTab>("submissions");
+  const [loading,            startLoad]             = useTransition();
+  const [profileLoading,     startProfileLoad]      = useTransition();
 
   const load = useCallback((tok: string) => {
     startLoad(async () => {
@@ -834,11 +1402,24 @@ export default function AdminPanel() {
     });
   }, []);
 
+  const loadProfiles = useCallback((tok: string) => {
+    startProfileLoad(async () => {
+      setProfileLoadError(null);
+      try {
+        const data = await fetchAdminProfileSubmissions(tok);
+        setProfileSubmissions(data);
+      } catch (e) {
+        setProfileLoadError(e instanceof Error ? e.message : "Failed to load profile submissions.");
+      }
+    });
+  }, []);
+
   // Auto-load once when admin is confirmed and token is available.
   // Must be inside useEffect — calling startTransition during render is illegal.
   useEffect(() => {
     if (isAdmin && token) {
       load(token);
+      loadProfiles(token);
     }
     // Run only once on mount (or when isAdmin/token first become truthy)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -851,6 +1432,21 @@ export default function AdminPanel() {
           ? prev.map((s) =>
               s.submission_id === id
                 ? { ...s, status: (action === "approve" ? "approved" : "rejected") as SubmissionRecord["status"] }
+                : s
+            )
+          : prev
+      );
+    },
+    []
+  );
+
+  const handleProfileAction = useCallback(
+    (id: string, action: "approve" | "reject") => {
+      setProfileSubmissions((prev) =>
+        prev
+          ? prev.map((s) =>
+              s.submission_id === id
+                ? { ...s, status: action === "approve" ? "approved" : "rejected" }
                 : s
             )
           : prev
@@ -931,6 +1527,7 @@ export default function AdminPanel() {
       <div className="flex gap-1 border-b border-slate-200">
         {([
           { id: "submissions" as PanelTab, label: "Submissions",         icon: "inbox"           },
+          { id: "profiles"   as PanelTab, label: "Profile Submissions",  icon: "ssid_chart"      },
           { id: "catalogue"  as PanelTab, label: "Catalogue Management", icon: "database"        },
         ]).map(({ id, label, icon }) => (
           <button
@@ -954,6 +1551,61 @@ export default function AdminPanel() {
       {panelTab === "catalogue" && token && (
         <CatalogueManager token={token} />
       )}
+
+      {/* ── Profile submissions panel ── */}
+      {panelTab === "profiles" && (<>
+        {profileLoadError && (
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <span className="material-symbols-outlined text-red-500">error</span>
+            <p className="text-sm text-red-700">{profileLoadError}</p>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-500">
+            {profileSubmissions === null
+              ? "Loading…"
+              : `${profileSubmissions.length} submission${profileSubmissions.length !== 1 ? "s" : ""} total`}
+          </p>
+          <button
+            type="button"
+            disabled={profileLoading}
+            onClick={() => token && loadProfiles(token)}
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
+                       border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
+          >
+            <span className={`material-symbols-outlined text-[16px] ${profileLoading ? "animate-spin" : ""}`}>refresh</span>
+            Refresh
+          </button>
+        </div>
+
+        {profileLoading && (
+          <div className="flex items-center gap-3 py-12 justify-center">
+            <span className="material-symbols-outlined text-[30px] text-indigo-400 animate-spin">autorenew</span>
+            <p className="text-slate-500 text-sm">Loading profile submissions…</p>
+          </div>
+        )}
+
+        {!profileLoading && profileSubmissions !== null && profileSubmissions.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+            <span className="material-symbols-outlined text-5xl text-slate-200">ssid_chart</span>
+            <p className="text-slate-400 font-semibold">No profile submissions yet</p>
+          </div>
+        )}
+
+        {!profileLoading && profileSubmissions !== null && profileSubmissions.length > 0 && (
+          <div className="space-y-3">
+            {profileSubmissions.map((record) => (
+              <ProfileSubmissionCard
+                key={record.submission_id}
+                record={record}
+                token={token!}
+                onAction={handleProfileAction}
+              />
+            ))}
+          </div>
+        )}
+      </>)}
 
       {/* ── Submissions panel ── */}
       {panelTab === "submissions" && (<>

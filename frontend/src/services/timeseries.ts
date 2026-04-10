@@ -149,3 +149,33 @@ export async function uploadTimeSeriesProfile(
 
   return response.json() as Promise<TimeSeriesUploadResponse>;
 }
+
+// ── Delete endpoint ───────────────────────────────────────────────────────────
+
+export async function deleteTimeSeriesProfile(
+  profileId: string,
+  token?: string | null,
+): Promise<void> {
+  const response = await fetch(
+    `${BASE_URL}/timeseries/${encodeURIComponent(profileId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        "ngrok-skip-browser-warning": "true",
+        Accept: "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) {
+    let detail = `API error ${response.status}: ${response.statusText}`;
+    try {
+      const body = (await response.json()) as { detail?: string };
+      if (body.detail) detail = body.detail;
+    } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+
+  invalidateTimeSeriesCatalogue();
+}

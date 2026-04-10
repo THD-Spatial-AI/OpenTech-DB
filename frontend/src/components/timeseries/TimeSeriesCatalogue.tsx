@@ -18,6 +18,7 @@ import {
   useMemo,
   useRef,
   useTransition,
+  useCallback,
 } from "react";
 import type { TimeSeriesProfile, ProfileType } from "../../types/timeseries";
 import { fetchTimeSeriesCatalogue, fetchTimeSeriesData } from "../../services/timeseries";
@@ -115,6 +116,7 @@ function CatalogueContent({
   activeType,
   selectedProfileId,
   onSelectProfile,
+  onDeleteProfile,
   isPending,
 }: {
   cataloguePromise: Promise<{ total: number; profiles: TimeSeriesProfile[] }>;
@@ -122,6 +124,7 @@ function CatalogueContent({
   activeType: ProfileType | null;
   selectedProfileId: string | null;
   onSelectProfile: (p: TimeSeriesProfile) => void;
+  onDeleteProfile: (id: string) => void;
   isPending: boolean;
 }) {
   const { profiles } = use(cataloguePromise);
@@ -165,7 +168,7 @@ function CatalogueContent({
   const stripRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
 
       {/* ── PROFILE SELECTOR STRIP ──────────────────────────────── */}
       <div
@@ -214,11 +217,15 @@ function CatalogueContent({
 
       {/* ── CHART PANE — fills all remaining space ──────────────── */}
       <main className={[
-        "flex-1 min-h-0 transition-opacity",
+        "flex-1 min-h-0 overflow-hidden transition-opacity",
         isPending ? "opacity-70" : "opacity-100",
       ].join(" ")}>
         {selectedProfile && dataPromise ? (
-          <ProfileViewer profile={selectedProfile} dataPromise={dataPromise} />
+          <ProfileViewer
+            profile={selectedProfile}
+            dataPromise={dataPromise}
+            onDelete={() => onDeleteProfile(selectedProfile.profile_id)}
+          />
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-8">
             <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center">
@@ -262,13 +269,19 @@ export default function TimeSeriesCatalogue() {
   const [query, setQuery]                          = useState("");
   const [activeType, setActiveType]                = useState<ProfileType | null>(null);
   const [selectedProfileId, setSelectedProfileId]  = useState<string | null>(null);
+  const [catalogueVersion, setCatalogueVersion]    = useState(0);
   const [isPending, startTransitionRaw]            = useTransition();
 
-  const cataloguePromise = useMemo(() => fetchTimeSeriesCatalogue(), []);
+  const cataloguePromise = useMemo(() => fetchTimeSeriesCatalogue(), [catalogueVersion]);
 
   const handleSelect = (p: TimeSeriesProfile) => {
     startTransitionRaw(() => setSelectedProfileId(p.profile_id));
   };
+
+  const handleDelete = useCallback((id: string) => {
+    setSelectedProfileId((prev) => (prev === id ? null : prev));
+    setCatalogueVersion((v) => v + 1);
+  }, []);
 
   const handleTypeChip = (t: ProfileType) => {
     setActiveType((prev) => (prev === t ? null : t));
@@ -280,7 +293,7 @@ export default function TimeSeriesCatalogue() {
       <meta name="description" content="Browse and visualize energy time-series profiles." />
 
       {/* Full viewport height minus TopNavBar (~57 px) */}
-      <div className="flex flex-col" style={{ height: "calc(100vh - 57px)" }}>
+      <div className="flex flex-col overflow-hidden" style={{ height: "calc(100vh - 57px)" }}>
 
         {/* ── TOP BAR: title + search + type filters ─────────────── */}
         <div className="flex items-center gap-3 px-5 py-2.5 border-b border-outline-variant/15 flex-shrink-0 bg-surface-container-low flex-wrap">
@@ -345,7 +358,7 @@ export default function TimeSeriesCatalogue() {
         </div>
 
         {/* ── Body: strip + chart ─────────────────────────────────── */}
-        <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <ErrorBoundary context="time series catalogue">
             <Suspense fallback={<StripSkeleton />}>
               <CatalogueContent
@@ -354,6 +367,7 @@ export default function TimeSeriesCatalogue() {
                 activeType={activeType}
                 selectedProfileId={selectedProfileId}
                 onSelectProfile={handleSelect}
+                onDeleteProfile={handleDelete}
                 isPending={isPending}
               />
             </Suspense>

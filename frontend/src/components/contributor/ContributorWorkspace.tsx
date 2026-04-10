@@ -231,7 +231,7 @@ export default function ContributorWorkspace() {
       />
 
       {/* ── Unified full-screen shell — same structure for every tab ── */}
-      <div className="flex flex-col" style={{ height: "calc(100vh - 57px)" }}>
+      <div className="flex flex-col overflow-hidden" style={{ height: "calc(100vh - 57px)" }}>
 
         {/* Shared tab strip */}
         <div
@@ -271,7 +271,7 @@ export default function ContributorWorkspace() {
         </div>
 
         {/* Tab content — fills all remaining height */}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-x-auto">
 
           {/* ── New Technology ─────────────────────────────────────────── */}
           {activeTab === "new" && (

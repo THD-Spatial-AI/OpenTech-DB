@@ -39,6 +39,8 @@ import * as echarts from "echarts";
 import type { EChartsOption } from "echarts";
 import type { TimeSeriesData, TimeSeriesProfile } from "../../types/timeseries";
 import ErrorBoundary from "../ErrorBoundary";
+import { useAuth } from "../../context/AuthContext";
+import { deleteTimeSeriesProfile } from "../../services/timeseries";
 
 // ────────────────────────────────────────────────────────────────────
 // Type palette
@@ -224,6 +226,9 @@ function EChartCanvas({ option, className, style, onZoomChange }: EChartCanvasPr
     chartRef.current = chart;
     chart.setOption(option);
 
+    // Force correct canvas size after flex layout resolves
+    requestAnimationFrame(() => { if (chartRef.current) chartRef.current.resize(); });
+
     // Forward zoom events so the stats strip can react
     chart.on("dataZoom", () => {
       if (!onZoomChange) return;
@@ -248,7 +253,7 @@ function EChartCanvas({ option, className, style, onZoomChange }: EChartCanvasPr
     <div
       ref={containerRef}
       className={className}
-      style={style}
+      style={{ ...style, overflow: "hidden" }}
       role="img"
       aria-label="Time series chart"
     />
@@ -330,11 +335,14 @@ function ToolBtn({
 function ProfileViewerContent({
   dataPromise,
   profile,
+  onDelete,
 }: {
   dataPromise: Promise<TimeSeriesData>;
   profile: TimeSeriesProfile;
+  onDelete?: () => void;
 }) {
   const data = use(dataPromise);
+  const { token } = useAuth();
 
   const { color } = getPalette(profile.type);
 
@@ -348,11 +356,13 @@ function ProfileViewerContent({
   const lastMs  = rawPoints[rawPoints.length - 1]?.ts ?? 0;
 
   // ── State ────────────────────────────────────────────────────────
-  const [preset, setPreset]   = useState<WindowPreset>("full");
-  const [agg, setAgg]         = useState<AggMode>("raw");
-  const [chartType, setChartType] = useState<"line" | "bar">("line");
-  const [zoomMs, setZoomMs]   = useState<[number, number] | null>(null);
-  const [, startT]            = useTransition();
+  const [preset, setPreset]           = useState<WindowPreset>("full");
+  const [agg, setAgg]                 = useState<AggMode>("raw");
+  const [chartType, setChartType]     = useState<"line" | "bar">("line");
+  const [zoomMs, setZoomMs]           = useState<[number, number] | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting]       = useState(false);
+  const [, startT]                    = useTransition();
 
   // ── Derived: visible window ───────────────────────────────────── ─
   const [winStart, winEnd] = useMemo(
@@ -453,13 +463,25 @@ function ProfileViewerContent({
 
   const handleDownload = useCallback(() => downloadCSV(data), [data]);
 
+  const handleDelete = useCallback(async () => {
+    if (!onDelete) return;
+    setDeleting(true);
+    try {
+      await deleteTimeSeriesProfile(profile.profile_id, token);
+      onDelete();
+    } catch {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }, [onDelete, profile.profile_id, token]);
+
   const pal = getPalette(profile.type);
 
   // ── Preset group separator helper ────────────────────────────────
   const groups: PresetDef["group"][] = ["sub-day", "days", "seasons"];
 
   return (
-    <div className="flex flex-col h-full gap-0 min-h-0">
+    <div className="flex flex-col h-full gap-0 min-h-0 overflow-hidden">
 
       {/* ── HEADER ─────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 px-5 pt-4 pb-3 flex-wrap flex-shrink-0">
@@ -486,16 +508,58 @@ function ProfileViewerContent({
             <span className="text-[10px] text-on-surface-variant/35 italic">{profile.source}</span>
           </div>
         </div>
-        <button
-          onClick={handleDownload}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl
-                     bg-primary/8 hover:bg-primary/15 text-primary
-                     text-xs font-bold border border-primary/20 hover:border-primary/35
-                     transition-all active:scale-95 flex-shrink-0"
-        >
-          <span className="material-symbols-outlined text-[15px]">download</span>
-          CSV
-        </button>
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                       bg-primary/8 hover:bg-primary/15 text-primary
+                       text-xs font-bold border border-primary/20 hover:border-primary/35
+                       transition-all active:scale-95"
+          >
+            <span className="material-symbols-outlined text-[15px]">download</span>
+            CSV
+          </button>
+
+          {onDelete && !confirmDelete && (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                         bg-red-50 hover:bg-red-100 text-red-600
+                         text-xs font-bold border border-red-200 hover:border-red-300
+                         transition-all active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[15px]">delete</span>
+              Delete
+            </button>
+          )}
+
+          {onDelete && confirmDelete && (
+            <>
+              <span className="text-xs text-on-surface-variant/60 hidden sm:block">
+                Delete this profile?
+              </span>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-xs px-2.5 py-1.5 rounded-lg border border-outline-variant/30
+                           hover:bg-surface-container transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-1 text-xs font-bold px-3 py-1.5
+                           rounded-lg bg-red-600 hover:bg-red-700 text-white
+                           border border-red-700 transition-all disabled:opacity-60"
+              >
+                {deleting
+                  ? <><span className="material-symbols-outlined text-[13px] animate-spin">autorenew</span>Deleting…</>
+                  : "Confirm"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── TOOLBAR ────────────────────────────────────────────────── */}
@@ -555,7 +619,7 @@ function ProfileViewerContent({
       </div>
 
       {/* ── CHART ──────────────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 px-1">
+      <div className="flex-1 min-h-0 px-1 overflow-hidden">
         <EChartCanvas
           option={chartOption}
           className="w-full h-full"
@@ -565,8 +629,8 @@ function ProfileViewerContent({
       </div>
 
       {/* ── STATS STRIP ─────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 px-5 pb-4 pt-2 border-t border-outline-variant/10">
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+      <div className="flex-shrink-0 px-5 pb-4 pt-2 border-t border-outline-variant/10 overflow-x-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
           <StatCard label="Min"    value={fmt(stats.min,    data.unit)} />
           <StatCard label="P10"    value={fmt(stats.p10,    data.unit)} />
           <StatCard label="Mean"   value={fmt(stats.mean,   data.unit)} accent />
@@ -598,13 +662,14 @@ function ProfileViewerContent({
 export interface ProfileViewerProps {
   profile: TimeSeriesProfile;
   dataPromise: Promise<TimeSeriesData>;
+  onDelete?: () => void;
 }
 
-export default function ProfileViewer({ profile, dataPromise }: ProfileViewerProps) {
+export default function ProfileViewer({ profile, dataPromise, onDelete }: ProfileViewerProps) {
   return (
     <ErrorBoundary context={`profile "${profile.name}"`}>
       <Suspense fallback={<ChartSkeleton />}>
-        <ProfileViewerContent dataPromise={dataPromise} profile={profile} />
+        <ProfileViewerContent dataPromise={dataPromise} profile={profile} onDelete={onDelete} />
       </Suspense>
     </ErrorBoundary>
   );

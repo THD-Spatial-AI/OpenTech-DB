@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+.env
+.env.*
+pip-selfcheck.json
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Logs
+logs/
+*.log
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ──────────────────────────────────────────────────────────────────
+# Timeseries data files
+# These are large generated/uploaded JSON blobs that must NOT be
+# committed.  The directory is kept via data/timeseries/.gitkeep.
+# ──────────────────────────────────────────────────────────────────
+data/timeseries/*.json
+
+# Node / frontend (already covered by frontend/.gitignore too)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# Pending submissions uploaded by contributors
+data/pending_submissions/*.json

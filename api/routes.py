@@ -396,7 +396,7 @@ def _load_all_technologies() -> dict[str, Technology]:
     logger.info("DATA_DIR resolved to: %s (exists=%s)", DATA_DIR, DATA_DIR.exists())
     techs: dict[str, Technology] = {}
     # Exclude submission-related directories — they are not catalogue files.
-    _EXCLUDED_DIRS = {"pending_submissions", "profiles"}
+    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries"}
     json_files = [
         p for p in DATA_DIR.rglob("*.json")
         if not any(part in _EXCLUDED_DIRS for part in p.parts)
@@ -1114,6 +1114,46 @@ def _row_to_record(row: dict, filename: str = "") -> SubmissionRecord:
 
 
 @admin_router.get(
+    "/technologies",
+    summary="List all catalogue technologies (admin only)",
+)
+def admin_list_technologies(
+    authorization: Annotated[str | None, Header()] = None,
+) -> list[dict]:
+    """
+    Returns the raw catalogue entries (with technology_id) so the admin
+    panel can display an editable list without relying on the public
+    TechnologySummary schema.
+    """
+    _require_admin(authorization)
+
+    entries: list[dict] = []
+    for domain_dir in sorted(DATA_DIR.iterdir()):
+        if not domain_dir.is_dir():
+            continue
+        cat_file = domain_dir / f"{domain_dir.name}_technologies.json"
+        if not cat_file.exists():
+            continue
+        try:
+            with cat_file.open(encoding="utf-8") as fh:
+                cat = json.load(fh)
+        except Exception:
+            continue
+        for tech in cat.get("technologies", []):
+            entries.append({
+                "technology_id":   tech.get("technology_id", ""),
+                "technology_name": tech.get("technology_name", ""),
+                "domain":          tech.get("domain", domain_dir.name),
+                "carrier":         tech.get("carrier", ""),
+                "oeo_class":       tech.get("oeo_class", ""),
+                "description":     tech.get("description", ""),
+                "instances":       tech.get("instances", []),
+                "source":          tech.get("source", ""),
+            })
+    return entries
+
+
+@admin_router.get(
     "/submissions",
     response_model=list[SubmissionRecord],
     summary="List all technology submissions",
@@ -1375,6 +1415,122 @@ def _approve_submission(record: dict) -> None:
 
     with domain_file.open("w", encoding="utf-8") as fh:
         json.dump(catalogue, fh, indent=2, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# Admin — catalogue edit & delete  (admin_router, requires admin JWT)
+# ---------------------------------------------------------------------------
+
+class CatalogueTechPatch(BaseModel):
+    """Fields that the admin may update on a live catalogue technology entry."""
+    technology_name: str | None = None
+    carrier:         str | None = None
+    oeo_class:       str | None = None
+    description:     str | None = None
+    instances:       list[dict] | None = None   # full replacement of instance array
+
+
+def _find_catalogue_file_for_tech(technology_id: str) -> tuple[Path, dict, int] | None:
+    """
+    Scan every domain catalogue file to find the technology with the given ID.
+    Returns (file_path, catalogue_dict, index_within_technologies) or None.
+    """
+    for domain_dir in DATA_DIR.iterdir():
+        if not domain_dir.is_dir():
+            continue
+        cat_file = domain_dir / f"{domain_dir.name}_technologies.json"
+        if not cat_file.exists():
+            continue
+        try:
+            with cat_file.open(encoding="utf-8") as fh:
+                cat = json.load(fh)
+        except Exception:
+            continue
+        for idx, tech in enumerate(cat.get("technologies", [])):
+            if tech.get("technology_id") == technology_id:
+                return cat_file, cat, idx
+    return None
+
+
+@admin_router.patch(
+    "/technologies/{technology_id}",
+    summary="Edit a live catalogue technology (admin only)",
+)
+def admin_edit_technology(
+    technology_id: Annotated[str, FPath(description="technology_id from the catalogue JSON")],
+    patch: CatalogueTechPatch,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict:
+    """
+    Partially update a technology entry in the catalogue JSON file.
+    Only the fields included in the request body are changed.
+    Clears the in-process technology cache so the frontend sees the
+    update immediately on the next API call.
+
+    Requires an admin Bearer token.
+    """
+    _require_admin(authorization)
+
+    result = _find_catalogue_file_for_tech(technology_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Technology '{technology_id}' not found in catalogue.")
+
+    cat_file, catalogue, idx = result
+    tech: dict = catalogue["technologies"][idx]
+
+    if patch.technology_name is not None:
+        tech["technology_name"] = patch.technology_name
+    if patch.carrier is not None:
+        tech["carrier"] = patch.carrier
+    if patch.oeo_class is not None:
+        tech["oeo_class"] = patch.oeo_class
+    if patch.description is not None:
+        tech["description"] = patch.description
+    if patch.instances is not None:
+        tech["instances"] = patch.instances
+
+    catalogue["technologies"][idx] = tech
+    catalogue.setdefault("metadata", {})["last_updated"] = datetime.now(timezone.utc).isoformat()
+
+    with cat_file.open("w", encoding="utf-8") as fh:
+        json.dump(catalogue, fh, indent=2, ensure_ascii=False)
+
+    _load_all_technologies.cache_clear()
+    logger.info("Admin edited technology '%s' in %s", technology_id, cat_file)
+    return {"status": "updated", "technology_id": technology_id}
+
+
+@admin_router.delete(
+    "/technologies/{technology_id}",
+    summary="Delete a live catalogue technology (admin only)",
+)
+def admin_delete_technology(
+    technology_id: Annotated[str, FPath(description="technology_id from the catalogue JSON")],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict:
+    """
+    Remove a technology entry from the catalogue JSON file entirely.
+    Clears the in-process technology cache so the deletion is reflected
+    immediately on the next frontend API call.
+
+    Requires an admin Bearer token.
+    """
+    _require_admin(authorization)
+
+    result = _find_catalogue_file_for_tech(technology_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Technology '{technology_id}' not found in catalogue.")
+
+    cat_file, catalogue, idx = result
+    removed = catalogue["technologies"].pop(idx)
+    catalogue.setdefault("metadata", {})["last_updated"] = datetime.now(timezone.utc).isoformat()
+
+    with cat_file.open("w", encoding="utf-8") as fh:
+        json.dump(catalogue, fh, indent=2, ensure_ascii=False)
+
+    _load_all_technologies.cache_clear()
+    logger.info("Admin deleted technology '%s' from %s", technology_id, cat_file)
+    return {"status": "deleted", "technology_id": removed.get("technology_id"), "technology_name": removed.get("technology_name")}
 
 
 # ---------------------------------------------------------------------------

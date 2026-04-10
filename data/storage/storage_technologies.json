@@ -14,7 +14,7 @@
       "PNNL 2022 Grid Energy Storage Cost and Performance Review",
       "IEA Energy Storage Tracking 2023"
     ],
-    "last_updated": "2026-04-08T10:36:36.606050+00:00"
+    "last_updated": "2026-04-08T13:52:26.610454+00:00"
   },
   "technologies": [
     {
@@ -4048,28 +4048,6 @@
           "reference_source": "Scottish H2 assessment 2022; BGS hard rock"
         }
       ]
-    },
-    {
-      "technology_id": "hydrogen_underground_storage_d8462a88",
-      "technology_name": "Hydrogen Underground Storage",
-      "domain": "storage",
-      "carrier": "hydrogen",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000429",
-      "description": "Hydrogen stored in salt caverns or depleted reservoirs for seasonal energy storage.",
-      "instances": [
-        {
-          "instance_id": "hydrogen_underground_storage_d8462a88_hydrogen_underground_storage___2024_refe",
-          "instance_name": "Hydrogen Underground Storage — 2024 Reference fixed",
-          "capex_usd_per_kw": 350,
-          "opex_fixed_usd_per_kw_yr": 5,
-          "opex_var_usd_per_mwh": 0.5,
-          "efficiency_percent": 86,
-          "lifetime_years": 30,
-          "co2_emission_factor_operational_g_per_kwh": 0,
-          "reference_source": "Contributor submission — please update with a published reference"
-        }
-      ],
-      "source": "contributor_submission"
     }
   ]
 }

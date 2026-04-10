@@ -27,7 +27,7 @@
       "BSW Wind Marktbericht 2023",
       "Bundesnetzagentur EEG Ausschreibungsdaten 2023"
     ],
-    "last_updated": "2026-04-08T12:21:12.319819+00:00"
+    "last_updated": "2026-04-08T13:52:22.173330+00:00"
   },
   "technologies": [
     {
@@ -6675,27 +6675,6 @@
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
           "reference_source": "IEA Ocean Energy 2023; CorPower+Solaris hybrid"
-        }
-      ]
-    },
-    {
-      "technology_id": "geothermal_power_dbd1e460",
-      "technology_name": "Geothermal Power",
-      "domain": "generation",
-      "carrier": "water",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000192",
-      "description": "Flash steam or binary cycle geothermal plant extracting heat from the earth. Can provide baseload power and district heat.",
-      "instances": [
-        {
-          "instance_id": "geothermal_power_dbd1e460_inst_0",
-          "variant_name": "Geothermal Power — 2024 Reference2",
-          "capex_usd_per_kw": 4000,
-          "opex_fixed_usd_per_kw_yr": 80,
-          "opex_var_usd_per_mwh": 2,
-          "efficiency_percent": 21,
-          "lifetime_years": 30,
-          "co2_emission_factor_operational_g_per_kwh": 38,
-          "reference_source": "Contributor submission — please update with a published reference"
         }
       ]
     }

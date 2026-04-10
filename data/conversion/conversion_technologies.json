@@ -25,7 +25,7 @@
       "IEA Heat Pumps Tracking Report 2023",
       "NREL Fuel Cell Technology Basics 2022"
     ],
-    "last_updated": "2026-04-08T10:57:20.215131+00:00"
+    "last_updated": "2026-04-08T13:52:16.539136+00:00"
   },
   "technologies": [
     {
@@ -5660,28 +5660,6 @@
           "reference_source": "NREL biorefinery state of technology 2023; IEA Bioenergy biorefinery"
         }
       ]
-    },
-    {
-      "technology_id": "solid_oxide_fuel_cell__sofc__5c4e8e1b",
-      "technology_name": "Solid Oxide Fuel Cell (SOFC)",
-      "domain": "conversion",
-      "carrier": "hydrogen",
-      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000016",
-      "description": "High-temperature solid oxide fuel cell converting hydrogen to electricity with useful heat by-product.",
-      "instances": [
-        {
-          "instance_id": "solid_oxide_fuel_cell__sofc__5c4e8e1b_solid_oxide_fuel_cell__sofc____2024_refe",
-          "instance_name": "Solid Oxide Fuel Cell (SOFC) — 2024 Reference",
-          "capex_usd_per_kw": 3000,
-          "opex_fixed_usd_per_kw_yr": 50,
-          "opex_var_usd_per_mwh": 5,
-          "efficiency_percent": 67,
-          "lifetime_years": 20,
-          "co2_emission_factor_operational_g_per_kwh": 0,
-          "reference_source": "Contributor submission — please update with a published reference"
-        }
-      ],
-      "source": "contributor_submission"
     }
   ]
 }

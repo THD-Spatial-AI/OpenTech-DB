@@ -22,6 +22,7 @@ import { useAuth } from "../../context/AuthContext";
 import VisualTechBuilder from "./visual-builder/VisualTechBuilder";
 import ErrorBoundary from "../ErrorBoundary";
 import type { SubmissionRecord } from "../../types/api";
+import UploadProfile from "../timeseries/UploadProfile";
 
 
 function FormSkeleton() {
@@ -68,51 +69,6 @@ function FormSkeleton() {
       <div className="flex justify-end pt-2">
         <div className="h-12 w-48 bg-primary/20 rounded-xl" />
       </div>
-    </div>
-  );
-}
-
-// ── Info banner ───────────────────────────────────────────────────────────────
-
-function ContributorInfoBanner() {
-  const [dismissed, setDismissed] = useState(false);
-  if (dismissed) return null;
-
-  return (
-    <div
-      className="flex items-start gap-4 rounded-xl bg-secondary-container/40
-                 border border-outline-variant/20 px-5 py-4 mb-8"
-      role="note"
-    >
-      <span className="material-symbols-outlined text-xl text-secondary flex-shrink-0 mt-0.5">
-        info
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-on-surface">
-          Visual Topology Builder — OEO Aligned
-        </p>
-        <p className="text-sm text-on-surface-variant mt-1 leading-relaxed">
-          Drag equipment blocks from the palette onto the canvas to design your
-          energy system topology. Connect nodes to show carrier flows, then
-          expand the <em>Node Properties</em> panel to set technical parameters
-          and use the built-in <em>Cost Calculator</em> to derive CAPEX / OPEX
-          before submitting.
-        </p>
-        <p className="text-xs text-on-surface-variant/70 mt-2">
-          Ontology dropdowns (<em>Domain</em>, <em>OEO Class</em>,{" "}
-          <em>Reference Source</em>) are locked to the live controlled-vocabulary
-          lists. Contact a data steward to request additions.
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={() => setDismissed(true)}
-        aria-label="Dismiss info banner"
-        className="flex-shrink-0 text-on-surface-variant/50 hover:text-on-surface-variant
-                   transition-colors mt-0.5"
-      >
-        <span className="material-symbols-outlined text-[18px]">close</span>
-      </button>
     </div>
   );
 }
@@ -242,7 +198,7 @@ function MySubmissionsPanel({ token }: { token: string }) {
 
 // ── Page component ────────────────────────────────────────────────────────────
 
-type Tab = "new" | "my";
+type Tab = "new" | "my" | "timeseries";
 
 export default function ContributorWorkspace() {
   const { token } = useAuth();
@@ -261,48 +217,34 @@ export default function ContributorWorkspace() {
   );
 
   const TABS: { id: Tab; label: string; icon: string; count?: number }[] = [
-    { id: "new", label: "New Submission", icon: "add_circle" },
-    { id: "my",  label: "My Submissions", icon: "list_alt",  count: submissionCount > 0 ? submissionCount : undefined },
+    { id: "new",        label: "New Technology",     icon: "add_circle" },
+    { id: "timeseries", label: "Upload Profile",     icon: "show_chart" },
+    { id: "my",         label: "My Submissions",     icon: "list_alt",  count: submissionCount > 0 ? submissionCount : undefined },
   ];
 
   return (
     <>
-      {/* React 19: title/meta hoisted to <head> automatically */}
       <title>OpenTech DB | Contributor Workspace</title>
       <meta
         name="description"
         content="Add new energy technologies to the OEO-aligned opentech-db database."
       />
 
-      <div className="max-w-[1440px] mx-auto px-8 py-12 w-full">
-        {/* ── Page header ──────────────────────────────────────────────── */}
-        <header className="mb-8">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-xl text-primary">
-                add_circle
-              </span>
-            </div>
-            <div>
-              <h1 className="font-headline text-4xl font-bold tracking-tight text-on-surface">
-                Contributor Workspace
-              </h1>
-            </div>
-          </div>
-          <p className="text-on-surface-variant text-lg leading-relaxed max-w-2xl ml-[52px]">
-            Submit new energy technologies for review. All fields are validated
-            against the live OEO schema to guarantee ontology alignment.
-          </p>
-        </header>
+      {/* ── Unified full-screen shell — same structure for every tab ── */}
+      <div className="flex flex-col" style={{ height: "calc(100vh - 57px)" }}>
 
-        {/* ── Tabs ─────────────────────────────────────────────────────── */}
-        <div className="flex gap-1 mb-8 border-b border-outline-variant/15">
+        {/* Shared tab strip */}
+        <div
+          role="tablist"
+          className="flex-shrink-0 flex items-center gap-1 px-6
+                     border-b border-outline-variant/15 bg-surface-container-low/50"
+        >
           {TABS.map(({ id, label, icon, count }) => (
             <button
               key={id}
-              onClick={() => setActiveTab(id)}
-              aria-selected={activeTab === id}
               role="tab"
+              aria-selected={activeTab === id}
+              onClick={() => setActiveTab(id)}
               className={[
                 "flex items-center gap-2 px-4 py-2.5 text-sm font-bold transition-all",
                 "border-b-2 -mb-px rounded-t",
@@ -328,37 +270,50 @@ export default function ContributorWorkspace() {
           ))}
         </div>
 
-        {/* ── Tab content ──────────────────────────────────────────────── */}
-        {activeTab === "new" ? (
-          <>
-            {/* ── Info callout ─────────────────────────────────────────── */}
-            <ContributorInfoBanner />
+        {/* Tab content — fills all remaining height */}
+        <div className="flex-1 min-h-0">
 
-            {/* ── Visual builder — full-height canvas ──────────────────── */}
-            <div className="h-[calc(100vh-300px)] min-h-[560px]">
-              <ErrorBoundary context="contributor-workspace">
-                <Suspense fallback={<FormSkeleton />}>
-                  <VisualTechBuilder
-                    schemaPromise={schemaPromise}
-                    onSubmitSuccess={(name) => {
-                      handleSuccess(name);
-                      setActiveTab("my");
-                    }}
-                  />
-                </Suspense>
-              </ErrorBoundary>
-            </div>
-          </>
-        ) : (
-          token ? (
-            <MySubmissionsPanel token={token} />
-          ) : (
-            <div className="flex flex-col items-center gap-4 py-20 text-center">
-              <span className="material-symbols-outlined text-5xl text-on-surface-variant/25">lock</span>
-              <p className="text-on-surface-variant text-sm">Sign in to view your submissions.</p>
-            </div>
-          )
-        )}
+          {/* ── New Technology ─────────────────────────────────────────── */}
+          {activeTab === "new" && (
+            <ErrorBoundary context="contributor-workspace">
+              <Suspense fallback={<FormSkeleton />}>
+                <VisualTechBuilder
+                  schemaPromise={schemaPromise}
+                  onSubmitSuccess={(name) => {
+                    handleSuccess(name);
+                    setActiveTab("my");
+                  }}
+                />
+              </Suspense>
+            </ErrorBoundary>
+          )}
+
+          {/* ── Upload Profile ─────────────────────────────────────────── */}
+          {activeTab === "timeseries" && (
+            <UploadProfile
+              onUploadSuccess={(_id, _name) => {
+                /* success state shown inline — stay on tab */
+              }}
+            />
+          )}
+
+          {/* ── My Submissions ─────────────────────────────────────────── */}
+          {activeTab === "my" && (
+            token ? (
+              <div className="h-full overflow-y-auto">
+                <div className="max-w-3xl mx-auto px-8 py-8">
+                  <MySubmissionsPanel token={token} />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-4 h-full justify-center text-center">
+                <span className="material-symbols-outlined text-5xl text-on-surface-variant/25">lock</span>
+                <p className="text-on-surface-variant text-sm">Sign in to view your submissions.</p>
+              </div>
+            )
+          )}
+
+        </div>
       </div>
     </>
   );

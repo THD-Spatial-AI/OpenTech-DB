@@ -279,3 +279,70 @@ export async function actOnSubmission(
   }
   return response.json() as Promise<{ status: string; submission_id: string }>;
 }
+
+// ── Admin catalogue management ────────────────────────────────────────────────
+
+export interface CatalogueTechEntry {
+  technology_id: string;
+  technology_name: string;
+  domain: string;
+  carrier: string;
+  oeo_class: string;
+  description: string;
+  instances: Record<string, unknown>[];
+  source: string;
+}
+
+export async function fetchAdminCatalogueTechnologies(
+  token: string
+): Promise<CatalogueTechEntry[]> {
+  const response = await fetch(`${BASE_URL}/admin/technologies`, {
+    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<CatalogueTechEntry[]>;
+}
+
+export async function adminEditTechnology(
+  token: string,
+  technologyId: string,
+  patch: Partial<Omit<CatalogueTechEntry, "technology_id" | "source">>
+): Promise<{ status: string; technology_id: string }> {
+  const response = await fetch(
+    `${BASE_URL}/admin/technologies/${encodeURIComponent(technologyId)}`,
+    {
+      method: "PATCH",
+      headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }
+  );
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<{ status: string; technology_id: string }>;
+}
+
+export async function adminDeleteTechnology(
+  token: string,
+  technologyId: string
+): Promise<{ status: string; technology_id: string; technology_name: string }> {
+  const response = await fetch(
+    `${BASE_URL}/admin/technologies/${encodeURIComponent(technologyId)}`,
+    {
+      method: "DELETE",
+      headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+    }
+  );
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<{ status: string; technology_id: string; technology_name: string }>;
+}

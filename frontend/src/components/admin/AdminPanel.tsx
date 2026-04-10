@@ -12,7 +12,11 @@ import { useState, useCallback, useTransition, useEffect } from "react";
 import {
   fetchAdminSubmissions,
   actOnSubmission,
+  fetchAdminCatalogueTechnologies,
+  adminEditTechnology,
+  adminDeleteTechnology,
 } from "../../services/api";
+import type { CatalogueTechEntry } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import type { SubmissionRecord, CreateTechnologyInstancePayload } from "../../types/api";
 
@@ -408,6 +412,380 @@ function SubmissionCard({
   );
 }
 
+// ── Catalogue Tech Edit Modal ─────────────────────────────────────────────────
+
+function CatalogueTechModal({
+  tech,
+  token,
+  onSave,
+  onClose,
+}: {
+  tech: CatalogueTechEntry;
+  token: string;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  const [name,        setName]        = useState(tech.technology_name);
+  const [carrier,     setCarrier]     = useState(tech.carrier);
+  const [oeoClass,    setOeoClass]    = useState(tech.oeo_class);
+  const [description, setDescription] = useState(tech.description);
+  const [instances,   setInstances]   = useState<Record<string, unknown>[]>(
+    tech.instances.map((i) => ({ ...i }))
+  );
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  const updateInst = (idx: number, field: string, value: unknown) =>
+    setInstances((prev) => prev.map((inst, i) => i === idx ? { ...inst, [field]: value } : inst));
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await adminEditTechnology(token, tech.technology_id, {
+        technology_name: name,
+        carrier,
+        oeo_class: oeoClass,
+        description,
+        instances,
+      });
+      onSave();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-start justify-center bg-black/40 backdrop-blur-sm overflow-y-auto py-8 px-4">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div>
+            <h2 className="text-base font-bold text-slate-800">Edit Technology</h2>
+            <p className="text-xs text-slate-400 font-mono mt-0.5">{tech.technology_id}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors p-1">
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <EditText label="Technology Name" value={name} onChange={setName} />
+            </div>
+            <EditText label="Carrier" value={carrier} onChange={setCarrier} />
+            <EditText label="OEO Class" value={oeoClass} onChange={setOeoClass} mono />
+            <div className="col-span-2">
+              <EditText label="Description" value={description} onChange={setDescription} multiline />
+            </div>
+          </div>
+
+          {instances.length > 0 && (
+            <div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+                Technical Variants ({instances.length})
+              </p>
+              <div className="space-y-3">
+                {instances.map((inst, i) => (
+                  <div key={i} className="rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200">
+                      <span className="material-symbols-outlined text-[13px] text-slate-400">settings</span>
+                      <input
+                        type="text"
+                        value={String(inst.instance_name ?? "")}
+                        onChange={(e) => updateInst(i, "instance_name", e.target.value)}
+                        placeholder="Instance name"
+                        className="flex-1 text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1
+                                   focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setInstances((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="text-red-400 hover:text-red-600 transition-colors"
+                        title="Remove instance"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">delete</span>
+                      </button>
+                    </div>
+                    <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {([
+                        ["capacity_mw",                               "Capacity",     "MW"],
+                        ["capex_usd_per_kw",                         "CAPEX",        "USD/kW"],
+                        ["opex_fixed_usd_per_kw_yr",                 "OPEX Fixed",   "USD/kW·yr"],
+                        ["opex_var_usd_per_mwh",                     "OPEX Var",     "USD/MWh"],
+                        ["efficiency_percent",                        "Efficiency",   "%"],
+                        ["lifetime_years",                            "Lifetime",     "years"],
+                        ["co2_emission_factor_operational_g_per_kwh","CO₂ Factor",   "g/kWh"],
+                      ] as [string, string, string][]).map(([field, label, unit]) => (
+                        <EditNum
+                          key={field}
+                          label={label}
+                          unit={unit}
+                          value={Number(inst[field] ?? 0)}
+                          onChange={(v) => updateInst(i, field, v)}
+                        />
+                      ))}
+                    </div>
+                    <div className="px-4 pb-3">
+                      <EditText
+                        label="Reference Source"
+                        value={String(inst.reference_source ?? "")}
+                        onChange={(v) => updateInst(i, "reference_source", v)}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <span className="material-symbols-outlined text-[14px] text-red-500">error</span>
+              <p className="text-xs text-red-700">{error}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-100 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700
+                       px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+          >
+            <span className={`material-symbols-outlined text-[15px] ${saving ? "animate-spin" : ""}`}>
+              {saving ? "progress_activity" : "save"}
+            </span>
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Catalogue management tab ──────────────────────────────────────────────────
+
+function CatalogueManager({ token }: { token: string }) {
+  const [techs,         setTechs]         = useState<CatalogueTechEntry[] | null>(null);
+  const [loadError,     setLoadError]     = useState<string | null>(null);
+  const [loading,       startLoad]        = useTransition();
+  const [editTarget,    setEditTarget]    = useState<CatalogueTechEntry | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<CatalogueTechEntry | null>(null);
+  const [deleting,      setDeleting]      = useState(false);
+  const [search,        setSearch]        = useState("");
+
+  const load = useCallback(() => {
+    startLoad(async () => {
+      setLoadError(null);
+      try {
+        const data = await fetchAdminCatalogueTechnologies(token);
+        setTechs(data);
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : "Failed to load catalogue.");
+      }
+    });
+  }, [token]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
+    try {
+      await adminDeleteTechnology(token, deleteConfirm.technology_id);
+      setTechs((prev) => prev ? prev.filter((t) => t.technology_id !== deleteConfirm.technology_id) : prev);
+      setDeleteConfirm(null);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const filtered = (techs ?? []).filter(
+    (t) =>
+      search === "" ||
+      t.technology_name.toLowerCase().includes(search.toLowerCase()) ||
+      t.domain.toLowerCase().includes(search.toLowerCase()) ||
+      t.carrier.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const domainColor: Record<string, string> = {
+    generation:   "bg-amber-100 text-amber-800",
+    storage:      "bg-blue-100 text-blue-800",
+    conversion:   "bg-emerald-100 text-emerald-800",
+    transmission: "bg-purple-100 text-purple-800",
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <span className="material-symbols-outlined absolute left-3 top-2.5 text-[16px] text-slate-400">search</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search technologies…"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50
+                       focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white"
+          />
+        </div>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={load}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
+                     border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
+        >
+          <span className={`material-symbols-outlined text-[16px] ${loading ? "animate-spin" : ""}`}>refresh</span>
+          Refresh
+        </button>
+        {techs && (
+          <p className="text-xs text-slate-400 ml-auto">{filtered.length} of {techs.length} technologies</p>
+        )}
+      </div>
+
+      {loadError && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <span className="material-symbols-outlined text-red-500">error</span>
+          <p className="text-sm text-red-700">{loadError}</p>
+        </div>
+      )}
+
+      {loading && !techs && (
+        <div className="flex items-center gap-3 py-16 justify-center">
+          <span className="material-symbols-outlined text-[28px] text-indigo-400 animate-spin">autorenew</span>
+          <p className="text-slate-400 text-sm">Loading catalogue…</p>
+        </div>
+      )}
+
+      {techs && (
+        <div className="rounded-2xl border border-slate-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Technology</th>
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:table-cell">Domain</th>
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:table-cell">Carrier</th>
+                <th className="text-center px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Variants</th>
+                <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-center py-12 text-slate-400 text-sm">
+                    {search ? "No matching technologies" : "Catalogue is empty"}
+                  </td>
+                </tr>
+              )}
+              {filtered.map((tech) => (
+                <tr key={tech.technology_id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-slate-800 text-sm">{tech.technology_name}</p>
+                    <p className="text-[10px] font-mono text-slate-300 truncate max-w-[200px]">{tech.technology_id}</p>
+                    {tech.source === "contributor_submission" && (
+                      <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full">contributed</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 hidden sm:table-cell">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${domainColor[tech.domain] ?? "bg-slate-100 text-slate-500"}`}>
+                      {tech.domain}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-slate-500 capitalize hidden md:table-cell">{tech.carrier || "—"}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="text-xs font-bold text-slate-600 tabular-nums">{tech.instances.length}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditTarget(tech)}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800
+                                   bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[13px]">edit</span>
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirm(tech)}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-700
+                                   bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[13px]">delete</span>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {editTarget && (
+        <CatalogueTechModal
+          tech={editTarget}
+          token={token}
+          onSave={load}
+          onClose={() => setEditTarget(null)}
+        />
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-[28px] text-red-500 flex-shrink-0">delete_forever</span>
+              <div>
+                <h3 className="font-bold text-slate-800">Delete Technology?</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  <span className="font-semibold text-slate-700">{deleteConfirm.technology_name}</span>{" "}
+                  will be permanently removed from the catalogue. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-1.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700
+                           px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+              >
+                <span className={`material-symbols-outlined text-[15px] ${deleting ? "animate-spin" : ""}`}>
+                  {deleting ? "progress_activity" : "delete"}
+                </span>
+                {deleting ? "Deleting…" : "Delete Permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
 function StatCard({
@@ -434,12 +812,14 @@ function StatCard({
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 type StatusTab = "all" | "pending_review" | "approved" | "rejected";
+type PanelTab  = "submissions" | "catalogue";
 
 export default function AdminPanel() {
   const { user, token, isAdmin } = useAuth();
   const [submissions, setSubmissions] = useState<SubmissionRecord[] | null>(null);
   const [loadError,   setLoadError]   = useState<string | null>(null);
   const [activeTab,   setActiveTab]   = useState<StatusTab>("all");
+  const [panelTab,    setPanelTab]    = useState<PanelTab>("submissions");
   const [loading,     startLoad]      = useTransition();
 
   const load = useCallback((tok: string) => {
@@ -525,25 +905,58 @@ export default function AdminPanel() {
             <span className="material-symbols-outlined text-[28px] text-indigo-600">
               admin_panel_settings
             </span>
-            Admin Review Panel
+            Admin Panel
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Manage technology submissions — approve or reject before they enter the catalogue.
+            Manage submissions and edit the live technology catalogue.
           </p>
         </div>
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => token && load(token)}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
-                     border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
-        >
-          <span className={`material-symbols-outlined text-[16px] ${loading ? "animate-spin" : ""}`}>
-            refresh
-          </span>
-          Refresh
-        </button>
+        {panelTab === "submissions" && (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => token && load(token)}
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
+                       border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
+          >
+            <span className={`material-symbols-outlined text-[16px] ${loading ? "animate-spin" : ""}`}>
+              refresh
+            </span>
+            Refresh
+          </button>
+        )}
       </div>
+
+      {/* ── Top-level panel tabs ── */}
+      <div className="flex gap-1 border-b border-slate-200">
+        {([
+          { id: "submissions" as PanelTab, label: "Submissions",         icon: "inbox"           },
+          { id: "catalogue"  as PanelTab, label: "Catalogue Management", icon: "database"        },
+        ]).map(({ id, label, icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setPanelTab(id)}
+            className={[
+              "flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-colors border-b-2",
+              panelTab === id
+                ? "text-indigo-600 border-indigo-500 bg-indigo-50/60"
+                : "text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-50",
+            ].join(" ")}
+          >
+            <span className="material-symbols-outlined text-[16px]">{icon}</span>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Catalogue management panel ── */}
+      {panelTab === "catalogue" && token && (
+        <CatalogueManager token={token} />
+      )}
+
+      {/* ── Submissions panel ── */}
+      {panelTab === "submissions" && (<>
 
       {/* Error loading */}
       {loadError && (
@@ -626,6 +1039,7 @@ export default function AdminPanel() {
           ))}
         </div>
       )}
+      </>)}
     </div>
   );
 }

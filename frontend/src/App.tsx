@@ -47,6 +47,7 @@ import ProfilePage from "./components/profile/ProfilePage";
 import AuthPage from "./components/auth/AuthPage";
 import OAuthCallback from "./components/auth/OAuthCallback";
 import AdminPanel from "./components/admin/AdminPanel";
+import TimeSeriesCatalogue from "./components/timeseries/TimeSeriesCatalogue";
 import { useAuth } from "./context/AuthContext";
 
 // ── Grid loading skeleton ─────────────────────────────────────────────────────
@@ -118,12 +119,15 @@ export default function App() {
   const [activeCategory, setActiveCategory] =
     useState<TechnologyCategory>("generation");
   const [searchQuery, setSearchQuery]       = useState("");
-  const [filters, setFilters]               = useState<FilterState>(DEFAULT_FILTERS);
   const [selectedTech, setSelectedTech]     = useState<TechnologySummary | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeView, setActiveView]         = useState<ActiveView>("catalogue");
   const [showAuth, setShowAuth]             = useState(false);
   const [authInitialError, setAuthInitialError] = useState<string | undefined>();
+
+  // Filters are always empty — the filter UI was removed from the sidebar.
+  // Kept as a stable constant so TechGrid's prop type is satisfied.
+  const filters = DEFAULT_FILTERS;
 
   const { user } = useAuth();
 
@@ -148,6 +152,8 @@ export default function App() {
           ? "OpenTech DB | Profile Settings"
           : activeView === "admin"
           ? "OpenTech DB | Admin Panel"
+          : activeView === "timeseries"
+          ? "OpenTech DB | Time Series & Profiles"
           : "OpenTech DB | Technology Catalogue"}
       </title>
       <meta
@@ -176,8 +182,6 @@ export default function App() {
         <SideNavBar
           activeCategory={activeCategory}
           onCategoryChange={handleCategoryChange}
-          filters={filters}
-          onFilterChange={setFilters}
           onCollapsedChange={setSidebarCollapsed}
           activeView={activeView}
           onViewChange={setActiveView}
@@ -198,7 +202,9 @@ export default function App() {
             <ContributorWorkspace key={user?.id ?? "anon"} />
           ) : activeView === "profile" ? (
             <ProfilePage onViewChange={setActiveView} />          ) : activeView === "admin" ? (
-            <AdminPanel />          ) : (
+            <AdminPanel />          ) : activeView === "timeseries" ? (
+            <TimeSeriesCatalogue />
+          ) : (
             <main className="max-w-[1440px] mx-auto px-8 py-12 w-full flex-1">
 
               {/* Hero */}

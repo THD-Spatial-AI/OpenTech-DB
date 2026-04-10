@@ -6,17 +6,15 @@
  * Sections
  * ────────
  * 1. Brand + collapse toggle
- * 2. Category navigation  ← primary route switching (moved from TopNavBar)
- * 3. Filter groups:
- *      – OEO Coverage   (full / class-only / none)
- *      – Data Richness  (n_instances bucket)
- * 4. Documentation quick-links → served via FastAPI /project-docs/
+ * 2. Category navigation  ← primary route switching
+ * 3. Time Series & Profiles link
+ * 4. Contribute / Profile links
+ * 5. Documentation quick-links → served via FastAPI /project-docs/
  *
  * Collapsed mode: 64 px icon rail.
  */
 
 import { useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
 import type { TechnologyCategory } from "../types/api";
 import { useAuth } from "../context/AuthContext";
 import logoWithTitle from "../assets/icon_title.png";
@@ -28,18 +26,17 @@ const API_BASE =
 
 // ── Exported types ────────────────────────────────────────────────────────────
 
+/** Kept for TechGrid compatibility — always passed as empty sets from App.tsx. */
 export interface FilterState {
-  oeoCoverage:   Set<string>;  // "full" | "partial" | "none"
-  instanceScale: Set<string>;  // "single" | "few" | "many"
+  oeoCoverage:   Set<string>;
+  instanceScale: Set<string>;
 }
 
-export type ActiveView = "catalogue" | "contributor" | "profile" | "admin";
+export type ActiveView = "catalogue" | "contributor" | "profile" | "admin" | "timeseries";
 
 interface SideNavBarProps {
   activeCategory: TechnologyCategory;
   onCategoryChange: (next: TechnologyCategory) => void;
-  filters: FilterState;
-  onFilterChange: Dispatch<SetStateAction<FilterState>>;
   onCollapsedChange?: (collapsed: boolean) => void;
   activeView: ActiveView;
   onViewChange: (next: ActiveView) => void;
@@ -67,12 +64,6 @@ const DOC_LINKS = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function toggleSetItem(set: Set<string>, item: string): Set<string> {
-  const next = new Set(set);
-  next.has(item) ? next.delete(item) : next.add(item);
-  return next;
-}
-
 function SectionHeading({ icon, label }: { icon: string; label: string }) {
   return (
     <div className="flex items-center gap-2 px-2 mb-1.5">
@@ -84,49 +75,11 @@ function SectionHeading({ icon, label }: { icon: string; label: string }) {
   );
 }
 
-function FilterCheck({
-  label,
-  hint,
-  checked,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  checked: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <label
-      className="flex items-center gap-2.5 px-2 py-1.5 rounded cursor-pointer select-none
-                 text-sm font-medium text-on-surface-variant
-                 hover:bg-surface-container transition-all hover:translate-x-0.5 group"
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        className="rounded text-primary focus:ring-primary border-outline-variant/30 flex-shrink-0"
-      />
-      <span className="flex-1 leading-tight">{label}</span>
-      {hint && (
-        <span
-          className="text-[10px] text-on-surface-variant/40 font-bold tabular-nums
-                     group-hover:text-on-surface-variant/70 transition-colors"
-        >
-          {hint}
-        </span>
-      )}
-    </label>
-  );
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SideNavBar({
   activeCategory,
   onCategoryChange,
-  filters,
-  onFilterChange,
   onCollapsedChange,
   activeView,
   onViewChange,
@@ -135,22 +88,11 @@ export default function SideNavBar({
   const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const toggle = (group: keyof FilterState, value: string) =>
-    onFilterChange((prev) => ({
-      ...prev,
-      [group]: toggleSetItem(prev[group], value),
-    }));
-
   const handleCollapseToggle = () => {
     const next = !isCollapsed;
     setIsCollapsed(next);
     onCollapsedChange?.(next);
   };
-
-  const clearAll = () =>
-    onFilterChange({ oeoCoverage: new Set(), instanceScale: new Set() });
-
-  const activeFilterCount = filters.oeoCoverage.size + filters.instanceScale.size;
 
   // ── Collapsed: icon rail ──────────────────────────────────────────────────
 
@@ -165,12 +107,6 @@ export default function SideNavBar({
         {/* Logo icon + expand */}
         <div className="relative flex items-center justify-center">
           <img src={logoIconOnly} alt="OPENTECH|DB" className="w-9 h-9 object-contain" />
-          {activeFilterCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary rounded-full text-[9px]
-                              text-on-primary font-bold flex items-center justify-center">
-              {activeFilterCount}
-            </span>
-          )}
         </div>
         <button
           onClick={handleCollapseToggle}
@@ -195,8 +131,19 @@ export default function SideNavBar({
               <span className="material-symbols-outlined text-lg">{c.icon}</span>
             </button>
           ))}
-          <span title="OEO filters" className="material-symbols-outlined text-on-surface-variant/30 text-xl mt-2">hub</span>
-          <span title="Data richness" className="material-symbols-outlined text-on-surface-variant/30 text-xl">layers</span>
+          {/* Time Series shortcut */}
+          <button
+            title="Time Series & Profiles"
+            onClick={() => onViewChange("timeseries")}
+            className={[
+              "w-8 h-8 flex items-center justify-center rounded-full transition-colors mt-2",
+              activeView === "timeseries"
+                ? "bg-primary/15 text-primary"
+                : "hover:bg-surface-container text-on-surface-variant/50 hover:text-on-surface-variant",
+            ].join(" ")}
+          >
+            <span className="material-symbols-outlined text-lg">show_chart</span>
+          </button>
           {/* Contribute shortcut */}
           <button
             title="Contributor Workspace"
@@ -250,21 +197,6 @@ export default function SideNavBar({
         </button>
       </div>
 
-      {/* Active filter pill */}
-      {activeFilterCount > 0 && (
-        <div className="flex items-center justify-between px-4 py-2 bg-primary/5 border-b border-primary/10 flex-shrink-0">
-          <span className="text-xs font-bold text-primary">
-            {activeFilterCount} active filter{activeFilterCount !== 1 ? "s" : ""}
-          </span>
-          <button
-            onClick={clearAll}
-            className="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant hover:text-primary transition-colors"
-          >
-            Clear all
-          </button>
-        </div>
-      )}
-
       {/* Scrollable content */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 min-h-0">
 
@@ -297,45 +229,27 @@ export default function SideNavBar({
           })}
         </div>
 
-        {/* ── OEO Coverage ──────────────────────────────────────────────── */}
+        {/* ── Time Series ────────────────────────────────────────────────── */}
         <div className="border-t border-outline-variant/10 pt-4">
-          <SectionHeading icon="hub" label="OEO Coverage" />
-          <FilterCheck
-            label="Fully Mapped"
-            hint="class + URI"
-            checked={filters.oeoCoverage.has("full")}
-            onChange={() => toggle("oeoCoverage", "full")}
-          />
-          <FilterCheck
-            label="Class Only"
-            hint="no URI"
-            checked={filters.oeoCoverage.has("partial")}
-            onChange={() => toggle("oeoCoverage", "partial")}
-          />
-          <FilterCheck
-            label="Not Mapped"
-            hint="null"
-            checked={filters.oeoCoverage.has("none")}
-            onChange={() => toggle("oeoCoverage", "none")}
-          />
-        </div>
-
-        {/* ── Data Richness ──────────────────────────────────────────────── */}
-        <div>
-          <SectionHeading icon="layers" label="Data Richness" />
-          {[
-            { label: "Single Instance", hint: "n = 1", value: "single" },
-            { label: "Few Variants",    hint: "2 – 5", value: "few"    },
-            { label: "Rich Dataset",    hint: "≥ 6",   value: "many"   },
-          ].map(({ label, hint, value }) => (
-            <FilterCheck
-              key={value}
-              label={label}
-              hint={hint}
-              checked={filters.instanceScale.has(value)}
-              onChange={() => toggle("instanceScale", value)}
-            />
-          ))}
+          <SectionHeading icon="show_chart" label="Profiles & Time Series" />
+          <button
+            onClick={() => onViewChange("timeseries")}
+            aria-current={activeView === "timeseries" ? "page" : undefined}
+            className={[
+              "w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium transition-all text-left",
+              activeView === "timeseries"
+                ? "bg-primary/10 text-primary font-bold border-l-2 border-primary pl-[6px]"
+                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface hover:translate-x-0.5",
+            ].join(" ")}
+          >
+            <span className={["material-symbols-outlined text-lg", activeView === "timeseries" ? "text-primary" : ""].join(" ")}>
+              show_chart
+            </span>
+            Browse Profiles
+            {activeView === "timeseries" && (
+              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+            )}
+          </button>
         </div>
 
         {/* ── Contribute ────────────────────────────────────────────────── */}
@@ -442,7 +356,7 @@ export default function SideNavBar({
           <span className="material-symbols-outlined text-sm">description</span> ReDoc
         </a>
         <a
-          href="https://openenergy-platform.org/ontology/oeo/"
+          href="https://openenergyplatform.org/ontology/"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-on-surface-variant

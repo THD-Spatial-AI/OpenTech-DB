@@ -37,7 +37,7 @@ const NAV_LINKS = [
   },
   {
     label:  "OEO Ontology",
-    href:   "https://openenergy-platform.org/ontology/oeo/",
+    href:   "https://openenergyplatform.org/ontology/",
     icon:   "hub",
     active: false,
     external: true,

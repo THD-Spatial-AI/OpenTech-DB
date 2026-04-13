@@ -32,6 +32,7 @@ import {
 } from "../../services/timeseries";
 import { useAuth } from "../../context/AuthContext";
 import type { ProfileType, ProfileResolution } from "../../types/timeseries";
+import MapPickerModal from "./MapPickerModal";
 
 // ─────────────────────────────────────────────────────────────────────
 // Constants
@@ -60,7 +61,322 @@ const RESOLUTION_OPTIONS: { value: ProfileResolution; label: string; pts: string
   { value: "daily",  label: "Daily",     pts:    "365 pts/yr" },
 ];
 
-const UNIT_SUGGESTIONS = ["p.u.", "MW", "MWh", "EUR/MWh", "W/m²", "m/s", "°C", "GW", "GWh", "t/h", "%"];
+const UNIT_OPTIONS: { group: string; units: { value: string; label: string }[] }[] = [
+  {
+    group: "Dimensionless / Ratio",
+    units: [
+      { value: "p.u.",  label: "p.u. — per unit (0–1)" },
+      { value: "%",     label: "% — percent" },
+    ],
+  },
+  {
+    group: "Power",
+    units: [
+      { value: "W",   label: "W — Watt" },
+      { value: "kW",  label: "kW — Kilowatt" },
+      { value: "MW",  label: "MW — Megawatt" },
+      { value: "GW",  label: "GW — Gigawatt" },
+      { value: "TW",  label: "TW — Terawatt" },
+    ],
+  },
+  {
+    group: "Energy",
+    units: [
+      { value: "Wh",  label: "Wh — Watt-hour" },
+      { value: "kWh", label: "kWh — Kilowatt-hour" },
+      { value: "MWh", label: "MWh — Megawatt-hour" },
+      { value: "GWh", label: "GWh — Gigawatt-hour" },
+      { value: "TWh", label: "TWh — Terawatt-hour" },
+    ],
+  },
+  {
+    group: "Price",
+    units: [
+      { value: "EUR/MWh", label: "EUR/MWh" },
+      { value: "USD/MWh", label: "USD/MWh" },
+      { value: "EUR/kWh", label: "EUR/kWh" },
+      { value: "EUR/GJ",  label: "EUR/GJ" },
+    ],
+  },
+  {
+    group: "Weather / Environment",
+    units: [
+      { value: "W/m²", label: "W/m² — Irradiance" },
+      { value: "m/s",  label: "m/s — Wind speed" },
+      { value: "°C",   label: "°C — Temperature" },
+      { value: "K",    label: "K — Kelvin" },
+      { value: "mm",   label: "mm — Precipitation" },
+      { value: "Pa",   label: "Pa — Pressure" },
+    ],
+  },
+  {
+    group: "Mass / Flow",
+    units: [
+      { value: "kg",  label: "kg — Kilogram" },
+      { value: "t",   label: "t — Tonne" },
+      { value: "t/h", label: "t/h — Tonnes per hour" },
+      { value: "m³",  label: "m³ — Cubic metre" },
+      { value: "m³/s",label: "m³/s — Flow rate" },
+    ],
+  },
+];
+
+// Flat list used for validation / default check
+const ALL_PRESET_UNITS = UNIT_OPTIONS.flatMap((g) => g.units.map((u) => u.value));
+
+// ─────────────────────────────────────────────────────────────────────
+// Country list  (ISO 3166-1 alpha-2 + common name)
+// ─────────────────────────────────────────────────────────────────────
+const COUNTRIES: { code: string; name: string }[] = [
+  { code: "AF", name: "Afghanistan" }, { code: "AL", name: "Albania" },
+  { code: "DZ", name: "Algeria" }, { code: "AD", name: "Andorra" },
+  { code: "AO", name: "Angola" }, { code: "AR", name: "Argentina" },
+  { code: "AM", name: "Armenia" }, { code: "AU", name: "Australia" },
+  { code: "AT", name: "Austria" }, { code: "AZ", name: "Azerbaijan" },
+  { code: "BS", name: "Bahamas" }, { code: "BH", name: "Bahrain" },
+  { code: "BD", name: "Bangladesh" }, { code: "BY", name: "Belarus" },
+  { code: "BE", name: "Belgium" }, { code: "BZ", name: "Belize" },
+  { code: "BJ", name: "Benin" }, { code: "BT", name: "Bhutan" },
+  { code: "BO", name: "Bolivia" }, { code: "BA", name: "Bosnia and Herzegovina" },
+  { code: "BW", name: "Botswana" }, { code: "BR", name: "Brazil" },
+  { code: "BN", name: "Brunei" }, { code: "BG", name: "Bulgaria" },
+  { code: "BF", name: "Burkina Faso" }, { code: "BI", name: "Burundi" },
+  { code: "CV", name: "Cabo Verde" }, { code: "KH", name: "Cambodia" },
+  { code: "CM", name: "Cameroon" }, { code: "CA", name: "Canada" },
+  { code: "CF", name: "Central African Republic" }, { code: "TD", name: "Chad" },
+  { code: "CL", name: "Chile" }, { code: "CN", name: "China" },
+  { code: "CO", name: "Colombia" }, { code: "KM", name: "Comoros" },
+  { code: "CD", name: "Congo (DRC)" }, { code: "CG", name: "Congo (Republic)" },
+  { code: "CR", name: "Costa Rica" }, { code: "HR", name: "Croatia" },
+  { code: "CU", name: "Cuba" }, { code: "CY", name: "Cyprus" },
+  { code: "CZ", name: "Czech Republic" }, { code: "DK", name: "Denmark" },
+  { code: "DJ", name: "Djibouti" }, { code: "DO", name: "Dominican Republic" },
+  { code: "EC", name: "Ecuador" }, { code: "EG", name: "Egypt" },
+  { code: "SV", name: "El Salvador" }, { code: "GQ", name: "Equatorial Guinea" },
+  { code: "ER", name: "Eritrea" }, { code: "EE", name: "Estonia" },
+  { code: "SZ", name: "Eswatini" }, { code: "ET", name: "Ethiopia" },
+  { code: "FJ", name: "Fiji" }, { code: "FI", name: "Finland" },
+  { code: "FR", name: "France" }, { code: "GA", name: "Gabon" },
+  { code: "GM", name: "Gambia" }, { code: "GE", name: "Georgia" },
+  { code: "DE", name: "Germany" }, { code: "GH", name: "Ghana" },
+  { code: "GR", name: "Greece" }, { code: "GT", name: "Guatemala" },
+  { code: "GN", name: "Guinea" }, { code: "GW", name: "Guinea-Bissau" },
+  { code: "GY", name: "Guyana" }, { code: "HT", name: "Haiti" },
+  { code: "HN", name: "Honduras" }, { code: "HU", name: "Hungary" },
+  { code: "IS", name: "Iceland" }, { code: "IN", name: "India" },
+  { code: "ID", name: "Indonesia" }, { code: "IR", name: "Iran" },
+  { code: "IQ", name: "Iraq" }, { code: "IE", name: "Ireland" },
+  { code: "IL", name: "Israel" }, { code: "IT", name: "Italy" },
+  { code: "JM", name: "Jamaica" }, { code: "JP", name: "Japan" },
+  { code: "JO", name: "Jordan" }, { code: "KZ", name: "Kazakhstan" },
+  { code: "KE", name: "Kenya" }, { code: "KW", name: "Kuwait" },
+  { code: "KG", name: "Kyrgyzstan" }, { code: "LA", name: "Laos" },
+  { code: "LV", name: "Latvia" }, { code: "LB", name: "Lebanon" },
+  { code: "LS", name: "Lesotho" }, { code: "LR", name: "Liberia" },
+  { code: "LY", name: "Libya" }, { code: "LI", name: "Liechtenstein" },
+  { code: "LT", name: "Lithuania" }, { code: "LU", name: "Luxembourg" },
+  { code: "MG", name: "Madagascar" }, { code: "MW", name: "Malawi" },
+  { code: "MY", name: "Malaysia" }, { code: "MV", name: "Maldives" },
+  { code: "ML", name: "Mali" }, { code: "MT", name: "Malta" },
+  { code: "MR", name: "Mauritania" }, { code: "MU", name: "Mauritius" },
+  { code: "MX", name: "Mexico" }, { code: "MD", name: "Moldova" },
+  { code: "MC", name: "Monaco" }, { code: "MN", name: "Mongolia" },
+  { code: "ME", name: "Montenegro" }, { code: "MA", name: "Morocco" },
+  { code: "MZ", name: "Mozambique" }, { code: "MM", name: "Myanmar" },
+  { code: "NA", name: "Namibia" }, { code: "NP", name: "Nepal" },
+  { code: "NL", name: "Netherlands" }, { code: "NZ", name: "New Zealand" },
+  { code: "NI", name: "Nicaragua" }, { code: "NE", name: "Niger" },
+  { code: "NG", name: "Nigeria" }, { code: "MK", name: "North Macedonia" },
+  { code: "NO", name: "Norway" }, { code: "OM", name: "Oman" },
+  { code: "PK", name: "Pakistan" }, { code: "PA", name: "Panama" },
+  { code: "PG", name: "Papua New Guinea" }, { code: "PY", name: "Paraguay" },
+  { code: "PE", name: "Peru" }, { code: "PH", name: "Philippines" },
+  { code: "PL", name: "Poland" }, { code: "PT", name: "Portugal" },
+  { code: "QA", name: "Qatar" }, { code: "RO", name: "Romania" },
+  { code: "RU", name: "Russia" }, { code: "RW", name: "Rwanda" },
+  { code: "SA", name: "Saudi Arabia" }, { code: "SN", name: "Senegal" },
+  { code: "RS", name: "Serbia" }, { code: "SL", name: "Sierra Leone" },
+  { code: "SG", name: "Singapore" }, { code: "SK", name: "Slovakia" },
+  { code: "SI", name: "Slovenia" }, { code: "SO", name: "Somalia" },
+  { code: "ZA", name: "South Africa" }, { code: "SS", name: "South Sudan" },
+  { code: "ES", name: "Spain" }, { code: "LK", name: "Sri Lanka" },
+  { code: "SD", name: "Sudan" }, { code: "SR", name: "Suriname" },
+  { code: "SE", name: "Sweden" }, { code: "CH", name: "Switzerland" },
+  { code: "SY", name: "Syria" }, { code: "TW", name: "Taiwan" },
+  { code: "TJ", name: "Tajikistan" }, { code: "TZ", name: "Tanzania" },
+  { code: "TH", name: "Thailand" }, { code: "TL", name: "Timor-Leste" },
+  { code: "TG", name: "Togo" }, { code: "TT", name: "Trinidad and Tobago" },
+  { code: "TN", name: "Tunisia" }, { code: "TR", name: "Turkey" },
+  { code: "TM", name: "Turkmenistan" }, { code: "UG", name: "Uganda" },
+  { code: "UA", name: "Ukraine" }, { code: "AE", name: "United Arab Emirates" },
+  { code: "GB", name: "United Kingdom" }, { code: "US", name: "United States" },
+  { code: "UY", name: "Uruguay" }, { code: "UZ", name: "Uzbekistan" },
+  { code: "VE", name: "Venezuela" }, { code: "VN", name: "Vietnam" },
+  { code: "YE", name: "Yemen" }, { code: "ZM", name: "Zambia" },
+  { code: "ZW", name: "Zimbabwe" },
+  // EU / NUTS top-level regions
+  { code: "EU", name: "European Union" },
+  { code: "EEA", name: "European Economic Area" },
+];
+
+// ─────────────────────────────────────────────────────────────────────
+// LocationPicker — country combobox + map picker modal
+// ─────────────────────────────────────────────────────────────────────
+function LocationPicker({
+  value,
+  onChange,
+  error,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  error?: string;
+}) {
+  const [query,   setQuery]   = useState(() => {
+    const match = COUNTRIES.find((c) => c.code === value);
+    return match ? `${match.name} (${match.code})` : value;
+  });
+  const [open,    setOpen]    = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = query.trim() === ""
+    ? COUNTRIES
+    : COUNTRIES.filter(
+        (c) =>
+          c.name.toLowerCase().includes(query.toLowerCase()) ||
+          c.code.toLowerCase().includes(query.toLowerCase())
+      );
+
+  const selectCountry = (c: { code: string; name: string }) => {
+    onChange(c.code);
+    setQuery(`${c.name} (${c.code})`);
+    setOpen(false);
+  };
+
+  const BASE_CLS =
+    "w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-3 py-2.5 " +
+    "text-sm text-on-surface placeholder:text-on-surface-variant/40 " +
+    "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all" +
+    (error ? " border-red-400 focus:ring-red-200" : "");
+
+  // Parse stored coords to re-open map at same spot
+  const storedCoords: { lat: number; lon: number } | null = (() => {
+    const parts = value.split(",");
+    if (parts.length === 2) {
+      const la = parseFloat(parts[0]); const lo = parseFloat(parts[1]);
+      if (!isNaN(la) && !isNaN(lo)) return { lat: la, lon: lo };
+    }
+    return null;
+  })();
+
+  return (
+    <>
+      <div ref={wrapRef} className="relative flex items-center gap-2">
+        {/* Country search input */}
+        <div className="relative flex-1">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-slate-400 pointer-events-none">
+            search
+          </span>
+          <input
+            id="up-location"
+            type="text"
+            autoComplete="off"
+            value={query}
+            placeholder="Search country or type code…"
+            onFocus={() => { setOpen(true); if (query) setQuery(""); }}
+            onChange={(e) => { setQuery(e.target.value); setOpen(true); onChange(e.target.value); }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setOpen(false);
+              if (e.key === "Enter" && filtered.length > 0) {
+                e.preventDefault();
+                selectCountry(filtered[0]);
+              }
+            }}
+            className={`${BASE_CLS} pl-9`}
+          />
+          {/* Country dropdown */}
+          {open && (
+            <ul
+              className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto
+                         bg-white border border-slate-200 rounded-xl shadow-lg py-1"
+            >
+              {filtered.length === 0 && (
+                <li className="px-4 py-2 text-sm text-slate-400">No matches</li>
+              )}
+              {filtered.map((c) => (
+                <li key={c.code}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); selectCountry(c); }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 hover:text-indigo-700
+                               flex items-center gap-3"
+                  >
+                    <span className="font-mono text-[11px] font-bold text-slate-400 w-8 shrink-0">{c.code}</span>
+                    <span>{c.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Open map picker button */}
+        <button
+          type="button"
+          title="Pick exact location on map"
+          onClick={() => { setOpen(false); setMapOpen(true); }}
+          className="shrink-0 h-[42px] px-3 flex items-center gap-1.5 rounded-xl
+                     border border-slate-300 bg-slate-50 text-slate-600 text-[12px] font-semibold
+                     hover:bg-indigo-50 hover:border-indigo-400 hover:text-indigo-700 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[15px]">map</span>
+          Map
+        </button>
+      </div>
+
+      {/* Pinned coords badge shown after map pick */}
+      {storedCoords && (
+        <p className="text-[11px] text-slate-400 font-mono mt-1 flex items-center gap-1">
+          <span className="material-symbols-outlined text-[12px] text-indigo-400">pin_drop</span>
+          {storedCoords.lat.toFixed(5)}, {storedCoords.lon.toFixed(5)}
+          <button
+            type="button"
+            onClick={() => { onChange(""); setQuery(""); }}
+            className="ml-2 text-slate-300 hover:text-red-400 transition-colors"
+          >
+            × clear
+          </button>
+        </p>
+      )}
+
+      {/* Map modal */}
+      {mapOpen && (
+        <MapPickerModal
+          initialLat={storedCoords?.lat}
+          initialLon={storedCoords?.lon}
+          onConfirm={(lat, lon, label) => {
+            const coordStr = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+            onChange(coordStr);
+            setQuery(label || coordStr);
+            setMapOpen(false);
+          }}
+          onClose={() => setMapOpen(false)}
+        />
+      )}
+    </>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // Zod schema
@@ -304,6 +620,7 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
   const fileRef     = useRef<HTMLInputElement>(null);
   const [pickedFile, setPickedFile] = useState<File | null>(null);
   const [format, setFormat]         = useState<"csv" | "json">("csv");
+  const [customUnit, setCustomUnit] = useState(false);
 
   const [fields, setFields] = useState({ ...EMPTY_FIELDS });
   const set = (k: keyof typeof fields) =>
@@ -519,9 +836,12 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
 
               {/* Location */}
               <LF id="up-location" label="Location" required error={errors.location}
-                hint="ISO-3166 country or NUTS code, e.g. DE, FR, DE-BY">
-                <input id="up-location" type="text" value={fields.location} onChange={set("location")}
-                  placeholder="DE" className={`${INPUT} ${errors.location ? INPUT_ERR : ""}`} />
+                hint="Select a country or enter exact coordinates (lat, lon)">
+                <LocationPicker
+                  value={fields.location}
+                  onChange={(val) => setFields((p) => ({ ...p, location: val }))}
+                  error={errors.location}
+                />
               </LF>
 
               {/* Source */}
@@ -533,13 +853,71 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
 
               {/* Unit */}
               <LF id="up-unit" label="Unit" required error={errors.unit}
-                hint="Physical unit of each value, e.g. p.u., MW, EUR/MWh">
-                <input id="up-unit" type="text" list="up-unit-list"
-                  value={fields.unit} onChange={set("unit")} placeholder="p.u."
-                  className={`${INPUT} ${errors.unit ? INPUT_ERR : ""}`} />
-                <datalist id="up-unit-list">
-                  {UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
-                </datalist>
+                hint="Choose a common unit or press + to enter a custom one">
+                <div className="flex items-center gap-2">
+                  {customUnit ? (
+                    // ── Custom text input mode ──
+                    <>
+                      <input
+                        id="up-unit"
+                        type="text"
+                        autoFocus
+                        value={fields.unit}
+                        onChange={set("unit")}
+                        placeholder="e.g. kg/s, t CO₂/MWh…"
+                        className={`flex-1 ${INPUT} ${errors.unit ? INPUT_ERR : ""}`}
+                      />
+                      <button
+                        type="button"
+                        title="Back to preset list"
+                        onClick={() => {
+                          setCustomUnit(false);
+                          // reset to first preset only if current value isn't a preset
+                          if (!ALL_PRESET_UNITS.includes(fields.unit)) {
+                            setFields((p) => ({ ...p, unit: "p.u." }));
+                          }
+                        }}
+                        className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg
+                                   border border-slate-300 text-slate-500 hover:bg-slate-100
+                                   transition-colors text-[15px] font-bold"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    </>
+                  ) : (
+                    // ── Dropdown mode ──
+                    <>
+                      <select
+                        id="up-unit"
+                        value={fields.unit}
+                        onChange={set("unit")}
+                        className={`flex-1 ${INPUT} ${errors.unit ? INPUT_ERR : ""}`}
+                      >
+                        {UNIT_OPTIONS.map((group) => (
+                          <optgroup key={group.group} label={group.group}>
+                            {group.units.map((u) => (
+                              <option key={u.value} value={u.value}>{u.label}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        title="Enter a custom unit"
+                        onClick={() => {
+                          setCustomUnit(true);
+                          setFields((p) => ({ ...p, unit: "" }));
+                        }}
+                        className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg
+                                   border border-slate-300 bg-slate-50 text-indigo-600
+                                   hover:bg-indigo-50 hover:border-indigo-400
+                                   transition-colors font-bold text-lg leading-none"
+                      >
+                        +
+                      </button>
+                    </>
+                  )}
+                </div>
               </LF>
 
               {/* Reference year */}

@@ -108,3 +108,86 @@ local development workflow.
 **Consequences:** Docker must be installed on the target machine. The image does not
 bundle the data directory, so the volume mount must be configured correctly in production.
 `--reload` mode is disabled in the container `CMD` (production-safe default).
+
+---
+
+## ADR-007: React 19 + Vite as the frontend stack
+
+**Status:** Accepted
+
+**Context:** A web interface is needed so non-developer researchers can browse and
+visualise the technology catalogue without writing Python or using curl.
+
+**Decision:** Build a React 19 SPA with TypeScript, bundled by Vite 8, styled with
+TailwindCSS, and served independently from the API.
+
+**Rationale:** React 19's `use()` hook and `<Suspense>` eliminate the `useEffect +
+useState` boilerplate traditionally needed for async data fetching — which is the primary
+activity of this UI. Vite provides sub-second hot-module replacement for fast iteration.
+TailwindCSS avoids a custom CSS codebase. The SPA runs entirely in the browser with no
+server-side rendering required.
+
+**Consequences:** Requires Node.js for development and builds. The frontend and backend
+run on separate ports in development (CORS must be configured). In production it can be
+served as static files from any web server.
+
+---
+
+## ADR-008: Supabase + ORCID for authentication
+
+**Status:** Accepted
+
+**Context:** Contributor and admin workflows require user identity. Researchers prefer
+ORCID iD as their professional identity. Simple email + password must also be supported.
+
+**Decision:** Use ORCID OAuth (handled in `api/auth.py`) for researcher sign-in and
+Supabase JS SDK for session management, email/password auth, and admin role storage.
+
+**Rationale:** ORCID is the standard researcher identifier in academia, reducing
+friction for contributor sign-up. Supabase provides a managed auth backend with email,
+GitHub OAuth, and role metadata without operating a custom identity service.
+
+**Consequences:** ORCID client credentials and Supabase project keys must be configured
+as environment variables. JWTs are stored in `sessionStorage` (cleared on browser close).
+If Supabase is unavailable, ORCID-based login still works independently.
+
+---
+
+## ADR-009: Zustand for frontend state management
+
+**Status:** Accepted
+
+**Context:** The frontend needs shared state for selected category, search query, modal
+visibility, and auth session.
+
+**Decision:** Use Zustand 5 instead of Redux, MobX, or React Context alone.
+
+**Rationale:** Zustand's API is minimal (one `create()` call per store) and requires
+no reducers, actions, or boilerplate. It integrates naturally with React 19 hooks. For
+the scale of state involved (a handful of UI flags), Redux would be over-engineered.
+
+**Consequences:** State is not persisted across hard reloads (except auth JWT in
+`sessionStorage`). No dev tools integration out of the box (though Zustand supports
+Redux DevTools).
+
+---
+
+## ADR-010: Separate time-series catalogue as a first-class resource
+
+**Status:** Accepted
+
+**Context:** VRE technologies (wind, solar) require hourly capacity factor profiles.
+Initially, profile references were stored as scalar fields inside technology records.
+
+**Decision:** Extract time-series profiles into a dedicated endpoint family
+(`/api/v1/timeseries`) backed by `data/timeseries/timeseries_catalogue.json` and
+individual data files. VRE technology records reference profiles by `profile_key`.
+
+**Rationale:** Time-series data (up to 8760 values per profile) is too large to embed in
+technology catalogue responses. Decoupling allows the profile catalogue to be queried,
+filtered, and paginated independently. It also enables the contributor submission workflow
+where new profiles are reviewed before publication.
+
+**Consequences:** A two-request pattern is needed to get a VRE technology's full data
+(technology record + profile). The profile catalogue must be kept in sync with technology
+`profile_key` references.

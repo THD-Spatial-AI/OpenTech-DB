@@ -177,7 +177,7 @@ export default function App() {
         />
       )}
 
-      <div className={showAuth && !user ? "hidden" : "bg-surface font-body text-on-surface antialiased min-h-screen overflow-x-hidden"}>
+      <div className={showAuth && !user ? "hidden" : "bg-surface font-body text-on-surface antialiased min-h-screen overflow-x-clip"}>
         {/* ── Side nav ──────────────────────────────────────────────── */}
         <SideNavBar
           activeCategory={activeCategory}
@@ -189,7 +189,7 @@ export default function App() {
         />
 
         {/* ── Main wrapper — offset by the fixed side nav on lg ─────── */}
-        <div className={`${sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"} flex flex-col min-h-screen overflow-x-hidden transition-[margin] duration-300`}>
+        <div className={`${sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"} flex flex-col min-h-screen overflow-x-clip pt-14 transition-[margin] duration-300`}>
 
           <TopNavBar
             onLoginClick={() => setShowAuth(true)}

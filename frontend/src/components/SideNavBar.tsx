@@ -100,7 +100,7 @@ export default function SideNavBar({
     return (
       <aside
         aria-label="Sidebar (collapsed)"
-        className="h-screen w-16 fixed left-0 top-0 bg-surface-container-low
+        className="h-[calc(100vh-3.5rem)] w-16 fixed left-0 top-14 bg-surface-container-low
                    border-r border-outline-variant/15 flex-col items-center
                    pt-4 pb-6 z-[60] gap-3 hidden lg:flex"
       >
@@ -157,22 +157,22 @@ export default function SideNavBar({
           >
             <span className="material-symbols-outlined text-lg">add_circle</span>
           </button>
-          {/* Profile shortcut */}
-          {user && (
-            <button
-              title="Profile Settings"
-              onClick={() => onViewChange("profile")}
-              className={[
-                "w-8 h-8 flex items-center justify-center rounded-full transition-colors mt-1",
-                activeView === "profile"
-                  ? "bg-primary/15 text-primary"
-                  : "hover:bg-surface-container text-on-surface-variant/50 hover:text-on-surface-variant",
-              ].join(" ")}
-            >
-              <span className="material-symbols-outlined text-lg">manage_accounts</span>
-            </button>
-          )}
         </div>
+        {/* Profile shortcut pinned to bottom */}
+        {user && (
+          <button
+            title="Profile Settings"
+            onClick={() => onViewChange("profile")}
+            className={[
+              "w-8 h-8 flex items-center justify-center rounded-full transition-colors mt-auto",
+              activeView === "profile"
+                ? "bg-primary/15 text-primary"
+                : "hover:bg-surface-container text-on-surface-variant/50 hover:text-on-surface-variant",
+            ].join(" ")}
+          >
+            <span className="material-symbols-outlined text-lg">manage_accounts</span>
+          </button>
+        )}
       </aside>
     );
   }
@@ -182,7 +182,7 @@ export default function SideNavBar({
   return (
     <aside
       aria-label="Sidebar navigation and filters"
-      className="h-screen w-64 fixed left-0 top-0 bg-surface-container-low
+      className="h-[calc(100vh-3.5rem)] w-64 fixed left-0 top-14 bg-surface-container-low
                  border-r border-outline-variant/15 flex-col z-[60] hidden lg:flex"
     >
       {/* Brand + collapse */}
@@ -269,7 +269,7 @@ export default function SideNavBar({
               <span className={["material-symbols-outlined text-lg", activeView === "contributor" ? "text-primary" : ""].join(" ")}>
                 add
               </span>
-              Add Technology
+              Contribute
               {activeView === "contributor" && (
                 <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
               )}
@@ -290,27 +290,7 @@ export default function SideNavBar({
               </span>
             </button>
           )}
-          {/* Profile link — only when signed in */}
-          {user && (
-            <button
-              onClick={() => onViewChange("profile")}
-              aria-current={activeView === "profile" ? "page" : undefined}
-              className={[
-                "w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium transition-all text-left mt-1",
-                activeView === "profile"
-                  ? "bg-primary/10 text-primary font-bold border-l-2 border-primary pl-[6px]"
-                  : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface hover:translate-x-0.5",
-              ].join(" ")}
-            >
-              <span className={["material-symbols-outlined text-lg", activeView === "profile" ? "text-primary" : ""].join(" ")}>
-                manage_accounts
-              </span>
-              Profile Settings
-              {activeView === "profile" && (
-                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-              )}
-            </button>
-          )}
+
         </div>
 
         {/* ── Documentation quick-links ──────────────────────────────────── */}
@@ -346,6 +326,27 @@ export default function SideNavBar({
 
       {/* Footer */}
       <div className="px-3 py-3 border-t border-outline-variant/10 space-y-1 flex-shrink-0">
+        {/* Profile Settings pinned at bottom — signed-in only */}
+        {user && (
+          <button
+            onClick={() => onViewChange("profile")}
+            aria-current={activeView === "profile" ? "page" : undefined}
+            className={[
+              "w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium transition-all text-left",
+              activeView === "profile"
+                ? "bg-primary/10 text-primary font-bold border-l-2 border-primary pl-[6px]"
+                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface hover:translate-x-0.5",
+            ].join(" ")}
+          >
+            <span className={["material-symbols-outlined text-lg", activeView === "profile" ? "text-primary" : ""].join(" ")}>
+              manage_accounts
+            </span>
+            Profile Settings
+            {activeView === "profile" && (
+              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+            )}
+          </button>
+        )}
         <a
           href={`${API_BASE}/redoc`}
           target="_blank"

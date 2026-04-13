@@ -313,12 +313,12 @@ export default function EquipmentPalette({ schema }: EquipmentPaletteProps) {
 
       {/* Draggable groups */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0">
-        {Object.entries(grouped).map(([domain, classes], idx) => (
+        {Object.entries(grouped).map(([domain, classes]) => (
           <DomainGroup
             key={domain}
             domain={domain}
             classes={classes}
-            defaultOpen={idx === 0}
+            defaultOpen={false}
           />
         ))}
 

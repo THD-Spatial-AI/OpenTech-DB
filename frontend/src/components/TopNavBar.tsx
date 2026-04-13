@@ -62,7 +62,7 @@ export default function TopNavBar({ onLoginClick, onViewChange, activeView }: To
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="bg-surface-container-low font-headline text-on-surface top-0 z-50 sticky border-b border-outline-variant/15">
+    <header className="bg-surface-container-low font-headline text-on-surface fixed top-0 left-0 right-0 z-[70] border-b border-outline-variant/15">
       <div className="flex items-center w-full px-8 py-3 max-w-[1440px] mx-auto gap-4">
 
         {/* Brand + Nav links */}

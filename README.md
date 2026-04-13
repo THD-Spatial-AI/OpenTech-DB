@@ -1,12 +1,15 @@
 # OpenTech-db
 
-> An **Open Energy Ontology (OEO)-aligned** repository and REST API that stores, manages, and distributes
-> technical and economic parameters for energy **generation, storage, transmission, and conversion**
-> technologies. Designed to feed real, traceable data into energy modelling frameworks:
-> **Calliope**, **PyPSA**, **OSeMOSYS**, and **ADOPTNet0**.
+> An **Open Energy Ontology (OEO)-aligned** repository, REST API, and **React 19 web frontend** that
+> stores, manages, and distributes technical and economic parameters for energy **generation, storage,
+> transmission, and conversion** technologies. Designed to feed real, traceable data into energy modelling
+> frameworks: **Calliope**, **PyPSA**, **OSeMOSYS**, and **ADOPTNet0**. Includes a time-series profile
+> catalogue, contributor submission workflow, and ORCID + Supabase authentication.
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8.0-646CFF)](https://vite.dev/)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 [![OEO](https://img.shields.io/badge/ontology-OEO-green)](https://openenergy-platform.org/ontology/oeo/)
 
@@ -63,6 +66,9 @@ for t in techs["technologies"]:
 - [Project Structure](#project-structure)
 - [Quick Start](#quick-start)
 - [API Reference](#api-reference)
+- [Web Frontend](#web-frontend)
+- [Time-Series Catalogue](#time-series-catalogue)
+- [Authentication](#authentication)
 - [Integration Guide](#integration-guide)
 - [Data Model](#data-model)
 - [JSON Data Formats](#json-data-formats)
@@ -77,7 +83,7 @@ for t in techs["technologies"]:
 
 ## Overview
 
-`opentech-db` is a domain-specific data repository and REST API that provides **standardised, source-traced technical and economic parameters** for energy system components. It serves as a single source of truth that multiple energy modelling frameworks can query programmatically — eliminating the scattered spreadsheet-per-model workflow.
+`opentech-db` is a domain-specific data repository, REST API, and web frontend that provides **standardised, source-traced technical and economic parameters** for energy system components. It serves as a single source of truth that multiple energy modelling frameworks can query programmatically — eliminating the scattered spreadsheet-per-model workflow. A React 19 SPA allows researchers to browse, visualise, and contribute data without writing code.
 
 Key design principles:
 
@@ -85,6 +91,8 @@ Key design principles:
 - **Multi-instance** — a single technology (e.g. Gas Turbine) stores multiple `EquipmentInstance` rows: different manufacturers, vintages, or projection scenarios.
 - **Uncertainty-aware** — every parameter is a `ParameterValue` object with `value`, `unit`, `min`, `max`, `source`, and `year`.
 - **Framework-agnostic** — built-in adapter modules translate OEO records into PyPSA and Calliope parameter dicts.
+- **Time-series profiles** — hourly capacity factors and load profiles are linked to VRE technology records and served via a dedicated catalogue endpoint.
+- **Contributor workflow** — authenticated researchers can submit new technologies and profiles via the web UI; admins review and approve via the AdminPanel.
 
 ---
 
@@ -130,32 +138,58 @@ HVAC Overhead Lines · HVDC Overhead Lines · HVAC Underground Cables · HVDC Su
 ```
 opentech-db/
 │
-├── main.py                        # FastAPI application entry point
+├── main.py                        # FastAPI entry point; all routers + CORS + static mount
 ├── requirements.txt
-├── Dockerfile                     # Container image definition
-├── docker-compose.yml             # Compose stack (API + volume mount)
+├── Dockerfile                     # Container image (python:3.11-slim)
+├── docker-compose.yml             # Compose stack (API + data volume)
 │
 ├── data/                          # Technology data (JSON – catalogue format)
 │   ├── generation/
-│   │   └── generation_technologies.json    # 19 technologies
+│   │   └── generation_technologies.json    # 21 technologies
 │   ├── storage/
 │   │   └── storage_technologies.json       # 12 technologies
 │   ├── transmission/
 │   │   └── transmission_technologies.json  # 30 technologies
-│   └── conversion/
-│       └── conversion_technologies.json    # 15 technologies
+│   ├── conversion/
+│   │   └── conversion_technologies.json    # 15 technologies
+│   └── timeseries/
+│       ├── timeseries_catalogue.json       # Profile metadata index
+│       └── *.json                          # Hourly profile data files
 │
 ├── schemas/
 │   └── models.py                  # Pydantic models (OEO-aligned)
 │
 ├── api/
-│   └── routes.py                  # FastAPI router + dual-format data loader
+│   ├── routes.py                  # Technology CRUD, debug, ontology, admin, submissions routers
+│   ├── auth.py                    # ORCID OAuth flow + JWT issuance
+│   └── timeseries.py              # Time-series catalogue + contributor submission routers
 │
 ├── adapters/
 │   ├── pypsa_adapter.py           # OEO Technology → PyPSA component dict
 │   └── calliope_adapter.py        # OEO Technology → Calliope YAML-ready dict
 │
-└── documentation/                 # arc42 architecture documentation (LaTeX)
+├── frontend/                      # React 19 SPA (TypeScript + Vite 8)
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tailwind.config.js
+│   └── src/
+│       ├── App.tsx                # Root shell + routing
+│       ├── main.tsx               # Entry point; AuthProvider
+│       ├── services/
+│       │   ├── api.ts             # HTTP client with promise memoisation
+│       │   └── timeseries.ts      # Time-series API client
+│       ├── lib/supabase.ts        # Supabase JS v2 client
+│       ├── context/AuthContext.tsx
+│       └── components/
+│           ├── TechGrid / TechCard / TechCharts / MetadataTable / DetailsModal
+│           ├── SideNavBar / TopNavBar / ErrorBoundary
+│           ├── timeseries/        TimeSeriesCatalogue / ProfileViewer / UploadProfile / MapPickerModal
+│           ├── auth/              AuthPage / OAuthCallback
+│           ├── contributor/       ContributorWorkspace
+│           ├── admin/             AdminPanel
+│           └── profile/           ProfilePage
+│
+└── documentation/                 # arc42 architecture documentation (LaTeX + Markdown)
     ├── main.tex
     ├── references.bib
     └── content/
@@ -170,28 +204,41 @@ opentech-db/
 
 ## Quick Start
 
-### Option A — Local (Python / conda)
+### Option A — Local (Python + Node.js)
 
 ```bash
 # 1 – Clone the repository
 git clone https://mygit.th-deg.de/thd-spatial-ai/opentech-db.git
 cd opentech-db
 
-# 2 – Create and activate a virtual environment
+# 2 – Backend: create and activate a virtual environment
 python -m venv .venv
 # Windows
 .venv\Scripts\activate
 # Linux / macOS
 source .venv/bin/activate
 
-# 3 – Install dependencies
+# 3 – Install Python dependencies
 pip install -r requirements.txt
 
 # 4 – Start the API server (hot-reload enabled)
 uvicorn main:app --reload --port 8000
 ```
 
-### Option B — Docker
+```bash
+# In a separate terminal — Frontend
+cd frontend
+npm install
+npm run dev          # starts Vite dev server on http://localhost:5173
+```
+
+Interactive docs available at:
+- **Web UI (frontend)** → http://localhost:5173
+- **Swagger UI** → http://127.0.0.1:8000/docs
+- **ReDoc** → http://127.0.0.1:8000/redoc
+- **OpenAPI JSON** → http://127.0.0.1:8000/openapi.json
+
+### Option B — Docker (backend only)
 
 ```bash
 # Build and start the container
@@ -203,11 +250,7 @@ docker run -p 8000:8000 -v ./data:/app/data opentech-db
 ```
 
 > Mounting `data/` as a volume allows updating JSON files without rebuilding the image.
-
-Interactive docs available at:
-- **Swagger UI** → http://127.0.0.1:8000/docs
-- **ReDoc** → http://127.0.0.1:8000/redoc
-- **OpenAPI JSON** → http://127.0.0.1:8000/openapi.json
+> The Docker image currently serves the backend API only; build the frontend separately with `npm run build`.
 
 ---
 
@@ -253,6 +296,24 @@ Calliope query parameters: `instance_index` (int, default `0`), `cost_class` (st
 | `GET` | `/api/v1/adapt/calliope/{id}` | Calliope-ready config dict |
 
 Adapter query parameters: `instance_index` (int, default `0`), `discount_rate` (float, PyPSA only), `cost_class` (str, Calliope only).
+
+### Authentication
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/auth/orcid` | Redirect to ORCID OAuth login |
+| `GET` | `/api/v1/auth/orcid/callback` | OAuth callback; issues JWT; redirects to frontend |
+| `GET` | `/api/v1/auth/me` | Validate JWT and return user profile |
+
+### Time-Series Catalogue
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/timeseries` | Paginated list of hourly profiles |
+| `GET` | `/api/v1/timeseries/{id}/data` | Full hourly data array for one profile |
+| `POST` | `/api/v1/timeseries/submit` | Contributor upload (authenticated) |
+| `GET` | `/api/v1/admin/timeseries/submissions` | List pending submissions (admin only) |
+| `PATCH` | `/api/v1/admin/timeseries/{id}/approve` | Approve a submission (admin only) |
 
 ### Diagnostics
 
@@ -730,9 +791,118 @@ OEO browser: <https://openenergy-platform.org/ontology/oeo/>
 
 ---
 
+## Web Frontend
+
+The `frontend/` directory contains a React 19 SPA built with Vite 8, TailwindCSS, Zustand, ECharts, and Leaflet.
+
+### Start the frontend dev server
+
+```bash
+cd frontend
+npm install
+npm run dev    # http://localhost:5173
+```
+
+### Key views
+
+| View | Component | Description |
+|---|---|---|
+| Technology catalogue | `TechGrid` + `TechCard` | Browse all 55+ technologies by category. Supports search (`useDeferredValue`) and category tab switch (`startTransition`). |
+| Technology detail | `DetailsModal` + `TechCharts` | Full instance table and ECharts bar charts for CAPEX, efficiency, and lifetime by instance. |
+| Time-series | `TimeSeriesCatalogue` + `ProfileViewer` | Browse hourly profiles; view as ECharts line chart. |
+| Contributor | `ContributorWorkspace` + `UploadProfile` + `MapPickerModal` | Submit new technologies or profiles. Includes Leaflet map for location picking. |
+| Admin | `AdminPanel` | Review and approve/reject pending submissions (admin only). |
+| Auth | `AuthPage` + `OAuthCallback` | ORCID OAuth and Supabase email/GitHub login. |
+
+### Frontend environment variables
+
+Create `frontend/.env.local`:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+VITE_SUPABASE_URL=https://<your-project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-anon-key>
+```
+
+### Production build
+
+```bash
+cd frontend
+npm run build    # outputs to frontend/dist/
+```
+
+Serve `frontend/dist/` with any static file server (nginx, Caddy, GitHub Pages, etc.).
+
+---
+
+## Time-Series Catalogue
+
+Hourly capacity factors and load profiles are stored in `data/timeseries/` and exposed via `/api/v1/timeseries`.
+
+```bash
+# List all available profiles (paginated)
+curl -H "ngrok-skip-browser-warning: true" \
+  "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/timeseries"
+
+# Fetch hourly data for a specific profile
+curl -H "ngrok-skip-browser-warning: true" \
+  "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/timeseries/de_solar_pv_utility_cf_2019/data"
+```
+
+```python
+import requests
+
+BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
+HEADERS = {"ngrok-skip-browser-warning": "true"}
+
+# Get all available profiles
+profiles = requests.get(f"{BASE}/timeseries", headers=HEADERS).json()
+for p in profiles["profiles"]:
+    print(p["profile_id"], "-", p["name"], f"({p['n_timesteps']} h)")
+
+# Fetch hourly solar CF for Germany 2019
+data = requests.get(f"{BASE}/timeseries/de_solar_pv_utility_cf_2019/data", headers=HEADERS).json()
+cf_series = data["values"]   # list of 8760 floats (0–1)
+```
+
+Profile metadata fields: `profile_id`, `name`, `type`, `resolution`, `location`, `source`, `carrier`, `year`, `n_timesteps`.
+
+---
+
+## Authentication
+
+The API uses **ORCID OAuth** for researcher identity and **Supabase** for frontend sessions.
+
+### ORCID login flow (frontend → backend)
+
+1. User clicks "Sign in with ORCID" → frontend calls `GET /api/v1/auth/orcid`.
+2. Backend redirects to ORCID OAuth page.
+3. After login, ORCID redirects back to `GET /api/v1/auth/orcid/callback?code=...`.
+4. Backend exchanges code for ORCID token, issues a signed JWT, redirects to frontend with `?token=<jwt>`.
+5. `OAuthCallback.tsx` stores the JWT in `sessionStorage`; `AuthContext` reads it.
+
+### Protected endpoints
+
+| Endpoint | Requirement |
+|---|---|
+| `POST /api/v1/timeseries/submit` | Valid JWT (`Authorization: Bearer <token>`) |
+| `GET /api/v1/admin/timeseries/submissions` | Admin JWT |
+| `PATCH /api/v1/admin/timeseries/{id}/approve` | Admin JWT |
+
+### Required environment variables (backend)
+
+```env
+ORCID_CLIENT_ID=<your-orcid-client-id>
+ORCID_CLIENT_SECRET=<your-orcid-client-secret>
+ORCID_REDIRECT_URI=http://localhost:8000/api/v1/auth/orcid/callback
+JWT_SECRET=<random-long-secret>
+```
+
+---
+
 ## Architecture Documentation
 
-A full **arc42** architecture document is maintained in `documentation/`. It covers system context, building-block decomposition, runtime behaviour, deployment, crosscutting concepts, architectural decisions, quality requirements, and a glossary.
+A full **arc42** architecture document is maintained in `documentation/`. It covers system context, building-block decomposition (including the React frontend), runtime behaviour, deployment, crosscutting concepts (auth, state management, time-series lifecycle), architectural decisions (ADR-001 through ADR-010), quality requirements, risks, and a glossary.
 
 To compile (requires a LaTeX distribution with `markdown` package):
 

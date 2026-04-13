@@ -15,49 +15,6 @@
 
 ---
 
-## 🌐 Live API — No Setup Required
-
-A hosted instance is publicly available. You can start querying technology data right now without cloning or running anything locally.
-
-| | URL |
-|---|---|
-| **Base URL** | `https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1` |
-| **Interactive docs (Swagger)** | https://marleigh-unmuttering-effortlessly.ngrok-free.dev/docs |
-| **ReDoc** | https://marleigh-unmuttering-effortlessly.ngrok-free.dev/redoc |
-| **Health check** | https://marleigh-unmuttering-effortlessly.ngrok-free.dev/health |
-
-> **Note:** When calling from code (not a browser), add the header `ngrok-skip-browser-warning: true` to skip the ngrok interstitial page.
-
-### Try it immediately (no install needed)
-
-```bash
-# List all generation technologies
-curl -H "ngrok-skip-browser-warning: true" \
-  "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/technologies/category/generation"
-
-# Get full data for onshore wind (all instances)
-curl -H "ngrok-skip-browser-warning: true" \
-  "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/technologies/onshore_wind"
-
-# Get a PyPSA-ready parameter dict for a CCGT plant
-curl -H "ngrok-skip-browser-warning: true" \
-  "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/adapt/pypsa/ccgt?instance_index=0&discount_rate=0.07"
-```
-
-```python
-import requests
-
-BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
-HEADERS = {"ngrok-skip-browser-warning": "true"}
-
-# Get all storage technologies
-techs = requests.get(f"{BASE}/technologies/category/storage", headers=HEADERS).json()
-for t in techs["technologies"]:
-    print(t["technology_id"], "–", t["technology_name"])
-```
-
----
-
 ## Table of Contents
 
 - [Live API — No Setup Required](#-live-api--no-setup-required)
@@ -333,41 +290,36 @@ This section shows how external tools — scripts, notebooks, modelling framewor
 
 | Instance | Base URL |
 |---|---|
-| **Hosted (public)** | `https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1` |
-| Local Python / conda | `http://localhost:8000/api/v1` |
+| Local Python / venv | `http://localhost:8000/api/v1` |
 | Docker | `http://localhost:8000/api/v1` |
-
-> When calling the hosted URL from code (not a browser), always include the header:
-> `ngrok-skip-browser-warning: true`
 
 ---
 
 ### HTTP / curl
 
 ```bash
-BASE="https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
-HDR='-H "ngrok-skip-browser-warning: true"'
+BASE="http://localhost:8000/api/v1"
 
 # --- List all technologies ---
-curl $HDR "$BASE/technologies"
+curl "$BASE/technologies"
 
 # --- Get one technology by ID ---
-curl $HDR "$BASE/technologies/onshore_wind"
+curl "$BASE/technologies/onshore_wind"
 
 # --- Filter by category (generation | storage | transmission | conversion) ---
-curl $HDR "$BASE/technologies/category/generation"
+curl "$BASE/technologies/category/generation"
 
 # --- Get all instances of a technology ---
-curl $HDR "$BASE/technologies/onshore_wind/instances"
+curl "$BASE/technologies/onshore_wind/instances"
 
 # --- Get a specific instance by ID ---
-curl $HDR "$BASE/technologies/solar_pv_distributed/instances/solar_pv_3kw_residential_topcon"
+curl "$BASE/technologies/solar_pv_distributed/instances/solar_pv_3kw_residential_topcon"
 
 # --- Get all generation technologies as a Calliope techs: block ---
-curl $HDR "$BASE/technologies/calliope?category=generation"
+curl "$BASE/technologies/calliope?category=generation"
 
 # --- PyPSA-ready dict for CCGT instance 0, 7% discount rate ---
-curl $HDR "$BASE/adapt/pypsa/ccgt?instance_index=0&discount_rate=0.07"
+curl "$BASE/adapt/pypsa/ccgt?instance_index=0&discount_rate=0.07"
 ```
 
 ---
@@ -377,8 +329,7 @@ curl $HDR "$BASE/adapt/pypsa/ccgt?instance_index=0&discount_rate=0.07"
 ```python
 import requests
 
-BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
-HEADERS = {"ngrok-skip-browser-warning": "true"}   # required for hosted URL
+BASE = "http://localhost:8000/api/v1"
 
 # 1 – Browse all generation technologies
 resp = requests.get(f"{BASE}/technologies/category/generation", headers=HEADERS)
@@ -419,17 +370,16 @@ params = resp.json()["parameters"]
 import pandas as pd
 import requests
 
-BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
-HEADERS = {"ngrok-skip-browser-warning": "true"}
+BASE = "http://localhost:8000/api/v1"
 
 def fetch_all_instances(category: str) -> pd.DataFrame:
     """Return a flat DataFrame of every technology instance in a category."""
-    resp = requests.get(f"{BASE}/technologies/category/{category}", headers=HEADERS)
+    resp = requests.get(f"{BASE}/technologies/category/{category}")
     resp.raise_for_status()
     rows = []
     for tech in resp.json()["technologies"]:
         detail = requests.get(
-            f"{BASE}/technologies/{tech['technology_id']}", headers=HEADERS
+            f"{BASE}/technologies/{tech['technology_id']}"
         ).json()
         for inst in detail.get("instances", []):
             rows.append({
@@ -452,8 +402,7 @@ print(gen[["technology_id", "instance_id", "typical_capacity_mw",
 import pypsa
 import requests
 
-BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
-HEADERS = {"ngrok-skip-browser-warning": "true"}
+BASE = "http://localhost:8000/api/v1"
 
 n = pypsa.Network()
 n.set_snapshots(pd.date_range("2030-01-01", periods=8760, freq="1h"))
@@ -468,7 +417,6 @@ for tech_id, idx, label in TECHS:
     resp = requests.get(
         f"{BASE}/adapt/pypsa/{tech_id}",
         params={"instance_index": idx, "discount_rate": 0.07},
-        headers=HEADERS,
     )
     resp.raise_for_status()
     p = resp.json()["parameters"]
@@ -489,14 +437,12 @@ import requests
 import yaml
 from pathlib import Path
 
-BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
-HEADERS = {"ngrok-skip-browser-warning": "true"}
+BASE = "http://localhost:8000/api/v1"
 
 # Fetch the complete Calliope techs block for all generation technologies
 resp = requests.get(
     f"{BASE}/technologies/calliope",
     params={"category": "generation"},
-    headers=HEADERS,
 )
 resp.raise_for_status()
 

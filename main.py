@@ -94,8 +94,7 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    # In development: allow the Vite dev server (port 5173 or 5174)
-    # and the ngrok tunnel that exposes this FastAPI backend.
+    # In development: allow the Vite dev server (port 5173 or 5174).
     # In production: replace with your actual deployed frontend origin.
     allow_origins=[
         "http://localhost:5173",    # Vite default
@@ -108,7 +107,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     # Authorization header must be explicitly exposed for GET /auth/me
-    allow_headers=["Authorization", "Content-Type", "ngrok-skip-browser-warning", "Accept"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 # ---------------------------------------------------------------------------

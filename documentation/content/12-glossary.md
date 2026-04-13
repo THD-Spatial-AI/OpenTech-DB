@@ -23,7 +23,6 @@
 | **Leaflet** | Open-source JavaScript mapping library used in `MapPickerModal.tsx` for geographic location selection. |
 | **LRU cache** | Least Recently Used cache. Python `@lru_cache` memoises JSON loading; invalidated by `POST /debug/reload`. |
 | **MapPickerModal** | React component using Leaflet to let contributors select a geographic location when submitting a time-series profile. |
-| **ngrok** | Tunnelling service used to expose a local FastAPI instance publicly for demos. The `ngrok-skip-browser-warning` header bypasses ngrok's interstitial page. |
 | **OEO** | Open Energy Ontology. A formal ontology for the energy domain maintained on the Open Energy Platform (<https://openenergy-platform.org/ontology/oeo/>). |
 | **OEO URI** | A fully-qualified IRI pointing to a specific concept in the OEO, e.g. `https://openenergy-platform.org/ontology/oeo/OEO_00000044`. |
 | **OEP** | Open Energy Platform. German open-data platform for energy system research. |

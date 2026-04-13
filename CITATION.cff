@@ -1,0 +1,17 @@
+# CITATION.cff — Update this file with your project's citation information.
+# See https://citation-file-format.github.io/ for the full specification.
+
+cff-version: 1.2.0
+title: "Project Title"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "Last Name"
+    given-names: "First Name"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+    affiliation: "THD-Spatial"
+repository-code: "https://github.com/THD-Spatial/repo-name"
+url: "https://THD-Spatial.github.io/city2tabula"
+license: MIT
+version: "0.1.0"
+date-released: "2026-01-01"

@@ -108,26 +108,6 @@ COPY . .
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-## Option C — Public Demo via ngrok
-
-For demos and remote access without a dedicated server, the local FastAPI process is
-exposed via an ngrok tunnel. The frontend's `services/api.ts` includes the header
-`ngrok-skip-browser-warning: true` to bypass the ngrok interstitial page.
-
-```
-Developer workstation
-  uvicorn :8000
-       |
-       v
-  ngrok tunnel
-       |
-       v
-  https://<subdomain>.ngrok-free.dev
-       |
-       v
-  Remote clients / hosted frontend
-```
-
 ## Infrastructure Requirements
 
 | Component | Minimum | Recommended |

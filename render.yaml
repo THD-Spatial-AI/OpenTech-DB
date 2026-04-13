@@ -3,7 +3,7 @@ services:
     name: opentech-db-api
     runtime: docker
     dockerfilePath: ./Dockerfile
-    plan: free          # upgrade to starter (7$/mo) to avoid spin-down
+    plan: free          # upgrade to starter (7$/mo) to avoid spin-down and get disk support
     region: frankfurt   # closest to DE data; options: oregon, ohio, singapore, frankfurt
     envVars:
       - key: WORKERS
@@ -17,7 +17,13 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
     healthCheckPath: /health
-    disk:
-      name: data
-      mountPath: /app/data
-      sizeGB: 1         # persists the JSON catalogues and submissions across deploys
+    # NOTE: disks are not available on the free tier.
+    # The ./data directory is baked into the Docker image (via COPY . .) so
+    # technology catalogues are always available.  Runtime writes (approved
+    # submissions stored as local JSON) will NOT survive a redeploy on the
+    # free tier — those records live in Supabase, so nothing is truly lost.
+    # To enable a persistent disk, switch plan to "starter" and uncomment:
+    # disk:
+    #   name: data
+    #   mountPath: /app/data
+    #   sizeGB: 1

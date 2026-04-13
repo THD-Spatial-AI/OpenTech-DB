@@ -25,5 +25,5 @@
 | OC-02 | Code hosted on **Git** (version-controlled) | Reproducibility; data provenance via commit history. |
 | OC-03 | Documentation follows **arc42** template | Standardised architecture communication in research group. |
 | OC-04 | Development environment: **Windows + conda/venv** | Institutional IT setup; `.venv` used locally. |
-| OC-05 | No cloud infrastructure budget at initial stage | Local uvicorn deployment; ngrok tunnel for public demos. |
+| OC-05 | No cloud infrastructure budget at initial stage | Local uvicorn deployment; Docker container for production-like runs. |
 | OC-06 | Frontend served separately from backend during development | Vite dev server on port 5173; cross-origin CORS configured explicitly. |

@@ -332,7 +332,7 @@ import requests
 BASE = "http://localhost:8000/api/v1"
 
 # 1 – Browse all generation technologies
-resp = requests.get(f"{BASE}/technologies/category/generation", headers=HEADERS)
+resp = requests.get(f"{BASE}/technologies/category/generation")
 resp.raise_for_status()
 catalogue = resp.json()            # {"total": N, "technologies": [...]}
 
@@ -340,7 +340,7 @@ for tech in catalogue["technologies"]:
     print(tech["technology_id"], "–", tech["technology_name"])
 
 # 2 – Fetch one technology and inspect its instances
-resp = requests.get(f"{BASE}/technologies/onshore_wind", headers=HEADERS)
+resp = requests.get(f"{BASE}/technologies/onshore_wind")
 resp.raise_for_status()
 tech = resp.json()
 
@@ -356,7 +356,6 @@ for inst in tech["instances"]:
 resp = requests.get(
     f"{BASE}/adapt/pypsa/ccgt",
     params={"instance_index": 0, "discount_rate": 0.07},
-    headers=HEADERS,
 )
 params = resp.json()["parameters"]
 # → {'carrier': 'natural_gas', 'efficiency': 0.58, 'capital_cost': ..., ...}
@@ -478,16 +477,15 @@ These frameworks currently consume raw JSON records. Retrieve them and parse the
 ```python
 import requests, json
 
-BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
-HEADERS = {"ngrok-skip-browser-warning": "true"}
+BASE = "http://localhost:8000/api/v1"
 
 # Fetch all storage technologies as raw catalogue records
-resp = requests.get(f"{BASE}/technologies/category/storage", headers=HEADERS)
+resp = requests.get(f"{BASE}/technologies/category/storage")
 resp.raise_for_status()
 
 for tech in resp.json()["technologies"]:
     detail = requests.get(
-        f"{BASE}/technologies/{tech['technology_id']}", headers=HEADERS
+        f"{BASE}/technologies/{tech['technology_id']}"
     ).json()
     inst = detail["instances"][0]   # pick first (current) instance
     print(f"{tech['technology_id']}: CAPEX={inst['capex_usd_per_kw']} USD/kW, "
@@ -500,12 +498,10 @@ for tech in resp.json()["technologies"]:
 
 ```bash
 # Check that the service is alive and see catalogue size
-curl -H "ngrok-skip-browser-warning: true" \
-  https://marleigh-unmuttering-effortlessly.ngrok-free.dev/health
+curl http://localhost:8000/health
 
 # Force reload of all JSON files (e.g. after adding a new technology)
-curl -X POST -H "ngrok-skip-browser-warning: true" \
-  https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/debug/reload
+curl -X POST http://localhost:8000/api/v1/debug/reload
 ```
 
 ---

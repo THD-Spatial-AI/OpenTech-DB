@@ -10,7 +10,6 @@
 | R-04 | Data drift (parameters become outdated) | High | Medium | `reference_year` field on every `ParameterValue`; periodic review cycle recommended. |
 | R-05 | ORCID or Supabase service outage | Low | Medium | ORCID and Supabase auth are independent; backend API is fully usable without authentication. |
 | R-06 | Large data file set slows startup | Low | Low | LRU cache mitigates; lazy-loading per category can be added if needed. |
-| R-07 | ngrok tunnel is not a production deployment | Medium | Medium | ngrok is for demos only; a proper reverse proxy (nginx, Caddy) must be used before public release. |
 | R-08 | Frontend Supabase keys exposed in built JS bundle | Medium | Low | Supabase anon key is by design public; Row-Level Security (RLS) must be configured on Supabase. |
 
 ## Technical Debt
@@ -26,4 +25,3 @@
 | TD-07 | No data versioning scheme for parameter updates | Medium | Introduce a `version` field on `EquipmentInstance` and a changelog mechanism. |
 | TD-08 | Frontend build not yet integrated into Dockerfile | Medium | Add a multi-stage Docker build: Node stage builds the SPA, Python stage serves it as static files. |
 | TD-09 | Supabase Row-Level Security (RLS) not yet configured | High | Before public deployment, configure RLS policies so only admins can read/write submission records. |
-| TD-10 | `VITE_API_BASE_URL` hardcoded to ngrok URL in some places | Low | Consolidate all base URL references through `import.meta.env.VITE_API_BASE_URL`. |

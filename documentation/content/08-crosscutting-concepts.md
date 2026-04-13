@@ -125,5 +125,5 @@ Referenced by VREPlant.profile_key
 
 CORS is configured explicitly in `main.py`. In development, origins `localhost:5173`,
 `5174`, `5175`, and `4173` (Vite dev + preview) are allowed. The `Authorization`,
-`Content-Type`, `ngrok-skip-browser-warning`, and `Accept` headers are whitelisted.
+`Content-Type`, and `Accept` headers are whitelisted.
 In production the allowed origin list must be updated to the deployed frontend URL.

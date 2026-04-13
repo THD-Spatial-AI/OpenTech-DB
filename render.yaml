@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: opentech-db-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free          # upgrade to starter (7$/mo) to avoid spin-down
+    region: frankfurt   # closest to DE data; options: oregon, ohio, singapore, frankfurt
+    envVars:
+      - key: WORKERS
+        value: 1                          # free tier is single-CPU
+      - key: ADMIN_EMAIL
+        sync: false                       # set in Render dashboard — do NOT commit real values
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+    healthCheckPath: /health
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 1         # persists the JSON catalogues and submissions across deploys

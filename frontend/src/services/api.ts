@@ -3,7 +3,7 @@
  * ───────────────
  * Thin API client for the opentech-db FastAPI backend.
  *
- * The backend can be served locally (Docker on :8000) or via a tunnel.
+ * The backend can be served locally (Docker on :8000) or via a reverse proxy.
  * Set VITE_API_BASE_URL in frontend/.env.local to override the default.
  *
  * React 19 strategy
@@ -11,10 +11,6 @@
  * We expose plain async functions that return Promises.  Components pass
  * those Promises to the React 19 `use()` hook inside a <Suspense> boundary —
  * the idiomatic pattern for async data fetching without useEffect/useState.
- *
- * Crucial for ngrok tunnels: include the `ngrok-skip-browser-warning`
- * header so ngrok doesn't serve its HTML interstitial page.  When talking
- * to localhost it is simply ignored.
  */
 
 import type {
@@ -36,9 +32,6 @@ const BASE_URL =
 // ── Shared fetch wrapper ──────────────────────────────────────────────────────
 
 const HEADERS: HeadersInit = {
-  // Required to bypass the ngrok browser-warning interstitial when using a
-  // tunnel URL; harmless for direct localhost requests.
-  "ngrok-skip-browser-warning": "true",
   Accept: "application/json",
 };
 

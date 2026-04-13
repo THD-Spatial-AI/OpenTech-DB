@@ -46,7 +46,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           <p className="text-on-surface-variant text-sm max-w-sm mb-6 leading-relaxed">
             {msg.includes("API error")
               ? "The API returned an error. Check that the backend is running and reachable."
-              : "A network error occurred. Verify your connection and the ngrok tunnel status."}
+              : "A network error occurred. Verify your connection and that the backend is running."}
           </p>
           <details className="text-xs text-outline max-w-md text-left mb-6">
             <summary className="cursor-pointer font-bold">Error details</summary>

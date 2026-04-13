@@ -29,7 +29,6 @@ const BASE_URL =
 // ── Shared fetch wrapper ──────────────────────────────────────────────────────
 
 const HEADERS: HeadersInit = {
-  "ngrok-skip-browser-warning": "true",
   Accept: "application/json",
 };
 
@@ -127,7 +126,6 @@ export async function uploadTimeSeriesProfile(
   const response = await fetch(`${BASE_URL}/timeseries/upload`, {
     method: "POST",
     headers: {
-      "ngrok-skip-browser-warning": "true",
       // Accept only — Content-Type deliberately omitted for multipart FormData
       Accept: "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -161,7 +159,6 @@ export async function deleteTimeSeriesProfile(
     {
       method: "DELETE",
       headers: {
-        "ngrok-skip-browser-warning": "true",
         Accept: "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },

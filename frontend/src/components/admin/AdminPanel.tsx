@@ -608,7 +608,6 @@ function CatalogueProfilesTab({ token }: { token: string }) {
       try {
         const res = await fetch(`${BASE_URL}/timeseries?limit=1000`, {
           headers: {
-            "ngrok-skip-browser-warning": "true",
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
           },

@@ -673,9 +673,8 @@ print(yaml.dump(calliope_cfg, sort_keys=False))
 
 # Or generate a full techs: block for all generation technologies via the API
 resp = requests.get(
-    "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/technologies/calliope",
+    "http://localhost:8000/api/v1/technologies/calliope",
     params={"category": "generation"},
-    headers={"ngrok-skip-browser-warning": "true"},
 )
 with open("techs.yaml", "w") as f:
     yaml.dump({"techs": resp.json()["techs"]}, f, sort_keys=False)
@@ -783,27 +782,24 @@ Hourly capacity factors and load profiles are stored in `data/timeseries/` and e
 
 ```bash
 # List all available profiles (paginated)
-curl -H "ngrok-skip-browser-warning: true" \
-  "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/timeseries"
+curl "http://localhost:8000/api/v1/timeseries"
 
 # Fetch hourly data for a specific profile
-curl -H "ngrok-skip-browser-warning: true" \
-  "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1/timeseries/de_solar_pv_utility_cf_2019/data"
+curl "http://localhost:8000/api/v1/timeseries/de_solar_pv_utility_cf_2019/data"
 ```
 
 ```python
 import requests
 
-BASE    = "https://marleigh-unmuttering-effortlessly.ngrok-free.dev/api/v1"
-HEADERS = {"ngrok-skip-browser-warning": "true"}
+BASE = "http://localhost:8000/api/v1"
 
 # Get all available profiles
-profiles = requests.get(f"{BASE}/timeseries", headers=HEADERS).json()
+profiles = requests.get(f"{BASE}/timeseries").json()
 for p in profiles["profiles"]:
     print(p["profile_id"], "-", p["name"], f"({p['n_timesteps']} h)")
 
 # Fetch hourly solar CF for Germany 2019
-data = requests.get(f"{BASE}/timeseries/de_solar_pv_utility_cf_2019/data", headers=HEADERS).json()
+data = requests.get(f"{BASE}/timeseries/de_solar_pv_utility_cf_2019/data").json()
 cf_series = data["values"]   # list of 8760 floats (0–1)
 ```
 

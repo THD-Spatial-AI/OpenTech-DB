@@ -62,11 +62,13 @@ Curator                  File System              API
 ## Startup Sequence
 
 1. `uvicorn` starts; imports `main.py`.
-2. FastAPI app is constructed; routers are registered.
-3. `@app.on_event("startup")` fires: calls `_get_all()`.
-4. Loader walks `data/**/*.json`, detects format, validates with Pydantic.
-5. Loaded technologies are stored in the LRU cache.
-6. Server logs catalogue size and begins accepting requests.
+2. FastAPI app is constructed; all routers are registered.
+3. CORS middleware configured (ports 5173–5175, 4173).
+4. Static files mounted at `/project-docs/` from `documentation/`.
+5. `@app.on_event("startup")` fires: calls `_get_all()`.
+6. Loader walks `data/**/*.json`, detects format, validates with Pydantic.
+7. Loaded technologies stored in the LRU cache.
+8. Server logs catalogue size and begins accepting requests.
 
 ---
 
@@ -92,11 +94,107 @@ Python script            FastAPI                LRU cache
   | → CAPEX comparison table |                      |
 ```
 
-Typical use: cost-curve analysis, sensitivity studies, report generation.
-
 ---
 
 ## Scenario 5 — Calliope model auto-populates techs.yaml before each run
+
+```
+Calliope script          FastAPI
+  |                          |
+  |-- GET /api/v1/           |
+  |   technologies/calliope  |
+  |   ?category=generation ->|
+  |                          | build full techs: block
+  |<-- 200 {techs: {...}}    |
+  |                          |
+  | yaml.dump(techs_block)   |
+  | → model/techs_generation.yaml
+  |
+  | calliope.Model("model.yaml")
+  |   imports techs_generation.yaml
+```
+
+---
+
+## Scenario 6 — User browses the React frontend
+
+```
+Browser                  React SPA               FastAPI
+  |                          |                      |
+  | open /                   |                      |
+  |------------------------->|                      |
+  |                          | App.tsx renders      |
+  |                          | SideNavBar + TopNavBar|
+  |                          |                      |
+  |                          | use(fetchCategoryTechnologies("generation"))
+  |                          |------- GET /api/v1/technologies/category/generation -->
+  |                          |<------ 200 TechnologyCatalogue ----------------------|
+  |                          |                      |
+  |                          | TechGrid renders     |
+  |                          | TechCard × N         |
+  |<-- rendered HTML --------|                      |
+  |                          |                      |
+  | click on TechCard        |                      |
+  |------------------------->|                      |
+  |                          | DetailsModal open    |
+  |                          | TechCharts render    |
+  |                          | (ECharts bar charts) |
+```
+
+---
+
+## Scenario 7 — ORCID login and contributor submission
+
+```
+Browser/User             Frontend (React)         Backend              ORCID
+  |                          |                      |                    |
+  | click "Sign in"          |                      |                    |
+  |------------------------->|                      |                    |
+  |                          |-- GET /api/v1/auth/orcid -->              |
+  |                          |<-- 302 redirect to ORCID OAuth ---------->|
+  |<-- redirect browser -----|                      |                    |
+  |-----------------------------------------------------------> ORCID login
+  |<-- redirect ?code=... ----------------------------------------------------------|
+  |                          |                      |                    |
+  |-- GET /auth/orcid/callback?code=... ----------->|                    |
+  |                          |                      | exchange code      |
+  |                          |                      | issue JWT          |
+  |<-- redirect ?token=<jwt> |                      |                    |
+  |                          |                      |                    |
+  | OAuthCallback.tsx        |                      |                    |
+  | stores JWT in            |                      |                    |
+  | sessionStorage           |                      |                    |
+  |                          |                      |                    |
+  | ContributorWorkspace     |                      |                    |
+  | fill & submit form       |                      |                    |
+  |------------------------->|                      |                    |
+  |                          |-- POST /api/v1/timeseries/submit (+ JWT)->|
+  |                          |<-- 201 {status: pending} ----------------|
+  |                          |                      |                    |
+```
+
+---
+
+## Scenario 8 — Admin approves a time-series profile submission
+
+```
+Admin browser            Frontend (AdminPanel)    Backend
+  |                          |                      |
+  | open AdminPanel          |                      |
+  |------------------------->|                      |
+  |                          |-- GET /api/v1/admin/timeseries/submissions (+ JWT)
+  |                          |<-- 200 [{status:pending, ...}] ----------|
+  |                          |                      |                    |
+  | click "Approve"          |                      |                    |
+  |------------------------->|                      |                    |
+  |                          |-- PATCH /api/v1/admin/timeseries/{id}/approve
+  |                          |<-- 200 {status: approved} ---------------|
+  |                          |                      |                    |
+  |                          | profile moved from   |                    |
+  |                          | pending/ to          |                    |
+  |                          | timeseries/          |                    |
+  |                          | catalogue updated    |                    |
+```
 
 ```
 Calliope prep script     FastAPI                 File system

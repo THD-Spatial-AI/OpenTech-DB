@@ -54,6 +54,8 @@ HTTP access is logged by uvicorn.
   serving all successfully loaded technologies.
 - API-level errors return standard 404 JSON responses via `HTTPException`.
 - The `/api/v1/debug/data` endpoint surfaces all file errors for diagnostics.
+- Frontend uses an `ErrorBoundary` component to catch rendering failures and display a
+  graceful fallback without crashing the whole SPA.
 
 ## 8. Annualised Cost Calculation (Capital Recovery Factor)
 
@@ -73,7 +75,55 @@ This is applied consistently in `adapters/pypsa_adapter.py`.
 | Power | kW | All `capacity_kw` fields |
 | Energy | MWh | All `per_mwh` cost fields |
 | Cost | EUR/kW or EUR/kWh | Stated in `ParameterValue.unit` |
-| Efficiency | fraction (0–1) | Not percent |
+| Efficiency | fraction (0–1) | Not percent; catalogue `efficiency_percent` divided by 100 |
 | CO₂ intensity | tCO₂/MWh_fuel | Operational only |
 | Ramp rate | %capacity/min | As-reported from manufacturer data |
 | Lifetime | years | |
+
+## 10. Authentication & Authorisation
+
+- **ORCID OAuth** (`api/auth.py`): researchers log in via their ORCID iD. The backend
+  exchanges the OAuth code, issues a signed JWT, and redirects to the frontend with
+  `?token=<jwt>`. The frontend stores the token in `sessionStorage`.
+- **Supabase** (`frontend/src/lib/supabase.ts`): manages email/password and GitHub OAuth
+  sessions for the frontend. Admin role is stored as Supabase user metadata and synced
+  into `AuthContext`.
+- **Route protection**: `AdminPanel` and `ContributorWorkspace` are guarded by
+  `isAdmin` / `isAuthenticated` flags from `AuthContext`. Backend admin endpoints
+  validate the JWT on the `Authorization: Bearer` header.
+
+## 11. Frontend State Management
+
+- **Zustand 5** is used for lightweight global state (selected category, search query,
+  modal visibility). No Redux boilerplate.
+- **React 19 concurrent features** are used throughout:
+  - `use()` hook inside `<Suspense>` replaces `useEffect + useState` for data fetching.
+  - `startTransition` wraps category tab changes to keep the current grid visible.
+  - `useDeferredValue` defers search query so typing stays at 60 fps.
+  - `useOptimistic` provides instant feedback on share/copy actions.
+
+## 12. Time-Series Profile Lifecycle
+
+```
+Contributor uploads profile (UploadProfile.tsx)
+    |
+    v
+POST /api/v1/timeseries/submit  → stored in data/timeseries/pending/
+    |
+    v
+Admin reviews (AdminPanel.tsx)
+    |
+    +-- approve → moved to data/timeseries/, catalogue updated
+    +-- reject  → removed from pending/
+    |
+    v
+Available at GET /api/v1/timeseries/{id}/data
+Referenced by VREPlant.profile_key
+```
+
+## 13. CORS Policy
+
+CORS is configured explicitly in `main.py`. In development, origins `localhost:5173`,
+`5174`, `5175`, and `4173` (Vite dev + preview) are allowed. The `Authorization`,
+`Content-Type`, `ngrok-skip-browser-warning`, and `Accept` headers are whitelisted.
+In production the allowed origin list must be updated to the deployed frontend URL.

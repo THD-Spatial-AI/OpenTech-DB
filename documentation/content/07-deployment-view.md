@@ -1,11 +1,11 @@
 # Deployment View
 
-## Option A — Local Development (Python / conda)
+## Option A — Local Development (Python / venv)
 
 ```
 Developer workstation (Windows / Linux / macOS)
 +----------------------------------------------+
-|  Anaconda / venv  Python 3.11                |
+|  Python 3.11 (.venv)                         |
 |                                              |
 |  uvicorn main:app --reload --port 8000       |
 |     |                                        |
@@ -16,25 +16,44 @@ Developer workstation (Windows / Linux / macOS)
 |     | reads                                  |
 |     v                                        |
 |  data/   (local filesystem)                  |
+|                                              |
+|  Vite dev server --port 5173                 |
+|     |  (frontend/)                            |
+|     | HTTP :5173                             |
+|     v                                        |
+|  React 19 SPA (hot-reload)                   |
+|     | calls API at localhost:8000             |
 +----------------------------------------------+
         |
-        | HTTP localhost:8000
+        | Browser → localhost:5173
+        | Browser → localhost:8000/docs (Swagger)
         v
-  Postman / Browser / Python notebooks
-  (PyPSA, Calliope model scripts)
+  Developer browser / Postman / notebooks
 ```
 
 ### Steps to start locally
 
 ```bash
-conda activate base        # or activate your project venv
+# Backend
 cd opentech-db
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Linux / macOS
+source .venv/bin/activate
+
+pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
+
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev        # starts Vite on http://localhost:5173
 ```
 
 ## Option B — Containerised Deployment (Docker)
 
-A `Dockerfile` and `docker-compose.yml` are included in the repository root.
+A `Dockerfile` and `docker-compose.yml` are included in the repository root. The current container serves only the **backend API**. The frontend is built separately and can be served via a static host or a second container.
 
 ```
 Host machine
@@ -46,6 +65,7 @@ Host machine
 |  |   uvicorn main:app --host 0.0.0.0 --port 8000  |
 |  |                                            |  |
 |  |   /app/data  ← volume mount (./data)       |  |
+|  |   /app/documentation ← static /project-docs|  |
 |  +--------------------------------------------+  |
 |         | port 8000 exposed                    |  |
 +--------------------------------------------------+
@@ -88,16 +108,51 @@ COPY . .
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
+## Option C — Public Demo via ngrok
+
+For demos and remote access without a dedicated server, the local FastAPI process is
+exposed via an ngrok tunnel. The frontend's `services/api.ts` includes the header
+`ngrok-skip-browser-warning: true` to bypass the ngrok interstitial page.
+
+```
+Developer workstation
+  uvicorn :8000
+       |
+       v
+  ngrok tunnel
+       |
+       v
+  https://<subdomain>.ngrok-free.dev
+       |
+       v
+  Remote clients / hosted frontend
+```
+
 ## Infrastructure Requirements
 
 | Component | Minimum | Recommended |
 |---|---|---|
 | Python | 3.11 | 3.12 |
-| RAM | 256 MB | 1 GB |
+| Node.js (frontend build) | 18 | 20 LTS |
+| RAM | 256 MB (backend) | 1 GB |
 | CPU | 1 core | 2 cores |
 | Disk | 100 MB | 1 GB (for data expansion) |
 | OS | Windows 10 / Ubuntu 20.04 | Any |
 | Network | localhost only | HTTP/HTTPS behind a reverse proxy |
+
+## Environment Variables
+
+| Variable | Used by | Description |
+|---|---|---|
+| `ADMIN_USERNAME` | docker-compose / backend | Admin credentials for protected endpoints |
+| `ADMIN_PASSWORD` | docker-compose / backend | Admin credentials |
+| `ORCID_CLIENT_ID` | backend (`auth.py`) | ORCID OAuth app client ID |
+| `ORCID_CLIENT_SECRET` | backend (`auth.py`) | ORCID OAuth app client secret |
+| `ORCID_REDIRECT_URI` | backend (`auth.py`) | OAuth callback URL |
+| `JWT_SECRET` | backend (`auth.py`) | Secret for signing JWTs |
+| `VITE_SUPABASE_URL` | frontend build | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | frontend build | Supabase anonymous key |
+| `VITE_API_BASE_URL` | frontend build | Base URL of the FastAPI backend |
 
 ## Notes
 

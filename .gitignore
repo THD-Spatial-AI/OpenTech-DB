@@ -61,3 +61,7 @@ frontend/dist-ssr/
 
 # Pending submissions uploaded by contributors
 data/pending_submissions/*.json
+
+.github/
+github/
+__pycache__/

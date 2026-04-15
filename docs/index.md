@@ -1,52 +1,60 @@
-# THD-Spatial-AI GitHub Template
+# OpenTech-DB
 
-Welcome to the THD-Spatial-AI GitHub Template documentation! This template helps group members create standardized, open-source ready repositories.
+> An **Open Energy Ontology (OEO)-aligned** database, REST API, and React 19 web frontend for energy generation, storage, transmission, and conversion technologies. Designed to feed real, traceable data into energy modelling frameworks.
 
-## Quick Overview
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB)](https://react.dev/)
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![OEO](https://img.shields.io/badge/ontology-OEO-green)](https://openenergy-platform.org/ontology/oeo/)
 
-This template repository provides a complete starting point for open-sourcing projects under the THD-Spatial-AI organization. It includes essential files, guidelines, and a comprehensive checklist to ensure your project meets all requirements.
+---
 
-## What's Included
+## What is OpenTech-DB?
 
-- **Essential Documentation Templates**: LICENSE, README, CONTRIBUTING
-- **Open Source Checklist**: Step-by-step verification of requirements
-- **Git LFS Configuration**: For managing large data files
-- **MkDocs Setup**: For creating project documentation sites
-- **Repository Naming Guidelines**: Best practices for consistent naming
-- **Additional Document list**: Optional but useful files for project maintenance and community engagement
+`opentech-db` is a domain-specific data repository that provides **standardised, source-traced technical and economic parameters** for energy system components. It serves as a single source of truth that multiple energy modelling frameworks can query programmatically.
 
-## Getting Started
+Key capabilities:
 
-1. **Use this template**: Click `Use this template -> Create a new repository` button on GitHub
+- **55+ energy technologies** across generation, storage, transmission, and conversion — all OEO-aligned
+- **REST API** (FastAPI) with Swagger UI, ReDoc, and OpenAPI JSON
+- **Framework adapters** for PyPSA, Calliope, OSeMOSYS, and ADOPTNet0
+- **Time-series profile catalogue** — hourly capacity factors and load profiles
+- **React 19 SPA** for browsing, visualising, and contributing data
+- **Contributor workflow** with ORCID + Supabase authentication
 
-    ![Use this template button](assets/getting-started/creating-repo-from-template.png)
+---
 
-2. **Name your repository**: Follow the [Repository Naming Guidelines](getting-started/repository-naming.md)
-3. **Complete checklist**: Use [Open Source Checklist](getting-started/open-source-checklist.md) to track progress
-4. **Customize files**: Update all template files for your specific project
-5. **Make it public**: Once all requirements are met, publish your repository
+## Live API
 
-## Key Requirements
+The API is publicly accessible — no setup required for read-only access:
 
-!!! warning "Before Going Public"
-    Your repository **must** include a [LICENSE](getting-started/open-source-checklist.md#license) file before it can be made public under the THD-Spatial-AI organization.
+| Endpoint | URL |
+|---|---|
+| Swagger UI | `http://localhost:8000/docs` |
+| ReDoc | `http://localhost:8000/redoc` |
+| OpenAPI JSON | `http://localhost:8000/openapi.json` |
+| Health check | `http://localhost:8000/health` |
 
-### Essential Files
+---
 
-- **LICENSE** - Required for all public repositories
-- **README.md** - Project overview and documentation
-- **CONTRIBUTING.md** - Guidelines for contributors
-- **CODE_OF_CONDUCT.md** - Community standards
+## Documentation
 
-### Data Management
+| Section | Description |
+|---|---|
+| [Overview](overview.md) | Technology coverage, design principles |
+| [Getting Started](getting-started.md) | Installation and quick start |
+| [API Reference](api-reference.md) | All REST endpoints |
+| [Integration Guide](integration.md) | curl, Python, PyPSA, Calliope examples |
+| [Data Model](data-model.md) | Pydantic schema and OEO structure |
+| [Data Formats](data-formats.md) | JSON formats, adding new technologies |
+| [Framework Adapters](adapters.md) | PyPSA and Calliope adapters |
+| [Time-Series Catalogue](timeseries.md) | Hourly profiles and contributor upload |
+| [Authentication](authentication.md) | ORCID OAuth and Supabase auth |
+| [Web Frontend](frontend.md) | React SPA views and environment setup |
 
-- **Git LFS** - Required for repositories with large data files
+---
 
-## Next Steps
+## License
 
-- [Open Source Checklist](getting-started/open-source-checklist.md) - Complete all requirements
-- [Repository Naming Guidelines](getting-started/repository-naming.md) - Learn about naming conventions
-
-## Support
-
-For questions or issues with this template, please [open an issue](https://github.com/thd-spatial/github-template/issues) or contact the THD-Spatial-AI group administrators.
+Data and documentation are released under `LICENSE` in the repository root.

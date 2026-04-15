@@ -1,13 +1,13 @@
 # Project information
-site_name: THD-Spatial-AI GitHub Template
-site_author: THD-Spatial
+site_name: OpenTech-DB
+site_author: THD-Spatial-AI
 site_description: >-
-  Template repository for open source projects in the THD-Spatial-AI GitHub organisation
-site_url: https://THD-Spatial.github.io/GitHub-Template
+  OEO-aligned energy technology database, REST API, and React frontend for energy system modelling
+site_url: https://thd-spatial-ai.github.io/opentech-db
 
 # Repository
-repo_name: THD-Spatial/GitHub-Template
-repo_url: https://github.com/THD-Spatial/GitHub-Template
+repo_name: thd-spatial-ai/opentech-db
+repo_url: https://mygit.th-deg.de/thd-spatial-ai/opentech-db
 edit_uri: edit/main/docs/
 
 # Theme configuration
@@ -113,9 +113,16 @@ markdown_extensions:
 # Page tree
 nav:
   - Home: index.md
-  - Checklist: getting-started/open-source-checklist.md
-  - Repository Naming: getting-started/repository-naming.md
-  - Documentation Setup: getting-started/documentation-setup.md
+  - Overview: overview.md
+  - Getting Started: getting-started.md
+  - API Reference: api-reference.md
+  - Integration Guide: integration.md
+  - Data Model: data-model.md
+  - Data Formats: data-formats.md
+  - Framework Adapters: adapters.md
+  - Time-Series Catalogue: timeseries.md
+  - Authentication: authentication.md
+  - Web Frontend: frontend.md
 
 # Copyright
 copyright: |

@@ -9,23 +9,13 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Number of uvicorn worker processes (adjust to available CPU cores)
       WORKERS: "2"
-      # Admin credentials — set these before deploying.
-      # Generate the hash with:
-      #   python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
       ADMIN_EMAIL: "ricardo.miranda-castillo@th-deg.de"
       ADMIN_PASSWORD_HASH: "$2b$12$.LX15d8vQn.SRpGlUU3VyecDTIORq8Ko8CjMACxmnKxJbj79iQk3y"
-      # ── Supabase (submissions database) ──────────────────────────────────────
-      # Find your service_role key in: Supabase Dashboard → Project Settings → API
-      # WARNING: this is a SECRET key — never commit the real value to git.
+
       SUPABASE_URL: "https://lrksjyrnaktlzwcxxqbn.supabase.co"
       SUPABASE_SERVICE_ROLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxya3NqeXJuYWt0bHp3Y3h4cWJuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTE1MDk0MCwiZXhwIjoyMDkwNzI2OTQwfQ.0brzKKsRV1WL8uWYw4MW93td6LGxpnGyTqpoOXVWt6I"
     volumes:
-      # Bind the entire data directory so that:
-      #  - technology JSON catalogues are read from (and written to) the host
-      #  - approved submissions are persisted across container rebuilds
-      #  - pending_submissions/ is also covered by this mount
       - ./data:/app/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]

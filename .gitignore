@@ -65,3 +65,4 @@ data/pending_submissions/*.json
 .github/
 github/
 __pycache__/
+docker-compose.yml

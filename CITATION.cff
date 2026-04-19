@@ -9,7 +9,7 @@ authors:
   - family-names: "Last Name"
     given-names: "First Name"
     orcid: "https://orcid.org/0000-0000-0000-0000"
-    affiliation: "THD-Spatial"
+    affiliation: "BigGeoData & Spatial AI, Technische Hochschule Deggendorf"
 repository-code: "https://github.com/THD-Spatial/repo-name"
 url: "https://THD-Spatial.github.io/city2tabula"
 license: MIT

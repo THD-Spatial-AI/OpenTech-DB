@@ -48,6 +48,7 @@ import AuthPage from "./components/auth/AuthPage";
 import OAuthCallback from "./components/auth/OAuthCallback";
 import AdminPanel from "./components/admin/AdminPanel";
 import TimeSeriesCatalogue from "./components/timeseries/TimeSeriesCatalogue";
+import WorldMapView from "./components/worldmap/WorldMapView";
 import { useAuth } from "./context/AuthContext";
 
 // ── Grid loading skeleton ─────────────────────────────────────────────────────
@@ -154,6 +155,8 @@ export default function App() {
           ? "OpenTech DB | Admin Panel"
           : activeView === "timeseries"
           ? "OpenTech DB | Time Series & Profiles"
+          : activeView === "worldmap"
+          ? "OpenTech DB | Technology World Map"
           : "OpenTech DB | Technology Catalogue"}
       </title>
       <meta
@@ -204,6 +207,8 @@ export default function App() {
             <ProfilePage onViewChange={setActiveView} />          ) : activeView === "admin" ? (
             <AdminPanel />          ) : activeView === "timeseries" ? (
             <TimeSeriesCatalogue />
+          ) : activeView === "worldmap" ? (
+            <WorldMapView />
           ) : (
             <main className="max-w-[1440px] mx-auto px-8 py-12 w-full flex-1">
 

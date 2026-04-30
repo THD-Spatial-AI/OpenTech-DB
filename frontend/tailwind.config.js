@@ -59,6 +59,16 @@ export default {
         "2xl":   "0.75rem", // max allowed by design spec
         full:    "0.75rem",
       },
+      // ── Custom keyframes ──────────────────────────────────────────────────
+      keyframes: {
+        slideInRight: {
+          "0%":   { transform: "translateX(100%)", opacity: "0" },
+          "100%": { transform: "translateX(0)",    opacity: "1" },
+        },
+      },
+      animation: {
+        slideInRight: "slideInRight 0.22s ease-out",
+      },
     },
   },
   plugins: [],

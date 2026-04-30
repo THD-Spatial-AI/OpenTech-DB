@@ -360,19 +360,50 @@ function CandidateDetailModal({
 
 // ── Dashboard tab ─────────────────────────────────────────────────────────────
 
+function fmtElapsed(secs: number): string {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m > 0 ? `${m}m ${s.toString().padStart(2, "0")}s` : `${s}s`;
+}
+
+function runDur(r: ScraperRun): string | null {
+  if (!r.started_at || !r.finished_at) return null;
+  const secs = Math.round(
+    (new Date(r.finished_at).getTime() - new Date(r.started_at).getTime()) / 1000
+  );
+  return secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+}
+
 function DashboardTab({
   status,
   loading,
   onRefresh,
   onRun,
   running,
+  runStartTime,
+  runs,
+  runsLoading,
 }: {
   status: ScraperStatus | null;
   loading: boolean;
   onRefresh: () => void;
   onRun: () => void;
   running: boolean;
+  runStartTime: Date | null;
+  runs: ScraperRun[];
+  runsLoading: boolean;
 }) {
+  // Tick elapsed seconds while a run is active
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!runStartTime) { setElapsed(0); return; }
+    const id = setInterval(
+      () => setElapsed(Math.floor((Date.now() - runStartTime.getTime()) / 1000)),
+      1000
+    );
+    return () => clearInterval(id);
+  }, [runStartTime]);
+
   if (!status) {
     return (
       <div className="flex items-center justify-center py-20 gap-3">
@@ -382,9 +413,8 @@ function DashboardTab({
     );
   }
 
-  const { scheduler, enabled_sources, candidates, last_run } = status;
+  const { scheduler, enabled_sources, candidates } = status;
 
-  // Pick the soonest scheduled job to display
   const nextJob: ScraperSchedulerJob | undefined =
     scheduler.jobs.length > 0
       ? scheduler.jobs.slice().sort((a, b) => {
@@ -396,13 +426,79 @@ function DashboardTab({
 
   return (
     <div className="space-y-6">
-      {/* Top row stats */}
+
+      {/* ── LIVE STATUS BANNER ─────────────────────────────────────────────── */}
+      {running ? (
+        <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 to-violet-600
+                        text-white rounded-2xl shadow-lg">
+          {/* subtle animated shimmer */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent
+                          animate-pulse" />
+          <div className="relative px-5 py-4 flex items-center gap-5">
+            <span className="material-symbols-outlined text-[38px] animate-spin flex-shrink-0">
+              progress_activity
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm leading-none">Pipeline is running…</p>
+              <p className="text-indigo-200 text-xs mt-1">
+                Querying {enabled_sources.length} source{enabled_sources.length !== 1 ? "s" : ""} across all technology categories
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {enabled_sources.slice(0, 7).map((s) => (
+                  <span key={s} className="text-[9px] font-semibold bg-white/20 px-2 py-0.5 rounded-full">
+                    {s}
+                  </span>
+                ))}
+                {enabled_sources.length > 7 && (
+                  <span className="text-[9px] font-semibold bg-white/10 px-2 py-0.5 rounded-full">
+                    +{enabled_sources.length - 7} more
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="text-3xl font-bold tabular-nums leading-none">{fmtElapsed(elapsed)}</p>
+              <p className="text-indigo-300 text-[10px] mt-1">elapsed</p>
+            </div>
+          </div>
+          {/* indeterminate progress strip */}
+          <div className="h-1 bg-white/20">
+            <div
+              className="h-full bg-white/50 rounded-full"
+              style={{
+                width: "35%",
+                animation: "progressSlide 1.8s ease-in-out infinite alternate",
+              }}
+            />
+          </div>
+          <style>{`
+            @keyframes progressSlide {
+              from { margin-left: 0%; }
+              to   { margin-left: 65%; }
+            }
+          `}</style>
+        </div>
+      ) : (
+        /* Idle status pill — shows last run info or "Ready" */
+        <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+          <p className="text-sm font-semibold text-slate-600">Pipeline idle</p>
+          {runs.length > 0 && runs[0].finished_at && (
+            <p className="text-xs text-slate-400 ml-auto">
+              Last run: <span className="font-semibold">{fmt(runs[0].finished_at)}</span>
+              {runDur(runs[0]) && <span className="ml-1 text-slate-300">({runDur(runs[0])})</span>}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── STAT CARDS ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {([
-          { label: "Pending Review", value: candidates.pending,  icon: "pending",       color: "text-amber-600  bg-amber-50  border-amber-100"  },
-          { label: "Approved",       value: candidates.approved, icon: "check_circle",  color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-          { label: "Rejected",       value: candidates.rejected, icon: "cancel",        color: "text-red-600    bg-red-50    border-red-100"    },
-          { label: "Sources Active", value: enabled_sources.length, icon: "hub",        color: "text-indigo-600 bg-indigo-50  border-indigo-100" },
+          { label: "Pending Review", value: candidates.pending,     icon: "pending",      color: "text-amber-600   bg-amber-50   border-amber-100"   },
+          { label: "Approved",       value: candidates.approved,    icon: "check_circle", color: "text-emerald-600 bg-emerald-50 border-emerald-100"  },
+          { label: "Rejected",       value: candidates.rejected,    icon: "cancel",       color: "text-red-600     bg-red-50     border-red-100"      },
+          { label: "Sources Active", value: enabled_sources.length, icon: "hub",          color: "text-indigo-600  bg-indigo-50  border-indigo-100"   },
         ] as const).map(({ label, value, icon, color }) => (
           <div key={label} className={`rounded-2xl border p-4 ${color}`}>
             <div className="flex items-center gap-2 mb-2">
@@ -414,15 +510,13 @@ function DashboardTab({
         ))}
       </div>
 
-      {/* Scheduler + Run Now */}
+      {/* ── SCHEDULER + RUN NOW ────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-3 bg-slate-50/70 border-b border-slate-100">
           <span className="material-symbols-outlined text-[13px] text-indigo-500">schedule</span>
           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Scheduler</p>
           <div className="ml-auto flex items-center gap-2">
-            <span
-              className={`w-2 h-2 rounded-full ${scheduler.running ? "bg-emerald-500" : "bg-slate-300"}`}
-            />
+            <span className={`w-2 h-2 rounded-full ${scheduler.running ? "bg-emerald-500" : "bg-slate-300"}`} />
             <span className="text-[10px] font-semibold text-slate-500">
               {scheduler.running ? "Running" : "Stopped"}
             </span>
@@ -434,9 +528,7 @@ function DashboardTab({
             <p className="text-sm font-bold text-slate-700 mt-0.5">
               {nextJob?.next_run ? fmt(nextJob.next_run) : "Not scheduled"}
             </p>
-            {nextJob && (
-              <p className="text-[10px] text-slate-400 mt-0.5">{nextJob.name}</p>
-            )}
+            {nextJob && <p className="text-[10px] text-slate-400 mt-0.5">{nextJob.name}</p>}
             <p className="text-[10px] text-slate-400 mt-2">
               Runs automatically on the 1st and 15th of each month at 02:00 UTC.
             </p>
@@ -468,11 +560,14 @@ function DashboardTab({
         </div>
       </div>
 
-      {/* Enabled sources */}
+      {/* ── DATA SOURCES ───────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-3 bg-slate-50/70 border-b border-slate-100">
           <span className="material-symbols-outlined text-[13px] text-indigo-500">hub</span>
           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Data Sources</p>
+          <span className="ml-auto text-[10px] font-semibold text-slate-400">
+            {enabled_sources.length} active
+          </span>
         </div>
         <div className="px-5 py-4 flex flex-wrap gap-2">
           {enabled_sources.map((src) => (
@@ -488,192 +583,104 @@ function DashboardTab({
         </div>
       </div>
 
-      {/* Last run summary */}
-      {last_run && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-3 bg-slate-50/70 border-b border-slate-100">
-            <span className="material-symbols-outlined text-[13px] text-indigo-500">history</span>
-            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Last Pipeline Run</p>
-          </div>
-          <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Started</p>
-              <p className="text-xs font-bold text-slate-700">{fmt(last_run.started_at)}</p>
-            </div>
-            <div>
-              <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Finished</p>
-              <p className="text-xs font-bold text-slate-700">{fmt(last_run.finished_at)}</p>
-            </div>
-            <div>
-              <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Papers Found</p>
-              <p className="text-xl font-bold text-slate-700 tabular-nums">{last_run.papers_found}</p>
-            </div>
-            <div>
-              <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Candidates Created</p>
-              <p className="text-xl font-bold text-indigo-600 tabular-nums">{last_run.candidates_created}</p>
-            </div>
-          </div>
-          {last_run.error && (
-            <div className="mx-5 mb-4 flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-              <span className="material-symbols-outlined text-[13px] text-red-500 mt-0.5">error</span>
-              <p className="text-xs text-red-700 font-mono">{last_run.error}</p>
-            </div>
+      {/* ── PIPELINE ACTIVITY LOG ──────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-3 bg-slate-50/70 border-b border-slate-100">
+          <span className="material-symbols-outlined text-[13px] text-indigo-500">receipt_long</span>
+          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Pipeline Activity</p>
+          {runsLoading && (
+            <span className="material-symbols-outlined text-[13px] text-slate-400 animate-spin ml-1">
+              autorenew
+            </span>
           )}
+          <span className="ml-auto text-[9px] text-slate-400">
+            {runs.length > 0 ? `${runs.length} run${runs.length !== 1 ? "s" : ""}` : ""}
+          </span>
         </div>
-      )}
-    </div>
-  );
-}
 
-// ── Activity / Run log tab ────────────────────────────────────────────────────
+        {!runsLoading && runs.length === 0 && (
+          <div className="px-5 py-10 flex flex-col items-center gap-2 text-center">
+            <span className="material-symbols-outlined text-4xl text-slate-200">history</span>
+            <p className="text-sm text-slate-400 font-semibold">No runs yet</p>
+            <p className="text-xs text-slate-300">Trigger a pipeline run above to see activity here.</p>
+          </div>
+        )}
 
-function ActivityTab() {
-  const [runs,      setRuns]      = useState<ScraperRun[] | null>(null);
-  const [error,     setError]     = useState<string | null>(null);
-  const [loading,   setLoading]   = useState(false);
-  const [expanded,  setExpanded]  = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    fetchScraperRuns(50)
-      .then((data) => setRuns(data.runs))
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load runs."))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const dur = (r: ScraperRun) => {
-    if (!r.started_at || !r.finished_at) return null;
-    const secs = Math.round(
-      (new Date(r.finished_at).getTime() - new Date(r.started_at).getTime()) / 1000
-    );
-    return secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500">Last 50 pipeline runs, newest first.</p>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600
-                     border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
-        >
-          <span className={`material-symbols-outlined text-[13px] ${loading ? "animate-spin" : ""}`}>refresh</span>
-          Refresh
-        </button>
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          <span className="material-symbols-outlined text-red-500">error</span>
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
-
-      {loading && runs === null && (
-        <div className="flex items-center justify-center py-16 gap-3">
-          <span className="material-symbols-outlined text-[28px] text-indigo-400 animate-spin">autorenew</span>
-          <p className="text-slate-400 text-sm">Loading run history…</p>
-        </div>
-      )}
-
-      {!loading && runs !== null && runs.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-          <span className="material-symbols-outlined text-5xl text-slate-200">history</span>
-          <p className="text-slate-400 font-semibold">No runs yet</p>
-          <p className="text-slate-300 text-sm">Trigger a pipeline run from the Dashboard tab to see activity here.</p>
-        </div>
-      )}
-
-      {runs && runs.length > 0 && (
-        <div className="space-y-2">
-          {runs.map((run) => {
-            const isOpen   = expanded === run.run_id;
-            const hasErr   = run.errors.length > 0;
-            const isOk     = !hasErr && (run.finished_at !== null);
-            return (
-              <div key={run.run_id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                {/* Summary row */}
-                <button
-                  type="button"
-                  onClick={() => setExpanded(isOpen ? null : run.run_id)}
-                  className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className={`material-symbols-outlined text-[18px] ${isOk ? "text-emerald-500" : hasErr ? "text-amber-500" : "text-slate-300"}`}>
-                      {isOk ? "check_circle" : hasErr ? "warning" : "pending"}
+        {runs.length > 0 && (
+          <div className="divide-y divide-slate-100">
+            {runs.map((run) => {
+              const d = runDur(run);
+              const hasErr = run.errors.length > 0;
+              const isActive = !!run.started_at && !run.finished_at;
+              const isOk = !hasErr && !!run.finished_at;
+              return (
+                <div key={run.run_id} className="px-5 py-3">
+                  <div className="flex items-start gap-3">
+                    {/* status icon */}
+                    <span className={`material-symbols-outlined text-[17px] mt-0.5 flex-shrink-0 ${
+                      isActive ? "text-indigo-500 animate-spin"
+                      : isOk   ? "text-emerald-500"
+                      : hasErr ? "text-amber-500"
+                               : "text-slate-300"
+                    }`}>
+                      {isActive ? "progress_activity"
+                       : isOk   ? "check_circle"
+                       : hasErr ? "warning"
+                                : "pending"}
                     </span>
+
+                    {/* main info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                      <div className="flex items-baseline gap-2 flex-wrap">
                         <span className="text-xs font-bold text-slate-700">{fmt(run.started_at)}</span>
-                        {dur(run) && <span className="text-[10px] text-slate-400">({dur(run)})</span>}
+                        {d && <span className="text-[10px] text-slate-400">· {d}</span>}
+                        {isActive && (
+                          <span className="text-[10px] font-semibold text-indigo-400 animate-pulse">
+                            running…
+                          </span>
+                        )}
                       </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
+                      <div className="flex flex-wrap gap-x-4 gap-y-0 mt-0.5">
                         <span className="text-[10px] text-slate-500">
                           <span className="font-semibold">{run.technologies_processed}</span> techs
                         </span>
                         <span className="text-[10px] text-slate-500">
                           <span className="font-semibold">{run.papers_fetched}</span> papers
                         </span>
-                        <span className="text-[10px] text-indigo-600 font-semibold">
+                        <span className="text-[10px] font-semibold text-indigo-600">
                           +{run.candidates_created} candidates
                         </span>
                         {hasErr && (
-                          <span className="text-[10px] text-amber-600 font-semibold">
-                            {run.errors.length} errors
+                          <span className="text-[10px] font-semibold text-amber-600">
+                            {run.errors.length} error{run.errors.length !== 1 ? "s" : ""}
                           </span>
                         )}
                       </div>
-                    </div>
-                    <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}>
-                      expand_more
-                    </span>
-                  </div>
-                </button>
 
-                {/* Detail panel */}
-                {isOpen && (
-                  <div className="border-t border-slate-100 px-4 py-3 space-y-3">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {[
-                        { label: "Run ID",      value: run.run_id.slice(0, 8) + "…" },
-                        { label: "Started",     value: fmt(run.started_at) },
-                        { label: "Finished",    value: fmt(run.finished_at) },
-                        { label: "Duration",    value: dur(run) ?? "—" },
-                        { label: "Technologies", value: String(run.technologies_processed) },
-                        { label: "Papers",      value: String(run.papers_fetched) },
-                        { label: "Candidates",  value: String(run.candidates_created) },
-                        { label: "Errors",      value: String(run.errors.length) },
-                      ].map(({ label, value }) => (
-                        <div key={label}>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
-                          <p className="text-xs font-semibold text-slate-700 mt-0.5">{value}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {hasErr && (
-                      <div>
-                        <p className="text-[9px] font-bold text-amber-600 uppercase tracking-wider mb-2">Errors / Warnings</p>
-                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {/* inline errors */}
+                      {hasErr && (
+                        <div className="mt-1.5 space-y-0.5 max-h-20 overflow-y-auto">
                           {run.errors.map((err, i) => (
-                            <p key={i} className="text-[10px] font-mono text-amber-800 bg-amber-50 rounded px-2 py-1 leading-snug">
+                            <p key={i} className="text-[10px] font-mono text-amber-700
+                                                  bg-amber-50 rounded px-2 py-0.5 leading-snug">
                               {err}
                             </p>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+
+                    {/* run id */}
+                    <span className="text-[9px] font-mono text-slate-300 flex-shrink-0 pt-0.5 hidden sm:block">
+                      {run.run_id.slice(0, 8)}
+                    </span>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -859,15 +866,18 @@ function CandidatesTab({
 
 // ── ScraperPanel (exported) ───────────────────────────────────────────────────
 
-type ScraperTab = "dashboard" | "candidates" | "activity";
+type ScraperTab = "dashboard" | "candidates";
 
 export default function ScraperPanel({ token }: { token: string }) {
-  const [tab,      setTab]      = useState<ScraperTab>("dashboard");
-  const [status,   setStatus]   = useState<ScraperStatus | null>(null);
-  const [statusErr, setStatusErr] = useState<string | null>(null);
-  const [loading,  setLoading]  = useState(false);
-  const [running,  setRunning]  = useState(false);
-  const [runMsg,   setRunMsg]   = useState<string | null>(null);
+  const [tab,          setTab]          = useState<ScraperTab>("dashboard");
+  const [status,       setStatus]       = useState<ScraperStatus | null>(null);
+  const [statusErr,    setStatusErr]    = useState<string | null>(null);
+  const [loading,      setLoading]      = useState(false);
+  const [running,      setRunning]      = useState(false);
+  const [runMsg,       setRunMsg]       = useState<string | null>(null);
+  const [runStartTime, setRunStartTime] = useState<Date | null>(null);
+  const [runs,         setRuns]         = useState<ScraperRun[]>([]);
+  const [runsLoading,  setRunsLoading]  = useState(false);
 
   const loadStatus = useCallback(() => {
     setLoading(true);
@@ -878,20 +888,38 @@ export default function ScraperPanel({ token }: { token: string }) {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { loadStatus(); }, [loadStatus]);
+  const loadRuns = useCallback(() => {
+    setRunsLoading(true);
+    fetchScraperRuns(30)
+      .then((data) => setRuns(data.runs))
+      .catch(() => { /* silent – status error already shown */ })
+      .finally(() => setRunsLoading(false));
+  }, []);
+
+  // Initial load
+  useEffect(() => { loadStatus(); loadRuns(); }, [loadStatus, loadRuns]);
+
+  // Auto-poll every 5 s while a run is active
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => { loadStatus(); loadRuns(); }, 5000);
+    return () => clearInterval(id);
+  }, [running, loadStatus, loadRuns]);
 
   const handleRun = async () => {
     setRunning(true);
     setRunMsg(null);
+    setRunStartTime(new Date());
     try {
       const res = await triggerScraperRun(token);
       setRunMsg(res.message);
-      // Refresh status after a short delay so queue counts update
-      setTimeout(() => loadStatus(), 3000);
+      // Refresh status + runs after a short delay so counts update
+      setTimeout(() => { loadStatus(); loadRuns(); }, 3000);
     } catch (e) {
       setRunMsg(e instanceof Error ? e.message : "Run failed.");
     } finally {
       setRunning(false);
+      setRunStartTime(null);
     }
   };
 
@@ -935,9 +963,8 @@ export default function ScraperPanel({ token }: { token: string }) {
       {/* Sub-tabs */}
       <div className="flex gap-1 border-b border-slate-100">
         {([
-          { id: "dashboard"  as ScraperTab, label: "Dashboard",  icon: "dashboard"    },
-          { id: "candidates" as ScraperTab, label: "Candidates", icon: "rate_review"  },
-          { id: "activity"   as ScraperTab, label: "Activity",   icon: "history"      },
+          { id: "dashboard"  as ScraperTab, label: "Dashboard",  icon: "dashboard"   },
+          { id: "candidates" as ScraperTab, label: "Candidates", icon: "rate_review" },
         ]).map(({ id, label, icon }) => (
           <button
             key={id}
@@ -965,18 +992,17 @@ export default function ScraperPanel({ token }: { token: string }) {
         <DashboardTab
           status={status}
           loading={loading}
-          onRefresh={loadStatus}
+          onRefresh={() => { loadStatus(); loadRuns(); }}
           onRun={handleRun}
           running={running}
+          runStartTime={runStartTime}
+          runs={runs}
+          runsLoading={runsLoading}
         />
       )}
 
       {tab === "candidates" && (
         <CandidatesTab token={token} />
-      )}
-
-      {tab === "activity" && (
-        <ActivityTab />
       )}
     </div>
   );

@@ -395,8 +395,8 @@ def _pick_legacy_model(raw: dict) -> type[Technology]:
 def _load_all_technologies() -> dict[str, Technology]:
     logger.info("DATA_DIR resolved to: %s (exists=%s)", DATA_DIR, DATA_DIR.exists())
     techs: dict[str, Technology] = {}
-    # Exclude submission-related directories — they are not catalogue files.
-    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries"}
+    # Exclude directories that hold non-catalogue JSON (uploads, timeseries, scraper state).
+    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries", "scraped"}
     json_files = [
         p for p in DATA_DIR.rglob("*.json")
         if not any(part in _EXCLUDED_DIRS for part in p.parts)

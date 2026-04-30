@@ -203,3 +203,80 @@ export interface AdminLoginResponse {
   token: string;
   user:  AuthUser;
 }
+
+// ── Scraper pipeline ──────────────────────────────────────────────────────────
+
+export type ScraperCandidateStatus = "pending" | "approved" | "rejected";
+
+export interface ScraperSchedulerJob {
+  id: string;
+  name: string;
+  next_run: string | null;
+}
+
+export interface ScraperSchedulerStatus {
+  running: boolean;
+  jobs: ScraperSchedulerJob[];
+}
+
+export interface ScraperCandidateCounts {
+  pending: number;
+  approved: number;
+  rejected: number;
+}
+
+export interface ScraperLastRun {
+  started_at: string | null;
+  finished_at: string | null;
+  papers_found: number;
+  candidates_created: number;
+  sources_used: string[];
+  error: string | null;
+}
+
+export interface ScraperStatus {
+  scheduler: ScraperSchedulerStatus;
+  enabled_sources: string[];
+  candidates: ScraperCandidateCounts;
+  last_run: ScraperLastRun | null;
+}
+
+export interface ScraperRun {
+  run_id: string;
+  started_at: string | null;
+  finished_at: string | null;
+  technologies_processed: number;
+  papers_fetched: number;
+  candidates_created: number;
+  errors: string[];
+}
+
+export interface ExtractedParam {
+  value: number;
+  unit: string;
+  confidence: number;
+  source_text?: string | null;
+}
+
+export interface ScraperCandidate {
+  candidate_id: string;
+  technology_id: string;
+  technology_name: string;
+  status: ScraperCandidateStatus;
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  review_notes: string | null;
+  paper: {
+    title: string;
+    authors: string[];
+    year: number | null;
+    doi: string | null;
+    venue: string | null;
+    abstract: string | null;
+    url: string | null;
+    source: string;
+  };
+  extracted_params: Record<string, ExtractedParam>;
+  proposed_instance: Record<string, unknown>;
+}

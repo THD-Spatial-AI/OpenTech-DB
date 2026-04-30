@@ -9,3 +9,18 @@ httpx>=0.27.0        # for async testing / optional client
 python-jose[cryptography]>=3.3.0  # JWT signing/verification for ORCID tokens
 bcrypt>=4.1.0        # Secure password hashing for admin credentials
 supabase>=2.0.0      # Supabase Python client — stores contributor submissions in Postgres
+
+# ---------------------------------------------------------------------------
+# Scraping pipeline (pip install -r requirements.txt covers core deps;
+# optional extras noted per-line)
+# ---------------------------------------------------------------------------
+apscheduler>=3.10.0          # Recurring job scheduler (twice-monthly runs)
+sqlalchemy>=2.0.0            # APScheduler SQLite job store backend
+click>=8.1.0                 # CLI interface (python -m scrapers.cli)
+
+# Optional – install for enhanced functionality:
+# pdfplumber>=0.10.0         # PDF text extraction (pip install pdfplumber)
+# scholarly>=1.7.0           # Google Scholar scraper (fragile, disabled by default)
+# pybliometrics>=3.7.0       # Elsevier Scopus API wrapper (pip install pybliometrics)
+# openai>=1.13.0             # LLM-based parameter extraction (pip install openai)
+# anthropic>=0.25.0          # Alternative LLM provider (pip install anthropic)

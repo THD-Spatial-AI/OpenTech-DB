@@ -434,3 +434,156 @@ export async function actOnProfileSubmission(
   }
   return response.json() as Promise<{ status: string; submission_id: string }>;
 }
+
+// ── Scraper pipeline endpoints ────────────────────────────────────────────────
+
+import type { ScraperStatus, ScraperCandidate, ScraperRun } from "../types/api";
+
+/** The backend stores paper fields flat (paper_title, paper_year, …).
+ *  This normalizes a raw row into the nested ScraperCandidate shape. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeCandidate(raw: any): ScraperCandidate {
+  return {
+    candidate_id:     raw.candidate_id,
+    technology_id:    raw.technology_id ?? "",
+    technology_name:  raw.technology_name ?? raw.technology_id ?? "",
+    status:           raw.status ?? "pending",
+    created_at:       raw.scraped_at ?? raw.created_at ?? "",
+    reviewed_at:      raw.reviewed_at ?? null,
+    reviewed_by:      raw.reviewed_by ?? null,
+    review_notes:     raw.review_notes ?? null,
+    paper: raw.paper ?? {
+      title:    raw.paper_title   ?? null,
+      authors:  raw.paper_authors ?? [],
+      year:     raw.paper_year    ?? null,
+      doi:      raw.paper_doi     ?? null,
+      venue:    raw.paper_venue   ?? null,
+      abstract: raw.paper_abstract ?? null,
+      url:      raw.paper_url     ?? null,
+      source:   raw.source        ?? "",
+    },
+    extracted_params:  raw.extracted_params  ?? {},
+    proposed_instance: raw.proposed_instance ?? {},
+  };
+}
+
+export async function fetchScraperStatus(): Promise<ScraperStatus> {
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}/scraper/status`, { headers: HEADERS });
+  } catch {
+    throw new Error("Failed to fetch — is the backend server running?");
+  }
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<ScraperStatus>;
+}
+
+export async function fetchScraperRuns(limit = 20): Promise<{ count: number; runs: ScraperRun[] }> {
+  const response = await fetch(`${BASE_URL}/scraper/runs?limit=${limit}`, { headers: HEADERS });
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<{ count: number; runs: ScraperRun[] }>;
+}
+
+export async function triggerScraperRun(
+  token: string,
+  options?: { tech_ids?: string[]; sources?: string[] }
+): Promise<{ status: string; message: string }> {
+  const response = await fetch(`${BASE_URL}/scraper/run`, {
+    method: "POST",
+    headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(options ?? {}),
+  });
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<{ status: string; message: string }>;
+}
+
+export async function fetchScraperCandidates(
+  options?: { status?: string; technology_id?: string; limit?: number }
+): Promise<{ count: number; candidates: ScraperCandidate[] }> {
+  const params = new URLSearchParams();
+  if (options?.status)        params.set("status", options.status);
+  if (options?.technology_id) params.set("technology_id", options.technology_id);
+  if (options?.limit)         params.set("limit", String(options.limit));
+  const qs = params.toString();
+  const response = await fetch(`${BASE_URL}/scraper/candidates${qs ? `?${qs}` : ""}`, {
+    headers: HEADERS,
+  });
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  const data = await response.json() as { count: number; candidates: unknown[] };
+  return { count: data.count, candidates: data.candidates.map(normalizeCandidate) };
+}
+
+export async function fetchScraperCandidate(
+  candidateId: string
+): Promise<ScraperCandidate> {
+  const response = await fetch(
+    `${BASE_URL}/scraper/candidates/${encodeURIComponent(candidateId)}`,
+    { headers: HEADERS }
+  );
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return normalizeCandidate(await response.json());
+}
+
+export async function approveScraperCandidate(
+  token: string,
+  candidateId: string,
+  options?: { reviewed_by?: string; notes?: string }
+): Promise<{ status: string; candidate: ScraperCandidate }> {
+  const response = await fetch(
+    `${BASE_URL}/scraper/candidates/${encodeURIComponent(candidateId)}/approve`,
+    {
+      method: "POST",
+      headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(options ?? {}),
+    }
+  );
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  const data = await response.json() as { status: string; candidate: unknown };
+  return { status: data.status, candidate: normalizeCandidate(data.candidate) };
+}
+
+export async function rejectScraperCandidate(
+  token: string,
+  candidateId: string,
+  reason?: string
+): Promise<{ status: string; candidate: ScraperCandidate }> {
+  const response = await fetch(
+    `${BASE_URL}/scraper/candidates/${encodeURIComponent(candidateId)}/reject`,
+    {
+      method: "POST",
+      headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason ?? "", reviewed_by: undefined }),
+    }
+  );
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  const data = await response.json() as { status: string; candidate: unknown };
+  return { status: data.status, candidate: normalizeCandidate(data.candidate) };
+}

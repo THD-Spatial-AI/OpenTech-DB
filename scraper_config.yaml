@@ -1,0 +1,807 @@
+# scraper_config.yaml
+# ====================
+# Configuration for the OpenTech-DB automated scraping pipeline.
+# Edit this file to control which sources are active, scheduling frequency,
+# technology-specific search queries, and extraction thresholds.
+#
+# Environment variables override file settings where noted (see scrapers/config.py).
+# ====================
+
+# ---------------------------------------------------------------------------
+# Scheduling
+# Runs twice a month by default (1st and 15th at 02:00 UTC).
+# Cron format: minute hour day-of-month month day-of-week
+# ---------------------------------------------------------------------------
+schedule:
+  enabled: true
+  jobs:
+    - id: "scrape_run_1"
+      cron: "0 2 1 * *"      # 1st of every month, 02:00 UTC
+      description: "Monthly scrape run – start of month"
+    - id: "scrape_run_2"
+      cron: "0 2 15 * *"     # 15th of every month, 02:00 UTC
+      description: "Monthly scrape run – mid month"
+
+# ---------------------------------------------------------------------------
+# HTTP Client settings
+# ---------------------------------------------------------------------------
+http:
+  timeout_seconds: 30
+  max_retries: 3
+  retry_backoff_seconds: 2.0   # exponential base
+  # Polite delay between requests to the same host (seconds)
+  rate_limit_delay: 1.5
+  # Cache raw responses to disk to avoid duplicate fetches within a run
+  cache_enabled: true
+  cache_ttl_hours: 24
+  cache_dir: "data/scraped/http_cache"
+  # Your institutional email – included in User-Agent for OpenAlex polite pool
+  contact_email: "opentech-db@th-deg.de"
+
+# ---------------------------------------------------------------------------
+# Sources
+# ---------------------------------------------------------------------------
+sources:
+  open_alex:
+    enabled: true
+    description: "OpenAlex – free, open academic graph (no API key required)"
+    base_url: "https://api.openalex.org"
+    max_results_per_tech: 50
+    lookback_months: 36
+    api_key: null
+
+  semantic_scholar:
+    enabled: true
+    description: "Semantic Scholar – free AI-powered paper search"
+    base_url: "https://api.semanticscholar.org/graph/v1"
+    max_results_per_tech: 50
+    lookback_months: 36
+    api_key: null
+
+  scopus:
+    enabled: false
+    description: "Elsevier Scopus – premium bibliographic database"
+    api_key: null
+    inst_token: null
+    max_results_per_tech: 30
+    lookback_months: 36
+
+  google_scholar:
+    enabled: false
+    description: "Google Scholar via 'scholarly' library (experimental)"
+    max_results_per_tech: 20
+    lookback_months: 36
+    proxy_key: null
+
+  nrel_atb:
+    enabled: true
+    description: "NREL Annual Technology Baseline – authoritative US cost data"
+    base_url: "https://atb.nrel.gov"
+    atb_year: 2024
+
+  irena:
+    enabled: true
+    description: "IRENA Renewable Power Generation Costs – annual PDF reports"
+    base_url: "https://www.irena.org"
+    report_index_url: "https://www.irena.org/publications/2024/Sep/Renewable-power-generation-costs-in-2023"
+
+  eia_api:
+    enabled: true
+    description: "US EIA Open Data – electricity generation, capacity, cost surveys"
+    base_url: "https://api.eia.gov/v2"
+    api_key: null                # Free key at https://www.eia.gov/opendata/register.php
+
+  crossref:
+    enabled: true
+    description: "Crossref REST API – DOI metadata, open access, fast free tier"
+    base_url: "https://api.crossref.org"
+    max_results_per_tech: 40
+    lookback_months: 36
+
+  arxiv:
+    enabled: true
+    description: "arXiv preprint server – free API, no key required"
+    base_url: "https://export.arxiv.org/api"
+    max_results_per_tech: 30
+    lookback_months: 24
+
+  europe_pmc:
+    enabled: true
+    description: "Europe PMC – life sciences + energy literature, free API"
+    base_url: "https://www.ebi.ac.uk/europepmc/webservices/rest"
+    max_results_per_tech: 30
+    lookback_months: 36
+
+  iea_reports:
+    enabled: true
+    description: "IEA publication index – World Energy Outlook, Technology Reports"
+    report_index_url: "https://www.iea.org/data-and-statistics/data-product/world-energy-outlook-2023"
+
+  fraunhofer_ise:
+    enabled: true
+    description: "Fraunhofer ISE photovoltaics + energy system reports (PDF scrape)"
+    reports:
+      - "https://www.ise.fraunhofer.de/content/dam/ise/de/documents/publications/studies/Photovoltaics-Report.pdf"
+
+  ember_data:
+    enabled: true
+    description: "Ember Climate – open electricity data & reports"
+    base_url: "https://ember-climate.org/data"
+    api_url: "https://api.ember-climate.org/v1"
+
+# ---------------------------------------------------------------------------
+# Extraction settings
+# ---------------------------------------------------------------------------
+extraction:
+  # Minimum confidence score (0-1) to create a candidate
+  min_confidence: 0.55
+  # If true, discard results without a DOI
+  require_doi: false
+  # If true, attempt to download and parse open-access PDFs
+  parse_pdfs: true
+  # Max PDF size in MB to attempt parsing (avoids downloading 200-page reports)
+  max_pdf_mb: 10
+  # LLM extraction (optional – requires OPENAI_API_KEY env var)
+  llm:
+    enabled: false
+    provider: "openai"           # "openai" | "anthropic"
+    model: "gpt-4o-mini"         # cost-effective for bulk extraction
+    max_tokens_per_paper: 3000   # truncate paper text before sending to LLM
+    temperature: 0.0
+    # Prompt template used to instruct the LLM
+    system_prompt: |
+      You are an expert energy systems engineer. Extract cost and performance
+      parameters from the provided paper excerpt. Return ONLY valid JSON with
+      the following fields if found in the text, otherwise omit the field:
+      {
+        "capex_usd_per_kw": number,
+        "opex_fixed_usd_per_kw_yr": number,
+        "opex_var_usd_per_mwh": number,
+        "efficiency_percent": number,
+        "lifetime_years": number,
+        "co2_emission_factor_g_per_kwh": number,
+        "typical_capacity_mw": number,
+        "notes": "brief explanation of extracted values and their context"
+      }
+      All monetary values must be in USD. Convert from EUR using 1 EUR = 1.10 USD.
+      All efficiencies must be in % (e.g. 60.5 not 0.605).
+
+# ---------------------------------------------------------------------------
+# Technology-specific search queries
+# Each entry maps a technology_id to one or more search strings.
+# The pipeline iterates all enabled technologies and runs each query
+# against each enabled source.
+# ---------------------------------------------------------------------------
+technologies:
+  # ─────────────────────────────────────────────────────────────────────────
+  # SOLAR
+  # ─────────────────────────────────────────────────────────────────────────
+  solar_pv_utility:
+    search_queries:
+      - "utility scale solar PV capital cost CAPEX LCOE 2023 2024"
+      - "large solar photovoltaic plant investment cost per kW economic analysis"
+      - "ground mounted solar farm techno-economic assessment"
+      - "single axis tracking solar PV system cost performance"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - opex_fixed_usd_per_kw_yr
+      - efficiency_percent
+      - lifetime_years
+
+  solar_pv_distributed:
+    search_queries:
+      - "distributed rooftop solar PV system cost residential commercial"
+      - "small-scale solar PV installation cost per kW"
+      - "prosumer solar photovoltaic net metering economic analysis"
+      - "rooftop solar PV LCOE self-consumption 2022 2023 2024"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  solar_pv_bifacial:
+    search_queries:
+      - "bifacial solar PV panel energy yield cost LCOE"
+      - "bifacial module efficiency albedo bifaciality factor cost"
+    year_filter_from: 2020
+    parameter_hints:
+      - efficiency_percent
+      - capex_usd_per_kw
+
+  csp_parabolic_trough:
+    search_queries:
+      - "concentrated solar power parabolic trough CAPEX LCOE 2023"
+      - "CSP plant capital cost thermal storage molten salt"
+      - "parabolic trough collector field investment cost"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  csp_tower:
+    search_queries:
+      - "solar tower heliostat field capital cost LCOE 2022 2023"
+      - "power tower CSP receiver CAPEX thermal storage"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # WIND
+  # ─────────────────────────────────────────────────────────────────────────
+  onshore_wind:
+    search_queries:
+      - "onshore wind turbine capital cost CAPEX O&M levelised cost"
+      - "onshore wind power plant investment cost per kW 2023 2024"
+      - "wind energy cost reduction learning rate experience curve"
+      - "wind farm techno-economic analysis LCOE 2023"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - opex_fixed_usd_per_kw_yr
+      - lifetime_years
+
+  offshore_wind_fixed:
+    search_queries:
+      - "fixed bottom offshore wind capital cost CAPEX LCOE"
+      - "offshore wind monopile jacket foundation investment cost per MW"
+      - "North Sea offshore wind farm cost analysis 2022 2023 2024"
+      - "offshore wind turbine installation cost CAPEX"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - opex_fixed_usd_per_kw_yr
+      - lifetime_years
+
+  offshore_wind_floating:
+    search_queries:
+      - "floating offshore wind capital cost CAPEX LCOE semi-submersible spar"
+      - "floating wind turbine levelised cost energy economic analysis"
+      - "Hywind floating offshore wind cost technology"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - opex_fixed_usd_per_kw_yr
+
+  wind_repowering:
+    search_queries:
+      - "wind turbine repowering cost benefit analysis"
+      - "wind farm life extension repowering economics"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # THERMAL POWER (FOSSIL)
+  # ─────────────────────────────────────────────────────────────────────────
+  ccgt:
+    search_queries:
+      - "combined cycle gas turbine CCGT capital cost efficiency 2023 2024"
+      - "CCGT power plant CAPEX electrical efficiency natural gas"
+      - "combined cycle gas power plant overnight cost per kW"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+      - opex_fixed_usd_per_kw_yr
+      - co2_emission_factor_g_per_kwh
+
+  ocgt:
+    search_queries:
+      - "open cycle gas turbine OCGT peaking plant capital cost"
+      - "gas turbine peaker plant investment cost CAPEX"
+      - "simple cycle gas turbine cost efficiency 2022 2023"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  coal_supercritical:
+    search_queries:
+      - "supercritical coal power plant capital cost per kW overnight cost"
+      - "ultra-supercritical coal plant CAPEX efficiency 2022 2023"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+      - co2_emission_factor_g_per_kwh
+
+  coal_with_ccs:
+    search_queries:
+      - "coal power plant carbon capture storage CCS CAPEX cost"
+      - "post-combustion coal CCS overnight capital cost per kW"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+      - co2_emission_factor_g_per_kwh
+
+  ccgt_with_ccs:
+    search_queries:
+      - "natural gas combined cycle carbon capture CCS CAPEX cost"
+      - "blue hydrogen gas turbine CCS cost per kW efficiency"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+      - co2_emission_factor_g_per_kwh
+
+  hydrogen_gas_turbine:
+    search_queries:
+      - "hydrogen gas turbine power plant capital cost efficiency"
+      - "hydrogen combustion turbine CAPEX techno-economic analysis"
+      - "green hydrogen fired power plant cost 2024"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  diesel_generator:
+    search_queries:
+      - "diesel generator genset capital cost per kW installation"
+      - "backup diesel generator investment cost efficiency"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # NUCLEAR
+  # ─────────────────────────────────────────────────────────────────────────
+  nuclear_conventional:
+    search_queries:
+      - "nuclear power plant capital cost overnight cost CAPEX 2022 2023"
+      - "nuclear fission plant construction cost per kW overnight"
+      - "AP1000 EPR nuclear reactor capital cost construction"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - lifetime_years
+      - opex_fixed_usd_per_kw_yr
+
+  smr:
+    search_queries:
+      - "small modular reactor SMR capital cost CAPEX 2023 2024"
+      - "SMR nuclear cost per kW economic analysis"
+      - "NuScale X-energy SMR overnight construction cost"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - typical_capacity_mw
+      - efficiency_percent
+
+  nuclear_fusion:
+    search_queries:
+      - "nuclear fusion power plant capital cost ITER DEMO LCOE estimate"
+      - "fusion energy economic analysis cost projection"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # HYDRO / GEOTHERMAL / BIOMASS / OCEAN
+  # ─────────────────────────────────────────────────────────────────────────
+  hydro_reservoir:
+    search_queries:
+      - "hydroelectric reservoir dam capital cost per kW"
+      - "large hydro power plant investment cost CAPEX 2022 2023"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - lifetime_years
+
+  hydro_run_of_river:
+    search_queries:
+      - "run-of-river hydro power plant capital cost CAPEX"
+      - "small run of river hydropower investment cost economic analysis"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  hydro_pumped_storage:
+    search_queries:
+      - "pumped hydro storage capital cost per kW 2022 2023"
+      - "pumped storage hydropower PSH CAPEX investment cost"
+    year_filter_from: 2018
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+      - lifetime_years
+
+  geothermal_flash:
+    search_queries:
+      - "geothermal power plant capital cost per kW flash steam"
+      - "geothermal flash steam plant CAPEX economic analysis"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  geothermal_enhanced:
+    search_queries:
+      - "enhanced geothermal EGS CAPEX investment cost"
+      - "deep geothermal EGS drilling cost techno-economic 2023"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  biomass_plant:
+    search_queries:
+      - "biomass power plant capital cost CAPEX per kW 2022 2023"
+      - "biomass fired electricity generation investment cost"
+      - "woody biomass CHP plant CAPEX efficiency"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+      - co2_emission_factor_g_per_kwh
+
+  waste_to_energy:
+    search_queries:
+      - "waste to energy municipal solid waste incineration capital cost"
+      - "WtE plant CAPEX cost per kW investment analysis"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  biogas_chp:
+    search_queries:
+      - "biogas CHP combined heat power plant capital cost"
+      - "anaerobic digestion biogas plant CAPEX economic analysis"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  ocean_tidal:
+    search_queries:
+      - "tidal stream turbine capital cost LCOE techno-economic"
+      - "tidal energy barrage capital cost per kW"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  ocean_wave:
+    search_queries:
+      - "wave energy converter capital cost LCOE 2022 2023"
+      - "wave power device investment cost techno-economic analysis"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # ELECTRICITY STORAGE
+  # ─────────────────────────────────────────────────────────────────────────
+  lithium_ion_bess:
+    search_queries:
+      - "lithium ion battery storage BESS capital cost USD per kW 2023 2024"
+      - "grid-scale battery storage LFP NMC CAPEX cost decline"
+      - "utility battery energy storage system BESS cost learning"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+      - lifetime_years
+      - degradation_rate_percent_per_yr
+
+  sodium_ion_bess:
+    search_queries:
+      - "sodium ion battery cost per kWh grid storage 2023 2024"
+      - "sodium-ion battery energy storage capital cost economic"
+    year_filter_from: 2021
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  redox_flow_batteries:
+    search_queries:
+      - "vanadium redox flow battery capital cost per kW 2023"
+      - "flow battery CAPEX cost reduction roadmap"
+      - "iron flow battery cost techno-economic analysis"
+    year_filter_from: 2021
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  compressed_air_storage:
+    search_queries:
+      - "compressed air energy storage CAES capital cost per kW"
+      - "CAES adiabatic diabatic plant CAPEX economic analysis"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  gravity_storage:
+    search_queries:
+      - "gravity energy storage capital cost per kW LCOE"
+      - "gravitational energy storage system cost analysis 2023"
+    year_filter_from: 2021
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  flywheel_storage:
+    search_queries:
+      - "flywheel energy storage capital cost per kW grid application"
+      - "flywheel CAPEX frequency regulation storage cost"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  supercapacitor:
+    search_queries:
+      - "supercapacitor ultracapacitor energy storage cost per kWh"
+      - "supercapacitor grid storage capital cost techno-economic"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # HYDROGEN PRODUCTION & CONVERSION
+  # ─────────────────────────────────────────────────────────────────────────
+  alkaline_electrolyzer_awe:
+    search_queries:
+      - "alkaline electrolyzer AWE capital cost per kW 2023 hydrogen"
+      - "AWE electrolysis cost reduction efficiency improvement 2024"
+      - "alkaline water electrolysis stack CAPEX economics"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+      - lifetime_years
+
+  pem_electrolyzer:
+    search_queries:
+      - "PEM electrolyzer proton exchange membrane capital cost 2023 2024"
+      - "PEM electrolysis CAPEX degradation efficiency"
+      - "proton exchange membrane electrolyzer stack cost economics"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  solid_oxide_electrolyzer:
+    search_queries:
+      - "solid oxide electrolysis cell SOEC capital cost efficiency"
+      - "high temperature electrolysis SOEC stack cost techno-economic"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  hydrogen_fuel_cell_stationary:
+    search_queries:
+      - "stationary hydrogen fuel cell capital cost per kW CAPEX"
+      - "PEMFC SOFC stationary fuel cell power plant cost"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  hydrogen_storage_tank:
+    search_queries:
+      - "compressed hydrogen storage tank capital cost per kg"
+      - "hydrogen pressure vessel Type IV cost economics"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+
+  ammonia_synthesis:
+    search_queries:
+      - "green ammonia synthesis Haber-Bosch capital cost per tonne"
+      - "ammonia production from renewable hydrogen CAPEX"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  methanation:
+    search_queries:
+      - "power to methane methanation Sabatier reactor CAPEX"
+      - "synthetic methane production cost techno-economic analysis"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # HEAT PUMPS & THERMAL
+  # ─────────────────────────────────────────────────────────────────────────
+  air_source_heat_pump:
+    search_queries:
+      - "air source heat pump capital cost COP efficiency residential"
+      - "ASHP CAPEX installation cost 2023 2024"
+      - "air-to-water heat pump cost per kW real-world COP"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  ground_source_heat_pump:
+    search_queries:
+      - "ground source geothermal heat pump capital cost COP"
+      - "GSHP CAPEX borehole installation cost per kW"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  industrial_heat_pump:
+    search_queries:
+      - "industrial high temperature heat pump capital cost CAPEX"
+      - "industrial heat pump process heat decarbonisation cost"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  solar_thermal_collector:
+    search_queries:
+      - "solar thermal flat plate collector capital cost installation"
+      - "solar hot water system CAPEX cost per kW thermal"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  thermal_energy_storage:
+    search_queries:
+      - "thermal energy storage hot water tank capital cost per kWh"
+      - "seasonal thermal energy storage CAPEX economics"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  district_heating:
+    search_queries:
+      - "district heating network capital cost per km pipeline"
+      - "district heating infrastructure investment cost economics"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # CARBON CAPTURE & DIRECT AIR CAPTURE
+  # ─────────────────────────────────────────────────────────────────────────
+  direct_air_capture:
+    search_queries:
+      - "direct air capture DAC capital cost USD per tonne CO2 2023 2024"
+      - "DAC carbon capture cost reduction Climeworks Carbon Engineering"
+      - "direct air carbon capture storage DACS techno-economic"
+    year_filter_from: 2021
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  post_combustion_ccs:
+    search_queries:
+      - "post combustion carbon capture amine scrubbing CAPEX cost"
+      - "point source CO2 capture capital cost per tonne"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  biomass_ccs_beccs:
+    search_queries:
+      - "BECCS bioenergy carbon capture negative emissions capital cost"
+      - "biomass CCS BECCS techno-economic cost analysis 2022 2023"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # TRANSMISSION & DISTRIBUTION
+  # ─────────────────────────────────────────────────────────────────────────
+  hvdc_transmission:
+    search_queries:
+      - "HVDC high voltage direct current transmission line capital cost per km"
+      - "HVDC line underground cable overhead cost per MW·km"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+
+  hvac_transmission:
+    search_queries:
+      - "HVAC high voltage AC overhead transmission line capital cost"
+      - "400 kV 220 kV overhead line investment cost per km"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+
+  offshore_hvdc_cable:
+    search_queries:
+      - "offshore HVDC subsea cable capital cost per km"
+      - "submarine power cable HVDC cost techno-economic"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+
+  smart_grid_infrastructure:
+    search_queries:
+      - "smart grid investment cost per customer benefit analysis"
+      - "advanced metering infrastructure AMI smart meter CAPEX"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # TRANSPORT & MOBILITY
+  # ─────────────────────────────────────────────────────────────────────────
+  ev_charging_station:
+    search_queries:
+      - "EV charging station infrastructure capital cost per kW"
+      - "fast charger DC charging station CAPEX installation cost"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+  vehicle_to_grid:
+    search_queries:
+      - "vehicle to grid V2G bidirectional charger capital cost"
+      - "V2G aggregation electric vehicle grid services economics"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+
+  hydrogen_refueling_station:
+    search_queries:
+      - "hydrogen refueling station FCEV capital cost investment"
+      - "hydrogen filling station CAPEX economics 2023"
+    year_filter_from: 2020
+    parameter_hints:
+      - capex_usd_per_kw
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # DEMAND RESPONSE & EFFICIENCY
+  # ─────────────────────────────────────────────────────────────────────────
+  demand_response:
+    search_queries:
+      - "demand response demand side management capital cost program cost"
+      - "flexible demand aggregation DR economics cost-benefit analysis"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+
+  building_insulation:
+    search_queries:
+      - "building wall insulation retrofit capital cost energy savings"
+      - "building envelope thermal insulation cost benefit per m2"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+
+  led_lighting:
+    search_queries:
+      - "LED lighting replacement capital cost commercial industrial efficiency"
+      - "LED retrofit payback period energy savings cost"
+    year_filter_from: 2019
+    parameter_hints:
+      - capex_usd_per_kw
+      - efficiency_percent
+
+# ---------------------------------------------------------------------------
+# Output / storage
+# ---------------------------------------------------------------------------
+output:
+  # Root directory for all scraper output (relative to project root)
+  base_dir: "data/scraped"
+  # Sub-directories
+  raw_dir: "data/scraped/raw"
+  candidates_dir: "data/scraped/candidates"
+  runs_dir: "data/scraped/runs"
+  # Indent for JSON output
+  json_indent: 2
+  # Deduplicate candidates by DOI within a run
+  dedup_by_doi: true

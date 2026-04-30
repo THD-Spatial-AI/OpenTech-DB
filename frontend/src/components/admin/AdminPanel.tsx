@@ -25,6 +25,7 @@ import { deleteTimeSeriesProfile, invalidateTimeSeriesCatalogue } from "../../se
 import type { TimeSeriesProfile } from "../../types/timeseries";
 import { useAuth } from "../../context/AuthContext";
 import type { SubmissionRecord, CreateTechnologyInstancePayload } from "../../types/api";
+import ScraperPanel from "./ScraperPanel";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -1376,7 +1377,7 @@ function ProfileSubmissionCard({
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 type StatusTab = "all" | "pending_review" | "approved" | "rejected";
-type PanelTab  = "submissions" | "catalogue" | "profiles";
+type PanelTab  = "submissions" | "catalogue" | "profiles" | "scraper";
 
 export default function AdminPanel() {
   const { user, token, isAdmin } = useAuth();
@@ -1528,6 +1529,7 @@ export default function AdminPanel() {
           { id: "submissions" as PanelTab, label: "Submissions",         icon: "inbox"           },
           { id: "profiles"   as PanelTab, label: "Profile Submissions",  icon: "ssid_chart"      },
           { id: "catalogue"  as PanelTab, label: "Catalogue Management", icon: "database"        },
+          { id: "scraper"    as PanelTab, label: "Scraper Pipeline",     icon: "travel_explore"  },
         ]).map(({ id, label, icon }) => (
           <button
             key={id}
@@ -1549,6 +1551,11 @@ export default function AdminPanel() {
       {/* ── Catalogue management panel ── */}
       {panelTab === "catalogue" && token && (
         <CatalogueManager token={token} />
+      )}
+
+      {/* ── Scraper pipeline panel ── */}
+      {panelTab === "scraper" && token && (
+        <ScraperPanel token={token} />
       )}
 
       {/* ── Profile submissions panel ── */}

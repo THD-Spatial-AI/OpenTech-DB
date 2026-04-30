@@ -18,6 +18,8 @@ import logging
 from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, JSONResponse
@@ -26,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from api.routes import router as tech_router, debug_router, ontology_router, admin_router, submissions_router
 from api.auth import router as auth_router
 from api.timeseries import router as timeseries_router, admin_ts_router
+from api.scraper_routes import router as scraper_router
 from adapters.pypsa_adapter import to_pypsa
 from adapters.calliope_adapter import to_calliope
 from schemas.models import (
@@ -53,9 +56,22 @@ except PackageNotFoundError:
     _VERSION = "0.1.0-dev"
 
 # ---------------------------------------------------------------------------
+# Lifespan: start/stop scrape scheduler
+# ---------------------------------------------------------------------------
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Start the scrape scheduler on startup; stop it on shutdown."""
+    from scrapers.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
+    yield
+    stop_scheduler()
+
+
+# ---------------------------------------------------------------------------
 # App factory
 # ---------------------------------------------------------------------------
-app = FastAPI(
+app = FastAPI(lifespan=_lifespan,
     title="Energy Technology Database API",
     description=(
         "OEO-aligned repository of technical and economic parameters for "
@@ -81,6 +97,13 @@ app = FastAPI(
         {
             "name":        "Adapters",
             "description": "Translate a stored technology into framework-specific formats.",
+        },
+        {
+            "name":        "Scraper",
+            "description": (
+                "Automated data-collection pipeline. Trigger runs, review candidates, "
+                "and merge approved instances into the catalogue."
+            ),
         },
         {
             "name":        "System",
@@ -121,6 +144,7 @@ app.include_router(admin_router,       prefix="/api/v1")
 app.include_router(submissions_router, prefix="/api/v1")
 app.include_router(timeseries_router,  prefix="/api/v1")
 app.include_router(admin_ts_router,    prefix="/api/v1")
+app.include_router(scraper_router,     prefix="/api/v1")
 
 # ---------------------------------------------------------------------------
 # Static assets — project documentation (Markdown + LaTeX source)

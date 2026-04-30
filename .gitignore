@@ -64,6 +64,13 @@ frontend/dist-ssr/
 # Pending submissions uploaded by contributors
 data/pending_submissions/*.json
 
+# ──────────────────────────────────────────────────────────────────
+# Scraper runtime data — candidates, raw API dumps, scheduler state.
+# This is stored in Supabase (production) or a Docker volume.
+# It must NOT be committed to the repo.
+# ──────────────────────────────────────────────────────────────────
+data/scraped/
+
 .github/
 github/
 __pycache__/

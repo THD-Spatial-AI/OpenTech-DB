@@ -8,6 +8,7 @@
  * - Hover tooltip shows country name + current parameter value
  * - Click selects country → calls onCountrySelect
  * - Lazy loads GeoJSON; shows spinner while loading
+ * - No external tile provider; avoids repeated-world tile fetch noise
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -16,7 +17,7 @@ import "leaflet/dist/leaflet.css";
 
 import type { TechMapType, TechMapParam } from "../../types/worldmap";
 import { choroplethColor, PARAM_META, NO_DATA_COLOR } from "../../types/worldmap";
-import { getParamValues, getGlobalRange } from "../../services/worldmap";
+import { ensureWorldMapCatalogue, getParamValues, getGlobalRange, getCountryByIso3 } from "../../services/worldmap.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ interface TechGeoMapProps {
   year: number;
   selectedIso3: string | null;
   onCountrySelect: (iso3: string, name: string) => void;
+  onCatalogueReady?: () => void;
 }
 
 // ── GeoJSON source ─────────────────────────────────────────────────────────────
@@ -57,6 +59,17 @@ function getFeatureStyle(
   };
 }
 
+function getFeatureCentroid(feature: GeoJSON.Feature): { lat: number; lon: number } | null {
+  try {
+    const bounds = L.geoJSON(feature as GeoJSON.GeoJsonObject).getBounds();
+    const center = bounds.getCenter();
+    if (!Number.isFinite(center.lat) || !Number.isFinite(center.lng)) return null;
+    return { lat: center.lat, lon: center.lng };
+  } catch {
+    return null;
+  }
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function TechGeoMap({
@@ -65,6 +78,7 @@ export default function TechGeoMap({
   year,
   selectedIso3,
   onCountrySelect,
+  onCatalogueReady,
 }: TechGeoMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<L.Map | null>(null);
@@ -73,6 +87,7 @@ export default function TechGeoMap({
 
   const [loading, setLoading]   = useState(true);
   const [error,   setError]     = useState<string | null>(null);
+  const [catalogueVersion, setCatalogueVersion] = useState(0);
 
   // Cache GeoJSON so we don't re-fetch on prop changes
   const geoDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
@@ -85,23 +100,14 @@ export default function TechGeoMap({
     const map = L.map(containerRef.current, {
       center:          [20, 10],
       zoom:            2,
-      minZoom:         1.5,
+      minZoom:         2,
       maxZoom:         7,
       zoomControl:     true,
       attributionControl: true,
       worldCopyJump:   false,
+      maxBounds: [[-85, -180], [85, 180]],
+      maxBoundsViscosity: 1.0,
     });
-
-    // Light basemap (CartoDB Positron — no labels variant)
-    L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
-      {
-        attribution:
-          '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        subdomains: "abcd",
-        maxZoom:    20,
-      },
-    ).addTo(map);
 
     mapRef.current = map;
 
@@ -122,15 +128,30 @@ export default function TechGeoMap({
         if (!r.ok) throw new Error(`GeoJSON fetch failed: ${r.status}`);
         return r.json() as Promise<GeoJSON.FeatureCollection>;
       })
-      .then((data) => {
+      .then(async (data) => {
         geoDataRef.current = data;
+        const countries = data.features
+          .map((f) => {
+            const centroid = getFeatureCentroid(f);
+            return {
+              iso3: String(f.id ?? "").toUpperCase(),
+              name: String((f.properties as { name?: string } | undefined)?.name ?? f.id ?? ""),
+              lat: centroid?.lat,
+              lon: centroid?.lon,
+            };
+          })
+          .filter((c) => /^[A-Z]{3}$/.test(c.iso3));
+
+        await ensureWorldMapCatalogue(countries);
+        setCatalogueVersion((v) => v + 1);
+        onCatalogueReady?.();
         setLoading(false);
       })
       .catch((e: unknown) => {
         setError((e instanceof Error ? e.message : String(e)));
         setLoading(false);
       });
-  }, []);
+  }, [onCatalogueReady]);
 
   // ── 3. Re-draw choropleth whenever tech/param/year/selection change ───────
 
@@ -159,6 +180,7 @@ export default function TechGeoMap({
         const iso3 = feature.id as string ?? "";
         const name = (feature.properties as { name?: string }).name ?? iso3;
         const val  = values.get(iso3);
+        const countryData = getCountryByIso3(iso3);
 
         // Hover events
         layer.on({
@@ -174,7 +196,7 @@ export default function TechGeoMap({
             // Tooltip
             const content = val != null
               ? `<b>${name}</b><br/>${format(val)}`
-              : `<b>${name}</b><br/><span style="color:#9ca3af">No data</span>`;
+              : `<b>${name}</b><br/><span style="color:#9ca3af">No data</span>${countryData ? `<br/><span style="color:#6b7280">Coverage: ${countryData.region}</span>` : ""}`;
 
             if (tooltipRef.current) map.closeTooltip(tooltipRef.current);
             tooltipRef.current = L.tooltip({
@@ -203,7 +225,7 @@ export default function TechGeoMap({
           },
 
           click() {
-            if (val != null) onCountrySelect(iso3, name);
+            onCountrySelect(iso3, name);
           },
         });
       },
@@ -211,7 +233,7 @@ export default function TechGeoMap({
 
     layer.addTo(map);
     geoLayerRef.current = layer;
-  }, [tech, param, year, selectedIso3, onCountrySelect]);
+  }, [tech, param, year, selectedIso3, onCountrySelect, catalogueVersion]);
 
   // ── 4. Pan+zoom to selected country ─────────────────────────────────────
 
@@ -243,7 +265,7 @@ export default function TechGeoMap({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="relative w-full h-full rounded-xl overflow-hidden">
+    <div className="relative w-full h-full rounded-xl overflow-hidden bg-[#dbeafe]">
       {/* Map container */}
       <div ref={containerRef} className="w-full h-full" />
 
@@ -270,6 +292,9 @@ export default function TechGeoMap({
             </span>
             <p className="text-sm text-on-surface-variant">
               Could not load map data. Check your connection.
+            </p>
+            <p className="text-[11px] text-on-surface-variant/70 mt-2 break-words">
+              {error}
             </p>
           </div>
         </div>

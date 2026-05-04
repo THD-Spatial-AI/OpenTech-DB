@@ -5,14 +5,10 @@
  * Covers country-level parameter data, tech/param selectors, and year range.
  */
 
-// ── Tech types shown on the map ───────────────────────────────────────────────
+// ── Tech identifiers shown on the map ────────────────────────────────────────
 
-export type TechMapType =
-  | "solar_pv_utility"
-  | "onshore_wind"
-  | "offshore_wind"
-  | "battery_li_ion"
-  | "nuclear";
+/** Dynamic technology id (UUID from /technologies endpoint). */
+export type TechMapType = string;
 
 // ── Parameters available for choropleth ──────────────────────────────────────
 
@@ -49,18 +45,19 @@ export interface CountryMapData {
   iso3: string;
   name: string;
   region: string;
+  coverage: "direct" | "none";
   entries: CountryTechSeries[];
 }
 
-// ── Static metadata labels ─────────────────────────────────────────────────────
-
-export const TECH_META: Record<TechMapType, { label: string; icon: string; color: string }> = {
-  solar_pv_utility: { label: "Solar PV (Utility)", icon: "wb_sunny",              color: "#f59e0b" },
-  onshore_wind:     { label: "Onshore Wind",        icon: "air",                   color: "#10b981" },
-  offshore_wind:    { label: "Offshore Wind",        icon: "waves",                 color: "#3b82f6" },
-  battery_li_ion:   { label: "Battery (Li-ion)",    icon: "battery_charging_full", color: "#8b5cf6" },
-  nuclear:          { label: "Nuclear Power",        icon: "science",               color: "#ef4444" },
-};
+export interface WorldMapTechMeta {
+  id: TechMapType;
+  label: string;
+  category: string;
+  icon: string;
+  color: string;
+  carrierKey: "solar_irradiance" | "wind" | "water" | "electricity";
+  availableParams: TechMapParam[];
+}
 
 export const PARAM_META: Record<TechMapParam, {
   label: string;

@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS technology_instances (
     instance_id                      TEXT UNIQUE NOT NULL,
     technology_id                    TEXT NOT NULL REFERENCES technologies(technology_id),
     instance_name                    TEXT NOT NULL,
+    country                          TEXT,
+    country_iso2                     TEXT,
+    country_inference_source         TEXT,
     scale                            TEXT,                    -- utility | residential | industrial | ...
     typical_capacity_mw              NUMERIC,
     capex_usd_per_kw                 NUMERIC,
@@ -60,3 +63,4 @@ CREATE POLICY "Allow service role full access on technology_instances"
 CREATE INDEX IF NOT EXISTS idx_technologies_domain   ON technologies (domain);
 CREATE INDEX IF NOT EXISTS idx_tech_instances_tech   ON technology_instances (technology_id);
 CREATE INDEX IF NOT EXISTS idx_tech_instances_scale  ON technology_instances (scale);
+CREATE INDEX IF NOT EXISTS idx_tech_instances_country_iso2 ON technology_instances (country_iso2);

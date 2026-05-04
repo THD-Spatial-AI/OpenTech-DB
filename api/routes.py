@@ -251,6 +251,10 @@ def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> d
         "extra": {
             "instance_id":                   inst.get("instance_id"),
             "scale":                         inst.get("scale"),
+            "country_iso2":                  inst.get("country_iso2"),
+            "country":                       inst.get("country"),
+            "location":                      inst.get("location"),
+            "country_code":                  inst.get("country_code"),
             "degradation_rate_percent_per_yr": inst.get("degradation_rate_percent_per_yr"),
             "construction_time_years":         inst.get("construction_time_years"),
             **({"energy_capacity_mwh": inst["energy_capacity_mwh"]}
@@ -540,6 +544,305 @@ def _apply_calliope_overrides(result: dict, overrides: CalliopeOverrides) -> dic
         else:
             result["costs"][cost_cls] = cost_vals
     return result
+
+
+class WorldMapPoint(BaseModel):
+    year: int
+    value: float
+
+
+class WorldMapCountryEntry(BaseModel):
+    tech: str
+    param: str
+    unit: str
+    series: list[WorldMapPoint]
+
+
+class WorldMapCountryData(BaseModel):
+    iso2: str
+    iso3: str
+    name: str
+    entries: list[WorldMapCountryEntry]
+
+
+class WorldMapTechMeta(BaseModel):
+    id: str
+    label: str
+    category: str
+    carrier_key: str
+    available_params: list[str]
+
+
+class WorldMapCountryValuesResponse(BaseModel):
+    generated_at: str
+    technologies: list[WorldMapTechMeta]
+    countries: list[WorldMapCountryData]
+
+
+_ISO2_TO_ISO3 = {
+    "DE": "DEU", "FR": "FRA", "ES": "ESP", "IT": "ITA", "GR": "GRC", "DK": "DNK",
+    "GB": "GBR", "UK": "GBR", "NO": "NOR", "NL": "NLD", "PT": "PRT", "PL": "POL",
+    "BE": "BEL", "IE": "IRL", "SE": "SWE", "FI": "FIN", "CH": "CHE", "AT": "AUT",
+    "US": "USA", "CA": "CAN", "MX": "MEX", "BR": "BRA", "CL": "CHL", "AR": "ARG",
+    "AU": "AUS", "NZ": "NZL", "CN": "CHN", "IN": "IND", "JP": "JPN", "KR": "KOR",
+    "ZA": "ZAF", "EG": "EGY", "MA": "MAR", "SA": "SAU", "AE": "ARE",
+}
+
+_ISO2_NAME = {
+    "DE": "Germany", "FR": "France", "ES": "Spain", "IT": "Italy", "GR": "Greece", "DK": "Denmark",
+    "GB": "United Kingdom", "NO": "Norway", "NL": "Netherlands", "PT": "Portugal", "PL": "Poland",
+    "BE": "Belgium", "IE": "Ireland", "SE": "Sweden", "FI": "Finland", "CH": "Switzerland", "AT": "Austria",
+    "US": "United States", "CA": "Canada", "MX": "Mexico", "BR": "Brazil", "CL": "Chile", "AR": "Argentina",
+    "AU": "Australia", "NZ": "New Zealand", "CN": "China", "IN": "India", "JP": "Japan", "KR": "South Korea",
+    "ZA": "South Africa", "EG": "Egypt", "MA": "Morocco", "SA": "Saudi Arabia", "AE": "United Arab Emirates",
+}
+
+_COUNTRY_NAME_TO_ISO2 = {
+    "germany": "DE", "france": "FR", "spain": "ES", "italy": "IT", "greece": "GR", "denmark": "DK",
+    "united kingdom": "GB", "uk": "GB", "england": "GB", "norway": "NO", "netherlands": "NL", "portugal": "PT",
+    "poland": "PL", "belgium": "BE", "ireland": "IE", "sweden": "SE", "finland": "FI", "switzerland": "CH",
+    "austria": "AT", "united states": "US", "usa": "US", "canada": "CA", "mexico": "MX", "brazil": "BR",
+    "chile": "CL", "argentina": "AR", "australia": "AU", "new zealand": "NZ", "china": "CN", "india": "IN",
+    "japan": "JP", "south korea": "KR", "korea": "KR", "south africa": "ZA", "egypt": "EG", "morocco": "MA",
+    "saudi arabia": "SA", "united arab emirates": "AE", "uae": "AE",
+}
+
+_MAP_YEARS = [2020, 2022, 2024, 2026, 2030, 2035]
+
+
+def _infer_instance_year(inst: EquipmentInstance) -> int:
+    if inst.reference_year is not None:
+        return int(inst.reference_year)
+    label = inst.label or ""
+    m = re.search(r"(20\d{2})", label)
+    if m:
+        return int(m.group(1))
+    instance_id = str((inst.extra or {}).get("instance_id", ""))
+    m2 = re.search(r"(20\d{2})", instance_id)
+    if m2:
+        return int(m2.group(1))
+    return 2024
+
+
+def _param_value_and_unit(inst: EquipmentInstance, param: str) -> tuple[float | None, str | None]:
+    if param == "capex":
+        if inst.capex_per_kw is not None:
+            return float(inst.capex_per_kw.value), "USD/kW"
+        if inst.capex_per_kwh is not None:
+            return float(inst.capex_per_kwh.value), "USD/kWh"
+        return None, None
+    if param == "opex_fixed":
+        if inst.opex_fixed_per_kw_yr is None:
+            return None, None
+        return float(inst.opex_fixed_per_kw_yr.value), "USD/kW/yr"
+    if param == "capacity_factor":
+        if inst.capacity_factor is None:
+            return None, None
+        v = float(inst.capacity_factor.value)
+        return (v * 100 if v <= 1 else v), "%"
+    if param == "co2_emissions":
+        if inst.co2_emission_factor is None:
+            return None, None
+        return float(inst.co2_emission_factor.value) * 1000, "g CO₂/kWh"
+    return None, None
+
+
+def _average_points(points: list[tuple[int, float]]) -> list[tuple[int, float]]:
+    grouped: dict[int, list[float]] = {}
+    for y, v in points:
+        grouped.setdefault(y, []).append(v)
+    return sorted((y, sum(vals) / len(vals)) for y, vals in grouped.items())
+
+
+def _interpolate(points: list[tuple[int, float]], year: int) -> float | None:
+    if not points:
+        return None
+    if year <= points[0][0]:
+        return points[0][1]
+    if year >= points[-1][0]:
+        return points[-1][1]
+    for i in range(len(points) - 1):
+        ya, va = points[i]
+        yb, vb = points[i + 1]
+        if ya == year:
+            return va
+        if yb == year:
+            return vb
+        if ya < year < yb:
+            t = (year - ya) / (yb - ya)
+            return va + t * (vb - va)
+    return None
+
+
+def _carrier_key(tech: Technology) -> str:
+    carriers = [*(tech.input_carriers or []), *(tech.output_carriers or [])]
+    if EnergyCarrier.SOLAR_IRRADIANCE in carriers:
+        return "solar_irradiance"
+    if EnergyCarrier.WIND in carriers:
+        return "wind"
+    if EnergyCarrier.WATER in carriers:
+        return "water"
+    return "electricity"
+
+
+def _extract_iso2_from_instance(inst: EquipmentInstance) -> str | None:
+    extra = inst.extra or {}
+    for k in ("country_iso2", "country_code", "iso2", "location"):
+        raw = extra.get(k)
+        if isinstance(raw, str):
+            v = raw.strip().upper()
+            if len(v) == 2 and v.isalpha():
+                return "GB" if v == "UK" else v
+            mapped = _COUNTRY_NAME_TO_ISO2.get(raw.strip().lower())
+            if mapped:
+                return mapped
+
+    haystacks = [inst.label or ""]
+    src = None
+    if inst.capex_per_kw and inst.capex_per_kw.source:
+        src = inst.capex_per_kw.source
+    elif inst.opex_fixed_per_kw_yr and inst.opex_fixed_per_kw_yr.source:
+        src = inst.opex_fixed_per_kw_yr.source
+    elif inst.co2_emission_factor and inst.co2_emission_factor.source:
+        src = inst.co2_emission_factor.source
+    if src:
+        haystacks.append(src)
+
+    for text in haystacks:
+        if not text:
+            continue
+        upper_hits = re.findall(r"\b[A-Z]{2}\b", text)
+        for hit in upper_hits:
+            if hit in _ISO2_TO_ISO3:
+                return "GB" if hit == "UK" else hit
+
+        lower = text.lower()
+        for cname, iso2 in _COUNTRY_NAME_TO_ISO2.items():
+            if re.search(rf"\b{re.escape(cname)}\b", lower):
+                return iso2
+
+    return None
+
+
+@router.get(
+    "/worldmap/country-values",
+    response_model=WorldMapCountryValuesResponse,
+    summary="Country-level technology values from technology instances",
+)
+def get_worldmap_country_values() -> WorldMapCountryValuesResponse:
+    """
+    Strict country values from technology data only.
+
+    Countries are included only when at least one instance can be directly
+    attributed to that country from structured fields or explicit labels/sources.
+    No country imputation is performed.
+    """
+    all_techs = list(_get_all().values())
+    params = ["capex", "opex_fixed", "capacity_factor", "co2_emissions"]
+
+    tech_param_year_values: dict[str, dict[str, dict[int, list[float]]]] = {}
+    tech_param_unit: dict[str, dict[str, str]] = {}
+    tech_meta: list[WorldMapTechMeta] = []
+    country_data: dict[str, dict[str, dict[str, dict[int, list[float]]]]] = {}
+    country_units: dict[str, dict[str, dict[str, str]]] = {}
+
+    for tech in all_techs:
+        available_params: list[str] = []
+        for p in params:
+            points: list[tuple[int, float]] = []
+            unit: str | None = None
+            for inst in tech.instances:
+                val, u = _param_value_and_unit(inst, p)
+                if val is None:
+                    continue
+                unit = unit or u
+                points.append((_infer_instance_year(inst), val))
+            if points:
+                available_params.append(p)
+                tech_param_year_values.setdefault(str(tech.id), {}).setdefault(p, {})
+                avg_points = _average_points(points)
+                for y, v in avg_points:
+                    tech_param_year_values[str(tech.id)][p].setdefault(y, []).append(v)
+                if unit:
+                    tech_param_unit.setdefault(str(tech.id), {})[p] = unit
+
+        if available_params:
+            tech_meta.append(
+                WorldMapTechMeta(
+                    id=str(tech.id),
+                    label=tech.name,
+                    category=tech.category.value,
+                    carrier_key=_carrier_key(tech),
+                    available_params=available_params,
+                )
+            )
+
+        for inst in tech.instances:
+            iso2 = _extract_iso2_from_instance(inst)
+            if not iso2 or iso2 not in _ISO2_TO_ISO3:
+                continue
+            iso3 = _ISO2_TO_ISO3[iso2]
+            country_data.setdefault(iso3, {}).setdefault(str(tech.id), {})
+            country_units.setdefault(iso3, {}).setdefault(str(tech.id), {})
+
+            year = _infer_instance_year(inst)
+            for p in params:
+                val, unit = _param_value_and_unit(inst, p)
+                if val is None:
+                    continue
+                country_data[iso3][str(tech.id)].setdefault(p, {}).setdefault(year, []).append(val)
+                if unit:
+                    country_units[iso3][str(tech.id)][p] = unit
+
+    countries_out: list[WorldMapCountryData] = []
+    for iso3 in sorted(country_data.keys()):
+        entries: list[WorldMapCountryEntry] = []
+        for tech_id, param_map in country_data[iso3].items():
+            for p, year_vals in param_map.items():
+                anchors = sorted((y, sum(vals) / len(vals)) for y, vals in year_vals.items())
+                if not anchors:
+                    continue
+                series: list[WorldMapPoint] = []
+                for y in _MAP_YEARS:
+                    v = _interpolate(anchors, y)
+                    if v is None:
+                        continue
+                    series.append(WorldMapPoint(year=y, value=v))
+                if not series:
+                    continue
+                entries.append(
+                    WorldMapCountryEntry(
+                        tech=tech_id,
+                        param=p,
+                        unit=country_units.get(iso3, {}).get(tech_id, {}).get(p, tech_param_unit.get(tech_id, {}).get(p, "")),
+                        series=series,
+                    )
+                )
+
+        if not entries:
+            continue
+
+        iso2 = next((k for k, v in _ISO2_TO_ISO3.items() if v == iso3 and k != "UK"), None)
+        if not iso2:
+            continue
+
+        countries_out.append(
+            WorldMapCountryData(
+                iso2=iso2,
+                iso3=iso3,
+                name=_ISO2_NAME.get(iso2, iso3),
+                entries=entries,
+            )
+        )
+
+    tech_meta.sort(key=lambda t: t.label.lower())
+    countries_out.sort(key=lambda c: c.name.lower())
+
+    return WorldMapCountryValuesResponse(
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        technologies=tech_meta,
+        countries=countries_out,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1385,6 +1688,11 @@ def _approve_submission(record: dict) -> None:
             "co2_emission_factor_operational_g_per_kwh": inst.get("co2_emission_factor_operational_g_per_kwh", 0),
             # Provenance
             "reference_source": inst.get("reference_source", "contributor_submission"),
+            # Optional country attribution for world-map aggregation
+            **({"country_iso2": inst["country_iso2"]} if inst.get("country_iso2") else {}),
+            **({"country": inst["country"]} if inst.get("country") else {}),
+            **({"location": inst["location"]} if inst.get("location") else {}),
+            **({"country_code": inst["country_code"]} if inst.get("country_code") else {}),
         })
 
     if existing_tech:

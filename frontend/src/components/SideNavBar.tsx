@@ -120,6 +120,19 @@ export default function SideNavBar({
 
         {/* Icons hints */}
         <div className="flex flex-col items-center gap-4 mt-2">
+          {/* World Map shortcut */}
+          <button
+            title="Technology World Map"
+            onClick={() => onViewChange("worldmap")}
+            className={[
+              "w-8 h-8 flex items-center justify-center rounded-full transition-colors",
+              activeView === "worldmap"
+                ? "bg-primary/15 text-primary"
+                : "hover:bg-surface-container text-on-surface-variant/50 hover:text-on-surface-variant",
+            ].join(" ")}
+          >
+            <span className="material-symbols-outlined text-lg">public</span>
+          </button>
           {CATEGORIES.filter((c) => c.value !== activeCategory).map((c) => (
             <button
               key={c.value}
@@ -143,19 +156,6 @@ export default function SideNavBar({
             ].join(" ")}
           >
             <span className="material-symbols-outlined text-lg">show_chart</span>
-          </button>
-          {/* World Map shortcut */}
-          <button
-            title="Technology World Map"
-            onClick={() => onViewChange("worldmap")}
-            className={[
-              "w-8 h-8 flex items-center justify-center rounded-full transition-colors",
-              activeView === "worldmap"
-                ? "bg-primary/15 text-primary"
-                : "hover:bg-surface-container text-on-surface-variant/50 hover:text-on-surface-variant",
-            ].join(" ")}
-          >
-            <span className="material-symbols-outlined text-lg">public</span>
           </button>
           {/* Contribute shortcut */}
           <button
@@ -213,8 +213,31 @@ export default function SideNavBar({
       {/* Scrollable content */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 min-h-0">
 
-        {/* ── Categories ────────────────────────────────────────────────── */}
+        {/* ── World Map ─────────────────────────────────────────────────── */}
         <div>
+          <SectionHeading icon="public" label="Global Explorer" />
+          <button
+            onClick={() => onViewChange("worldmap")}
+            aria-current={activeView === "worldmap" ? "page" : undefined}
+            className={[
+              "w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium transition-all text-left",
+              activeView === "worldmap"
+                ? "bg-primary/10 text-primary font-bold border-l-2 border-primary pl-[6px]"
+                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface hover:translate-x-0.5",
+            ].join(" ")}
+          >
+            <span className={["material-symbols-outlined text-lg", activeView === "worldmap" ? "text-primary" : ""].join(" ")}>
+              public
+            </span>
+            World Map
+            {activeView === "worldmap" && (
+              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+            )}
+          </button>
+        </div>
+
+        {/* ── Categories ────────────────────────────────────────────────── */}
+        <div className="border-t border-outline-variant/10 pt-4">
           <SectionHeading icon="category" label="Technology Category" />
           {CATEGORIES.map(({ icon, label, value }) => {
             const isActive = activeView === "catalogue" && value === activeCategory;
@@ -260,24 +283,6 @@ export default function SideNavBar({
             </span>
             Browse Profiles
             {activeView === "timeseries" && (
-              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-            )}
-          </button>
-          <button
-            onClick={() => onViewChange("worldmap")}
-            aria-current={activeView === "worldmap" ? "page" : undefined}
-            className={[
-              "w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium transition-all text-left",
-              activeView === "worldmap"
-                ? "bg-primary/10 text-primary font-bold border-l-2 border-primary pl-[6px]"
-                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface hover:translate-x-0.5",
-            ].join(" ")}
-          >
-            <span className={["material-symbols-outlined text-lg", activeView === "worldmap" ? "text-primary" : ""].join(" ")}>
-              public
-            </span>
-            World Map
-            {activeView === "worldmap" && (
               <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
             )}
           </button>

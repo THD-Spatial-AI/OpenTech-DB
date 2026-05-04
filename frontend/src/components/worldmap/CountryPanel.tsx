@@ -20,8 +20,8 @@ import {
 import { CanvasRenderer } from "echarts/renderers";
 
 import type { TechMapType, TechMapParam } from "../../types/worldmap";
-import { TECH_META, PARAM_META, MAP_YEARS } from "../../types/worldmap";
-import { getCountryByIso3, getParamValues } from "../../services/worldmap";
+import { PARAM_META, MAP_YEARS } from "../../types/worldmap";
+import { getCountryByIso3, getParamValues, getTechnologyMeta, getWorldMapTechnologies } from "../../services/worldmap.ts";
 
 // Register ECharts modules (tree-shakeable)
 echarts.use([
@@ -50,9 +50,21 @@ const BASE_TOOLTIP = {
   extraCssText: "box-shadow:0 4px 16px rgba(0,0,0,0.12);border-radius:8px;",
 };
 
+const COVERAGE_META = {
+  direct: {
+    label: "Direct country data",
+    classes: "bg-emerald-100 text-emerald-700",
+  },
+  none: {
+    label: "No country records",
+    classes: "bg-slate-200 text-slate-700",
+  },
+} as const;
+
 // ── Flag emoji helper ─────────────────────────────────────────────────────────
 
 function flagEmoji(iso2: string): string {
+  if (!/^[A-Z]{2}$/i.test(iso2)) return "🌍";
   // Convert ISO2 → regional indicator symbols
   return iso2
     .toUpperCase()
@@ -117,7 +129,6 @@ export default function CountryPanel({
 
   const evolutionOption = useMemo((): echarts.EChartsCoreOption | null => {
     if (!evolutionSeries) return null;
-    const paramInfo = PARAM_META[param];
 
     return {
       grid:   { top: 28, right: 16, bottom: 48, left: 56, containLabel: false },
@@ -180,9 +191,7 @@ export default function CountryPanel({
 
   const crossTechValues = useMemo(() => {
     if (!country) return [];
-    const techTypes: TechMapType[] = [
-      "solar_pv_utility", "onshore_wind", "offshore_wind", "battery_li_ion", "nuclear",
-    ];
+    const techTypes: TechMapType[] = getWorldMapTechnologies().map((t) => t.id);
     return techTypes
       .map((t) => {
         const entry = country.entries.find((e) => e.tech === t && e.param === param);
@@ -202,7 +211,7 @@ export default function CountryPanel({
       tooltip: { ...BASE_TOOLTIP, trigger: "axis" },
       xAxis: {
         type: "category",
-        data: rows.map((r) => TECH_META[r.tech].label),
+        data: rows.map((r) => getTechnologyMeta(r.tech)?.label ?? r.tech.slice(0, 8)),
         axisLabel: {
           fontFamily: FONT, color: LABEL, fontSize: 10,
           interval: 0, rotate: 14,
@@ -222,7 +231,7 @@ export default function CountryPanel({
           type:  "bar",
           data:  rows.map((r) => ({
             value:     r.value,
-            itemStyle: { color: TECH_META[r.tech].color, borderRadius: [4, 4, 0, 0] },
+            itemStyle: { color: getTechnologyMeta(r.tech)?.color ?? "#4d4b9e", borderRadius: [4, 4, 0, 0] },
           })),
           barMaxWidth: 36,
         },
@@ -279,7 +288,12 @@ export default function CountryPanel({
   }
 
   const paramInfo  = PARAM_META[param];
-  const techInfo   = TECH_META[tech];
+  const techInfo   = getTechnologyMeta(tech) ?? {
+    label: tech,
+    icon: "blur_on",
+    color: "#4d4b9e",
+  };
+  const coverageMeta = COVERAGE_META[country.coverage];
   const currentVal = evolutionSeries?.series.find((s) => s.year === year)?.value ?? null;
   const paramUnit  = evolutionSeries?.unit ?? "";
 
@@ -298,6 +312,11 @@ export default function CountryPanel({
               {country.name}
             </h2>
             <p className="text-xs text-on-surface-variant mt-0.5">{country.region}</p>
+            <span
+              className={`inline-flex mt-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${coverageMeta.classes}`}
+            >
+              {coverageMeta.label}
+            </span>
           </div>
         </div>
         <button
@@ -314,6 +333,11 @@ export default function CountryPanel({
       {/* ── Key metric card ──────────────────────────────────────────────── */}
       <div className="px-5 pt-5 pb-3">
         <div className="bg-primary/8 rounded-xl p-4">
+          {!evolutionSeries && (
+            <div className="mb-3 rounded-lg bg-surface-container px-3 py-2 text-xs text-on-surface-variant">
+              This country has no records for this technology/parameter combination.
+            </div>
+          )}
           <div className="flex items-center gap-2 mb-1">
             <span
               className="material-symbols-outlined text-lg"

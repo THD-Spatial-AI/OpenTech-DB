@@ -62,11 +62,19 @@ function CandidateDetailModal({
   token,
   onClose,
   onAction,
+  currentIndex,
+  totalCount,
+  onPrev,
+  onNext,
 }: {
   candidate: ScraperCandidate;
   token: string;
   onClose: () => void;
   onAction: (id: string, newStatus: "approved" | "rejected") => void;
+  currentIndex?: number;
+  totalCount?: number;
+  onPrev?: () => void;
+  onNext?: () => void;
 }) {
   const [acting, setActing] = useState(false);
   const [rejectMode, setRejectMode] = useState(false);
@@ -133,13 +141,43 @@ function CandidateDetailModal({
               )}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 transition-colors p-1 ml-3"
-            aria-label="Close"
-          >
-            <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
+          {/* Nav controls + position indicator */}
+          <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+            {currentIndex !== undefined && totalCount !== undefined && (
+              <span className="text-[10px] font-semibold text-slate-400 tabular-nums px-1">
+                {currentIndex + 1} / {totalCount}
+              </span>
+            )}
+            {onPrev && (
+              <button
+                onClick={onPrev}
+                disabled={currentIndex === 0}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100
+                           disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                aria-label="Previous"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+            )}
+            {onNext && (
+              <button
+                onClick={onNext}
+                disabled={currentIndex !== undefined && totalCount !== undefined && currentIndex >= totalCount - 1}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100
+                           disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                aria-label="Next"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-700 transition-colors p-1 ml-1"
+              aria-label="Close"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
         </div>
 
         {/* Body */}
@@ -363,15 +401,20 @@ function CandidateDetailModal({
 function fmtElapsed(secs: number): string {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
-  return m > 0 ? `${m}m ${s.toString().padStart(2, "0")}s` : `${s}s`;
+  return m > 0 ? `${m}m ${s.toString().padStart(2, "00")}s` : `${s}s`;
+}
+
+function runDurSecs(r: ScraperRun): number | null {
+  if (!r.started_at || !r.finished_at) return null;
+  return Math.round(
+    (new Date(r.finished_at).getTime() - new Date(r.started_at).getTime()) / 1000
+  );
 }
 
 function runDur(r: ScraperRun): string | null {
-  if (!r.started_at || !r.finished_at) return null;
-  const secs = Math.round(
-    (new Date(r.finished_at).getTime() - new Date(r.started_at).getTime()) / 1000
-  );
-  return secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+  const s = runDurSecs(r);
+  if (s === null) return null;
+  return s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
 }
 
 function DashboardTab({
@@ -383,6 +426,7 @@ function DashboardTab({
   runStartTime,
   runs,
   runsLoading,
+  runsError,
 }: {
   status: ScraperStatus | null;
   loading: boolean;
@@ -392,6 +436,7 @@ function DashboardTab({
   runStartTime: Date | null;
   runs: ScraperRun[];
   runsLoading: boolean;
+  runsError: string | null;
 }) {
   // Tick elapsed seconds while a run is active
   const [elapsed, setElapsed] = useState(0);
@@ -428,69 +473,102 @@ function DashboardTab({
     <div className="space-y-6">
 
       {/* ── LIVE STATUS BANNER ─────────────────────────────────────────────── */}
-      {running ? (
-        <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 to-violet-600
-                        text-white rounded-2xl shadow-lg">
-          {/* subtle animated shimmer */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent
-                          animate-pulse" />
-          <div className="relative px-5 py-4 flex items-center gap-5">
-            <span className="material-symbols-outlined text-[38px] animate-spin flex-shrink-0">
-              progress_activity
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm leading-none">Pipeline is running…</p>
-              <p className="text-indigo-200 text-xs mt-1">
-                Querying {enabled_sources.length} source{enabled_sources.length !== 1 ? "s" : ""} across all technology categories
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {enabled_sources.slice(0, 7).map((s) => (
-                  <span key={s} className="text-[9px] font-semibold bg-white/20 px-2 py-0.5 rounded-full">
-                    {s}
-                  </span>
-                ))}
-                {enabled_sources.length > 7 && (
-                  <span className="text-[9px] font-semibold bg-white/10 px-2 py-0.5 rounded-full">
-                    +{enabled_sources.length - 7} more
-                  </span>
+      {(() => {
+        // Compute average duration from last 5 completed runs for ETA
+        const completedDurs = runs
+          .filter(r => r.started_at && r.finished_at)
+          .slice(0, 5)
+          .map(r => runDurSecs(r)!)
+          .filter(Boolean);
+        const avgSecs = completedDurs.length
+          ? Math.round(completedDurs.reduce((a, b) => a + b, 0) / completedDurs.length)
+          : null;
+        const progressPct = (running && avgSecs && elapsed > 0)
+          ? Math.min(95, Math.round((elapsed / avgSecs) * 100))
+          : null;
+        const remaining = (running && avgSecs) ? Math.max(0, avgSecs - elapsed) : null;
+
+        return running ? (
+          <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 to-violet-600
+                          text-white rounded-2xl shadow-lg">
+            <div className="relative px-5 py-4 flex items-center gap-5">
+              <span className="material-symbols-outlined text-[38px] animate-spin flex-shrink-0">
+                progress_activity
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm leading-none">Pipeline is running…</p>
+                <p className="text-indigo-200 text-xs mt-1">
+                  Querying {enabled_sources.length} source{enabled_sources.length !== 1 ? "s" : ""} across all technology categories
+                </p>
+                {/* Phase labels */}
+                <div className="mt-2 flex items-center gap-3 text-[10px] font-semibold">
+                  {["Fetch papers", "Extract params", "Store candidates"].map((phase, i) => {
+                    const phasePct = progressPct ?? 0;
+                    const active = phasePct < 40 ? i === 0 : phasePct < 80 ? i === 1 : i === 2;
+                    const done   = phasePct < 40 ? false : phasePct < 80 ? i === 0 : i < 2;
+                    return (
+                      <span key={phase} className={[
+                        "flex items-center gap-1 px-2 py-0.5 rounded-full transition-all",
+                        done   ? "bg-white/30 text-white" :
+                        active ? "bg-white/20 text-white animate-pulse" :
+                                 "text-indigo-300",
+                      ].join(" ")}>
+                        <span className="material-symbols-outlined text-[11px]">
+                          {done ? "check" : active ? "radio_button_checked" : "radio_button_unchecked"}
+                        </span>
+                        {phase}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0 space-y-0.5">
+                <p className="text-2xl font-bold tabular-nums leading-none">{fmtElapsed(elapsed)}</p>
+                <p className="text-indigo-300 text-[10px]">elapsed</p>
+                {remaining !== null && (
+                  <p className="text-indigo-200 text-[10px]">
+                    ~{fmtElapsed(remaining)} left
+                  </p>
+                )}
+                {avgSecs && (
+                  <p className="text-indigo-300 text-[9px]">avg {fmtElapsed(avgSecs)}</p>
                 )}
               </div>
             </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-3xl font-bold tabular-nums leading-none">{fmtElapsed(elapsed)}</p>
-              <p className="text-indigo-300 text-[10px] mt-1">elapsed</p>
+            {/* Determinate or indeterminate progress bar */}
+            <div className="h-1.5 bg-white/20">
+              {progressPct !== null ? (
+                <div
+                  className="h-full bg-white/70 rounded-full transition-all duration-1000"
+                  style={{ width: `${progressPct}%` }}
+                />
+              ) : (
+                <div
+                  className="h-full bg-white/50 rounded-full"
+                  style={{ width: "35%", animation: "progressSlide 1.8s ease-in-out infinite alternate" }}
+                />
+              )}
             </div>
+            <style>{`@keyframes progressSlide{from{margin-left:0%}to{margin-left:65%}}`}</style>
           </div>
-          {/* indeterminate progress strip */}
-          <div className="h-1 bg-white/20">
-            <div
-              className="h-full bg-white/50 rounded-full"
-              style={{
-                width: "35%",
-                animation: "progressSlide 1.8s ease-in-out infinite alternate",
-              }}
-            />
+        ) : (
+          <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+            <p className="text-sm font-semibold text-slate-600">Pipeline idle</p>
+            {avgSecs && (
+              <span className="text-[10px] text-slate-400">
+                avg run: {fmtElapsed(avgSecs)}
+              </span>
+            )}
+            {runs.length > 0 && runs[0].finished_at && (
+              <p className="text-xs text-slate-400 ml-auto">
+                Last run: <span className="font-semibold">{fmt(runs[0].finished_at)}</span>
+                {runDur(runs[0]) && <span className="ml-1 text-slate-300">({runDur(runs[0])})</span>}
+              </p>
+            )}
           </div>
-          <style>{`
-            @keyframes progressSlide {
-              from { margin-left: 0%; }
-              to   { margin-left: 65%; }
-            }
-          `}</style>
-        </div>
-      ) : (
-        /* Idle status pill — shows last run info or "Ready" */
-        <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
-          <p className="text-sm font-semibold text-slate-600">Pipeline idle</p>
-          {runs.length > 0 && runs[0].finished_at && (
-            <p className="text-xs text-slate-400 ml-auto">
-              Last run: <span className="font-semibold">{fmt(runs[0].finished_at)}</span>
-              {runDur(runs[0]) && <span className="ml-1 text-slate-300">({runDur(runs[0])})</span>}
-            </p>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── STAT CARDS ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -598,7 +676,22 @@ function DashboardTab({
           </span>
         </div>
 
-        {!runsLoading && runs.length === 0 && (
+        {runsError && (
+          <div className="mx-5 my-4 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+            <span className="material-symbols-outlined text-red-400 text-[15px] mt-0.5">error</span>
+            <div>
+              <p className="text-xs font-semibold text-red-700">Could not load run history</p>
+              <p className="text-[11px] text-red-500 mt-0.5">{runsError}</p>
+              <p className="text-[10px] text-red-400 mt-1">
+                Make sure the backend is running and the{" "}
+                <code className="bg-red-100 px-1 rounded font-mono">scraper_runs</code>{" "}
+                table exists in Supabase (run <code className="bg-red-100 px-1 rounded font-mono">db/migrations/001_scraper_tables.sql</code>).
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!runsError && !runsLoading && runs.length === 0 && (
           <div className="px-5 py-10 flex flex-col items-center gap-2 text-center">
             <span className="material-symbols-outlined text-4xl text-slate-200">history</span>
             <p className="text-sm text-slate-400 font-semibold">No runs yet</p>
@@ -606,80 +699,129 @@ function DashboardTab({
           </div>
         )}
 
-        {runs.length > 0 && (
-          <div className="divide-y divide-slate-100">
-            {runs.map((run) => {
-              const d = runDur(run);
-              const hasErr = run.errors.length > 0;
-              const isActive = !!run.started_at && !run.finished_at;
-              const isOk = !hasErr && !!run.finished_at;
-              return (
-                <div key={run.run_id} className="px-5 py-3">
-                  <div className="flex items-start gap-3">
-                    {/* status icon */}
-                    <span className={`material-symbols-outlined text-[17px] mt-0.5 flex-shrink-0 ${
-                      isActive ? "text-indigo-500 animate-spin"
-                      : isOk   ? "text-emerald-500"
-                      : hasErr ? "text-amber-500"
-                               : "text-slate-300"
-                    }`}>
-                      {isActive ? "progress_activity"
-                       : isOk   ? "check_circle"
-                       : hasErr ? "warning"
-                                : "pending"}
-                    </span>
+        {runs.length > 0 && (() => {
+          // Max duration across all runs for relative bar width
+          const maxSecs = Math.max(
+            1,
+            ...runs.map(r => runDurSecs(r) ?? 0)
+          );
+          return (
+            <div className="divide-y divide-slate-100">
+              {runs.map((run) => {
+                const durSecs = runDurSecs(run);
+                const d = runDur(run);
+                const hasErr = run.errors.length > 0;
+                const isActive = !!run.started_at && !run.finished_at;
+                const isOk = !hasErr && !!run.finished_at;
+                const barPct = durSecs ? Math.round((durSecs / maxSecs) * 100) : 0;
 
-                    {/* main info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="text-xs font-bold text-slate-700">{fmt(run.started_at)}</span>
-                        {d && <span className="text-[10px] text-slate-400">· {d}</span>}
-                        {isActive && (
-                          <span className="text-[10px] font-semibold text-indigo-400 animate-pulse">
-                            running…
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-0 mt-0.5">
-                        <span className="text-[10px] text-slate-500">
-                          <span className="font-semibold">{run.technologies_processed}</span> techs
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          <span className="font-semibold">{run.papers_fetched}</span> papers
-                        </span>
-                        <span className="text-[10px] font-semibold text-indigo-600">
-                          +{run.candidates_created} candidates
-                        </span>
-                        {hasErr && (
-                          <span className="text-[10px] font-semibold text-amber-600">
-                            {run.errors.length} error{run.errors.length !== 1 ? "s" : ""}
-                          </span>
-                        )}
-                      </div>
+                return (
+                  <div key={run.run_id} className="px-5 py-3 group hover:bg-slate-50/60 transition-colors">
+                    <div className="flex items-start gap-3">
+                      {/* Status icon */}
+                      <span className={`material-symbols-outlined text-[17px] mt-0.5 flex-shrink-0 ${
+                        isActive ? "text-indigo-500 animate-spin"
+                        : isOk   ? "text-emerald-500"
+                        : hasErr ? "text-amber-500"
+                                 : "text-slate-300"
+                      }`}>
+                        {isActive ? "progress_activity" : isOk ? "check_circle" : hasErr ? "warning" : "pending"}
+                      </span>
 
-                      {/* inline errors */}
-                      {hasErr && (
-                        <div className="mt-1.5 space-y-0.5 max-h-20 overflow-y-auto">
-                          {run.errors.map((err, i) => (
-                            <p key={i} className="text-[10px] font-mono text-amber-700
-                                                  bg-amber-50 rounded px-2 py-0.5 leading-snug">
-                              {err}
-                            </p>
+                      <div className="flex-1 min-w-0">
+                        {/* Date + duration */}
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-slate-700">{fmt(run.started_at)}</span>
+                          {d && (
+                            <span className="text-[10px] font-semibold text-slate-500
+                                             bg-slate-100 px-1.5 py-0.5 rounded tabular-nums">
+                              {d}
+                            </span>
+                          )}
+                          {isActive && (
+                            <span className="text-[10px] font-semibold text-indigo-400 animate-pulse">
+                              running…
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Stats row */}
+                        <div className="flex flex-wrap gap-x-3 gap-y-0 mt-1">
+                          <span className="text-[10px] text-slate-500 flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[11px] text-slate-400">bolt</span>
+                            <span className="font-semibold">{run.technologies_processed}</span> techs
+                          </span>
+                          <span className="text-[10px] text-slate-500 flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[11px] text-slate-400">article</span>
+                            <span className="font-semibold">{run.papers_fetched}</span> papers
+                          </span>
+                          <span className="text-[10px] font-semibold text-indigo-600 flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[11px]">add_circle</span>
+                            {run.candidates_created} candidates
+                          </span>
+                          {hasErr && (
+                            <span className="text-[10px] font-semibold text-amber-600 flex items-center gap-0.5">
+                              <span className="material-symbols-outlined text-[11px]">warning</span>
+                              {run.errors.length} error{run.errors.length !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Duration timeline bar */}
+                        {durSecs !== null && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              {/* Segment: papers (60%), extraction (25%), store (15%) */}
+                              <div className="h-full flex rounded-full overflow-hidden transition-all duration-500"
+                                   style={{ width: `${barPct}%` }}>
+                                <div className="bg-indigo-400" style={{ width: "60%" }} />
+                                <div className="bg-violet-400" style={{ width: "25%" }} />
+                                <div className="bg-emerald-400" style={{ width: "15%" }} />
+                              </div>
+                            </div>
+                            <span className="text-[9px] text-slate-300 tabular-nums w-6 text-right">
+                              {barPct}%
+                            </span>
+                          </div>
+                        )}
+                        {/* Legend (shows on hover) */}
+                        <div className="hidden group-hover:flex items-center gap-3 mt-1">
+                          {[
+                            { color: "bg-indigo-400", label: "Fetch" },
+                            { color: "bg-violet-400", label: "Extract" },
+                            { color: "bg-emerald-400", label: "Store" },
+                          ].map(({ color, label }) => (
+                            <span key={label} className="flex items-center gap-1 text-[9px] text-slate-400">
+                              <span className={`w-2 h-2 rounded-sm ${color}`} />
+                              {label}
+                            </span>
                           ))}
                         </div>
-                      )}
-                    </div>
 
-                    {/* run id */}
-                    <span className="text-[9px] font-mono text-slate-300 flex-shrink-0 pt-0.5 hidden sm:block">
-                      {run.run_id.slice(0, 8)}
-                    </span>
+                        {/* Inline errors */}
+                        {hasErr && (
+                          <div className="mt-1.5 space-y-0.5 max-h-20 overflow-y-auto">
+                            {run.errors.map((err, i) => (
+                              <p key={i} className="text-[10px] font-mono text-amber-700
+                                                    bg-amber-50 rounded px-2 py-0.5 leading-snug">
+                                {err}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Run ID */}
+                      <span className="text-[9px] font-mono text-slate-300 flex-shrink-0 pt-0.5 hidden sm:block">
+                        {run.run_id.slice(0, 8)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -690,25 +832,29 @@ function DashboardTab({
 const STATUS_OPTIONS = ["all", "pending", "approved", "rejected"] as const;
 type CandidateFilter = (typeof STATUS_OPTIONS)[number];
 
-function CandidatesTab({
-  token,
-}: {
-  token: string;
-}) {
-  const [candidates,   setCandidates]   = useState<ScraperCandidate[] | null>(null);
-  const [loadError,    setLoadError]    = useState<string | null>(null);
-  const [filter,       setFilter]       = useState<CandidateFilter>("pending");
-  const [techFilter,   setTechFilter]   = useState("");
-  const [selected,     setSelected]     = useState<ScraperCandidate | null>(null);
-  const [loading,      setLoading]      = useState(false);
+function CandidatesTab({ token }: { token: string }) {
+  const [candidates,    setCandidates]    = useState<ScraperCandidate[] | null>(null);
+  const [loadError,     setLoadError]     = useState<string | null>(null);
+  const [filter,        setFilter]        = useState<CandidateFilter>("pending");
+  const [techFilter,    setTechFilter]    = useState("all");
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [loading,       setLoading]       = useState(false);
+  // Checkbox multi-select
+  const [checked,       setChecked]       = useState<Set<string>>(new Set());
+  // Collapsed technology groups
+  const [collapsed,     setCollapsed]     = useState<Set<string>>(new Set());
+  // Bulk action state
+  const [bulkActing,    setBulkActing]    = useState(false);
+  const [bulkProgress,  setBulkProgress]  = useState<{done:number;total:number}|null>(null);
 
   const load = useCallback((status: CandidateFilter, techId?: string) => {
     setLoading(true);
     setLoadError(null);
+    setChecked(new Set());
     fetchScraperCandidates({
       status: status === "all" ? undefined : status,
-      technology_id: techId || undefined,
-      limit: 200,
+      technology_id: (techId && techId !== "all") ? techId : undefined,
+      limit: 500,
     })
       .then((res) => setCandidates(res.candidates))
       .catch((e) => setLoadError(e instanceof Error ? e.message : "Failed to load candidates."))
@@ -721,55 +867,241 @@ function CandidatesTab({
   }, [filter, techFilter]);
 
   const handleAction = useCallback(
-    (id: string, newStatus: "approved" | "rejected") => {
-      setCandidates((prev) =>
-        prev ? prev.map((c) => c.candidate_id === id ? { ...c, status: newStatus } : c) : prev
-      );
+    (id: string, newStatus: "approved" | "rejected", advanceToNext = true) => {
+      setCandidates((prev) => {
+        if (!prev) return prev;
+        return prev.map((c) => c.candidate_id === id ? { ...c, status: newStatus } : c);
+      });
+      setChecked((prev) => { const n = new Set(prev); n.delete(id); return n; });
+      if (advanceToNext) {
+        setSelectedIndex((idx) => {
+          if (idx === null) return null;
+          const len = (candidates ?? []).length;
+          return idx < len - 1 ? idx + 1 : idx - 1 >= 0 ? idx - 1 : null;
+        });
+      }
     },
-    []
+    [candidates]
   );
 
-  const visible = candidates ?? [];
+  // Bulk approve all checked candidates
+  const handleBulkApprove = async () => {
+    const ids = [...checked];
+    if (!ids.length) return;
+    setBulkActing(true);
+    setBulkProgress({ done: 0, total: ids.length });
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        await approveScraperCandidate(token, ids[i]);
+        setCandidates((prev) =>
+          prev ? prev.map((c) => c.candidate_id === ids[i] ? { ...c, status: "approved" } : c) : prev
+        );
+      } catch { /* continue on individual failures */ }
+      setBulkProgress({ done: i + 1, total: ids.length });
+    }
+    setChecked(new Set());
+    setBulkActing(false);
+    setBulkProgress(null);
+  };
+
+  // Bulk reject all checked candidates
+  const handleBulkReject = async () => {
+    const ids = [...checked];
+    if (!ids.length) return;
+    setBulkActing(true);
+    setBulkProgress({ done: 0, total: ids.length });
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        await rejectScraperCandidate(token, ids[i]);
+        setCandidates((prev) =>
+          prev ? prev.map((c) => c.candidate_id === ids[i] ? { ...c, status: "rejected" } : c) : prev
+        );
+      } catch { /* continue */ }
+      setBulkProgress({ done: i + 1, total: ids.length });
+    }
+    setChecked(new Set());
+    setBulkActing(false);
+    setBulkProgress(null);
+  };
+
+  const all = candidates ?? [];
+
+  // Unique technology options for the dropdown
+  const techOptions = Array.from(
+    new Map(all.map((c) => [c.technology_id, c.technology_name])).entries()
+  ).sort((a, b) => a[1].localeCompare(b[1]));
+
+  // Apply tech dropdown filter on top of already-fetched candidates
+  const visible = techFilter === "all" ? all
+    : all.filter((c) => c.technology_id === techFilter);
+
+  // Group by technology_name
+  const groups = Array.from(
+    visible.reduce((map, c) => {
+      const key = c.technology_id;
+      if (!map.has(key)) map.set(key, { name: c.technology_name, items: [] });
+      map.get(key)!.items.push(c);
+      return map;
+    }, new Map<string, { name: string; items: ScraperCandidate[] }>())
+  );
+
+  // Flat ordered list of visible items (for modal navigation)
+  const flatVisible = groups.flatMap(([, g]) => g.items);
+  const selected = selectedIndex !== null ? flatVisible[selectedIndex] ?? null : null;
+
+  // Toggle helper for individual checkbox
+  const toggleCheck = (id: string) =>
+    setChecked((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  // Group-level select-all
+  const toggleGroupAll = (items: ScraperCandidate[]) => {
+    const ids = items.map((c) => c.candidate_id);
+    const allChecked = ids.every((id) => checked.has(id));
+    setChecked((prev) => {
+      const n = new Set(prev);
+      ids.forEach((id) => allChecked ? n.delete(id) : n.add(id));
+      return n;
+    });
+  };
+
+  // Select/deselect all visible
+  const allVisibleChecked = visible.length > 0 && visible.every((c) => checked.has(c.candidate_id));
+  const toggleSelectAll = () => {
+    if (allVisibleChecked) {
+      setChecked((prev) => {
+        const n = new Set(prev);
+        visible.forEach((c) => n.delete(c.candidate_id));
+        return n;
+      });
+    } else {
+      setChecked((prev) => {
+        const n = new Set(prev);
+        visible.forEach((c) => n.add(c.candidate_id));
+        return n;
+      });
+    }
+  };
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex gap-1">
-          {STATUS_OPTIONS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilter(s)}
-              className={[
-                "px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors capitalize",
-                filter === s
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-500 hover:bg-slate-200",
-              ].join(" ")}
-            >
-              {s}
-            </button>
-          ))}
+      {/* ── Toolbar ────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+        {/* Status filter + tech dropdown row */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex gap-1">
+            {STATUS_OPTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => { setFilter(s); setSelectedIndex(null); }}
+                className={[
+                  "px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors capitalize",
+                  filter === s ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200",
+                ].join(" ")}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {/* Technology dropdown */}
+          <select
+            value={techFilter}
+            onChange={(e) => { setTechFilter(e.target.value); setSelectedIndex(null); setChecked(new Set()); }}
+            className="text-xs border border-slate-200 rounded-lg px-3 py-1.5
+                       focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white text-slate-600 flex-1 max-w-[220px]"
+          >
+            <option value="all">All technologies ({all.length})</option>
+            {techOptions.map(([id, name]) => (
+              <option key={id} value={id}>
+                {name} ({all.filter(c => c.technology_id === id).length})
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => load(filter, techFilter)}
+            disabled={loading}
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600
+                       border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors ml-auto"
+          >
+            <span className={`material-symbols-outlined text-[13px] ${loading ? "animate-spin" : ""}`}>refresh</span>
+            Refresh
+          </button>
         </div>
-        <input
-          type="text"
-          placeholder="Filter by technology ID…"
-          value={techFilter}
-          onChange={(e) => setTechFilter(e.target.value)}
-          className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 flex-1 max-w-xs
-                     focus:outline-none focus:ring-2 focus:ring-indigo-300"
-        />
-        <button
-          onClick={() => load(filter, techFilter)}
-          disabled={loading}
-          className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600
-                     border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors ml-auto"
-        >
-          <span className={`material-symbols-outlined text-[13px] ${loading ? "animate-spin" : ""}`}>
-            refresh
-          </span>
-          Refresh
-        </button>
+
+        {/* Bulk actions row */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Select-all checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={allVisibleChecked}
+              onChange={toggleSelectAll}
+              disabled={visible.length === 0}
+              className="w-4 h-4 rounded accent-indigo-600"
+            />
+            <span className="text-xs text-slate-500">
+              {checked.size > 0 ? `${checked.size} selected` : "Select all"}
+            </span>
+          </label>
+
+          {checked.size > 0 && (
+            <>
+              <span className="w-px h-4 bg-slate-200" />
+              {bulkActing && bulkProgress ? (
+                <span className="text-xs font-semibold text-indigo-600">
+                  Processing {bulkProgress.done}/{bulkProgress.total}…
+                </span>
+              ) : (
+                <>
+                  <button
+                    onClick={handleBulkApprove}
+                    disabled={bulkActing}
+                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-emerald-600
+                               hover:bg-emerald-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                    Approve {checked.size}
+                  </button>
+                  <button
+                    onClick={handleBulkReject}
+                    disabled={bulkActing}
+                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-red-500
+                               hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">cancel</span>
+                    Reject {checked.size}
+                  </button>
+                  <button
+                    onClick={() => setChecked(new Set())}
+                    className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    Clear
+                  </button>
+                </>
+              )}
+            </>
+          )}
+
+          <div className="ml-auto flex items-center gap-2">
+            {visible.length > 0 && (
+              <span className="text-[10px] font-semibold text-slate-400">
+                {visible.length} candidate{visible.length !== 1 ? "s" : ""}
+                {groups.length > 1 ? ` in ${groups.length} groups` : ""}
+              </span>
+            )}
+            {visible.length > 0 && (
+              <button
+                onClick={() => setSelectedIndex(0)}
+                className="flex items-center gap-1.5 text-xs font-bold text-white bg-indigo-600
+                           hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <span className="material-symbols-outlined text-[13px]">rate_review</span>
+                Review Queue
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Error */}
@@ -793,58 +1125,117 @@ function CandidatesTab({
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
           <span className="material-symbols-outlined text-5xl text-slate-200">search_off</span>
           <p className="text-slate-400 font-semibold">No {filter === "all" ? "" : filter} candidates</p>
-          <p className="text-slate-300 text-sm">
-            Run the scraper pipeline to discover new candidates from the literature.
-          </p>
+          <p className="text-slate-300 text-sm">Run the scraper pipeline to discover new candidates.</p>
         </div>
       )}
 
-      {/* Candidate list */}
+      {/* ── Grouped candidate list ─────────────────────────────────────────── */}
       {visible.length > 0 && (
-        <div className="space-y-2">
-          {visible.map((c) => (
-            <button
-              key={c.candidate_id}
-              type="button"
-              onClick={() => setSelected(c)}
-              className="w-full text-left bg-white rounded-xl border border-slate-200 hover:border-indigo-300
-                         hover:shadow-sm transition-all p-4 group"
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <StatusPill status={c.status} />
-                    <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded capitalize">
-                      {c.technology_name}
-                    </span>
-                    {c.paper.year && (
-                      <span className="text-[10px] text-slate-400">{c.paper.year}</span>
-                    )}
-                  </div>
-                  <p className="text-sm font-semibold text-slate-800 truncate group-hover:text-indigo-700 transition-colors">
-                    {c.paper.title || "Untitled"}
-                  </p>
-                  <div className="flex items-center gap-3 mt-1">
-                    {c.paper.authors.length > 0 && (
-                      <p className="text-[11px] text-slate-400 truncate">
-                        {c.paper.authors.slice(0, 2).join(", ")}
-                        {c.paper.authors.length > 2 ? " et al." : ""}
-                      </p>
-                    )}
-                    {c.paper.venue && (
-                      <p className="text-[11px] text-slate-400 italic truncate">{c.paper.venue}</p>
-                    )}
-                  </div>
+        <div className="space-y-3">
+          {groups.map(([techId, group]) => {
+            const isCollapsed = collapsed.has(techId);
+            const groupIds = group.items.map((c) => c.candidate_id);
+            const allGroupChecked = groupIds.length > 0 && groupIds.every((id) => checked.has(id));
+            const someGroupChecked = groupIds.some((id) => checked.has(id));
+            const pendingCount = group.items.filter((c) => c.status === "pending").length;
+
+            return (
+              <div key={techId}
+                   className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                {/* Group header */}
+                <div className="flex items-center gap-3 px-4 py-3 bg-slate-50/80 border-b border-slate-100">
+                  {/* Group select-all checkbox */}
+                  <input
+                    type="checkbox"
+                    checked={allGroupChecked}
+                    ref={(el) => { if (el) el.indeterminate = !allGroupChecked && someGroupChecked; }}
+                    onChange={() => toggleGroupAll(group.items)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4 rounded accent-indigo-600 flex-shrink-0"
+                  />
+                  <button
+                    onClick={() => setCollapsed((prev) => {
+                      const n = new Set(prev);
+                      n.has(techId) ? n.delete(techId) : n.add(techId);
+                      return n;
+                    })}
+                    className="flex-1 flex items-center gap-2 text-left"
+                  >
+                    <span className="material-symbols-outlined text-[14px] text-indigo-400">bolt</span>
+                    <span className="text-sm font-bold text-slate-700">{group.name}</span>
+                    <span className="text-[10px] font-mono text-slate-400">{techId}</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      {pendingCount > 0 && (
+                        <span className="text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-full">
+                          {pendingCount} pending
+                        </span>
+                      )}
+                      <span className="text-[10px] text-slate-400">{group.items.length} items</span>
+                      <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform ${
+                        isCollapsed ? "" : "rotate-180"
+                      }`}>expand_more</span>
+                    </div>
+                  </button>
                 </div>
-                <div className="flex-shrink-0 flex flex-col items-end gap-1">
-                  <span className="text-[10px] font-semibold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded">
-                    {Object.keys(c.extracted_params).length} params
-                  </span>
-                  <span className="text-[9px] text-slate-400 font-mono">{c.paper.source}</span>
-                </div>
+
+                {/* Group items */}
+                {!isCollapsed && (
+                  <div className="divide-y divide-slate-50">
+                    {group.items.map((c) => {
+                      const flatIdx = flatVisible.findIndex((f) => f.candidate_id === c.candidate_id);
+                      const isChecked = checked.has(c.candidate_id);
+                      return (
+                        <div
+                          key={c.candidate_id}
+                          className={[
+                            "flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group",
+                            isChecked ? "bg-indigo-50/40" : "",
+                          ].join(" ")}
+                        >
+                          {/* Per-row checkbox */}
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleCheck(c.candidate_id)}
+                            className="mt-1 w-4 h-4 rounded accent-indigo-600 flex-shrink-0"
+                          />
+                          {/* Card content — click opens modal */}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedIndex(flatIdx)}
+                            className="flex-1 min-w-0 text-left"
+                          >
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                              <StatusPill status={c.status} />
+                              {c.paper.year && (
+                                <span className="text-[10px] text-slate-400">{c.paper.year}</span>
+                              )}
+                              <span className="text-[9px] font-mono text-slate-300">{c.paper.source}</span>
+                            </div>
+                            <p className="text-sm font-semibold text-slate-800 truncate
+                                          group-hover:text-indigo-700 transition-colors">
+                              {c.paper.title || "Untitled"}
+                            </p>
+                            {c.paper.authors.length > 0 && (
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                                {c.paper.authors.slice(0, 2).join(", ")}
+                                {c.paper.authors.length > 2 ? " et al." : ""}
+                              </p>
+                            )}
+                          </button>
+                          {/* Param count badge */}
+                          <span className="text-[10px] font-semibold text-indigo-500 bg-indigo-50
+                                           px-2 py-0.5 rounded flex-shrink-0 mt-0.5">
+                            {Object.keys(c.extracted_params).length}p
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -853,11 +1244,14 @@ function CandidatesTab({
         <CandidateDetailModal
           candidate={selected}
           token={token}
-          onClose={() => setSelected(null)}
-          onAction={(id, newStatus) => {
-            handleAction(id, newStatus);
-            setSelected(null);
-          }}
+          onClose={() => setSelectedIndex(null)}
+          onAction={(id, newStatus) => handleAction(id, newStatus, true)}
+          currentIndex={selectedIndex ?? undefined}
+          totalCount={flatVisible.length}
+          onPrev={selectedIndex !== null && selectedIndex > 0
+            ? () => setSelectedIndex((i) => (i ?? 1) - 1) : undefined}
+          onNext={selectedIndex !== null && selectedIndex < flatVisible.length - 1
+            ? () => setSelectedIndex((i) => (i ?? 0) + 1) : undefined}
         />
       )}
     </div>
@@ -878,6 +1272,7 @@ export default function ScraperPanel({ token }: { token: string }) {
   const [runStartTime, setRunStartTime] = useState<Date | null>(null);
   const [runs,         setRuns]         = useState<ScraperRun[]>([]);
   const [runsLoading,  setRunsLoading]  = useState(false);
+  const [runsError,    setRunsError]    = useState<string | null>(null);
 
   const loadStatus = useCallback(() => {
     setLoading(true);
@@ -890,9 +1285,10 @@ export default function ScraperPanel({ token }: { token: string }) {
 
   const loadRuns = useCallback(() => {
     setRunsLoading(true);
+    setRunsError(null);
     fetchScraperRuns(30)
       .then((data) => setRuns(data.runs))
-      .catch(() => { /* silent – status error already shown */ })
+      .catch((e) => setRunsError(e instanceof Error ? e.message : "Failed to load run history."))
       .finally(() => setRunsLoading(false));
   }, []);
 
@@ -998,6 +1394,7 @@ export default function ScraperPanel({ token }: { token: string }) {
           runStartTime={runStartTime}
           runs={runs}
           runsLoading={runsLoading}
+          runsError={runsError}
         />
       )}
 

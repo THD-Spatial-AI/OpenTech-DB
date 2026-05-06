@@ -14,7 +14,7 @@
       "PNNL 2022 Grid Energy Storage Cost and Performance Review",
       "IEA Energy Storage Tracking 2023"
     ],
-    "last_updated": "2026-04-08T13:52:26.610454+00:00"
+    "last_updated": "2026-05-05T10:28:44.041969+00:00"
   },
   "technologies": [
     {
@@ -350,6 +350,18 @@
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
           "reference_source": "CATL EnerC container 2023; Tesla Megapack modular"
+        },
+        {
+          "_source": "open_alex",
+          "_scraped": true,
+          "_paper_doi": "10.3390/batteries11100382",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-05T10:27:32.882516+00:00",
+          "instance_id": "lithium_ion_bess_2025_scraped_10_3390_batteries111",
+          "_paper_title": "Comparative Techno-Economic and Life Cycle Assessment of Stationary Energy Storage Systems: Lithium-Ion, Lead-Acid, and Hydrogen",
+          "instance_name": "Lithium Ion Bess (scraped 2025, Open Alex)",
+          "reference_source": "Open Alex, 2025, doi:10.3390/batteries11100382",
+          "opex_var_usd_per_mwh": 198.00000000000003
         }
       ]
     },
@@ -1694,6 +1706,18 @@
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
           "reference_source": "Tidal Lagoon Power 2022; Swansea Bay study"
+        },
+        {
+          "_source": "open_alex",
+          "_scraped": true,
+          "_paper_doi": "10.3390/su17219488",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-05T10:28:07.224467+00:00",
+          "instance_id": "pumped_hydro_storage_2025_scraped_10_3390_su17219488",
+          "_paper_title": "Hybrid Hydropower–PV with Mining Flexibility and Heat Recovery: Article 6-Ready Mitigation Pathways in Central Asia",
+          "instance_name": "Pumped Hydro Storage (scraped 2025, Open Alex)",
+          "reference_source": "Open Alex, 2025, doi:10.3390/su17219488",
+          "co2_emission_factor_operational_g_per_kwh": 700.0
         }
       ]
     },

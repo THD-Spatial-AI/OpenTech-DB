@@ -122,6 +122,12 @@ class OpenAlexScraper(BaseScraper):
             src = loc.get("source") or {}
             venue = src.get("display_name")
 
+            countries_set: set[str] = set()
+            for auth in (work.get("authorships") or []):
+                for c in (auth.get("countries") or []):
+                    if isinstance(c, str) and len(c) == 2:
+                        countries_set.add(c.upper())
+
             return PaperRecord(
                 source_name=self.source_name,
                 source_id=work.get("id", ""),
@@ -133,6 +139,7 @@ class OpenAlexScraper(BaseScraper):
                 open_access_pdf_url=pdf_url,
                 url=url,
                 venue=venue,
+                countries=sorted(countries_set),
             )
         except Exception as exc:  # noqa: BLE001
             logger.debug("[OpenAlex] Parse error for work: %s", exc)

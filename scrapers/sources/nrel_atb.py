@@ -198,6 +198,7 @@ class NRELATBScraper(BaseScraper):
                 full_text=full_text,
                 url=_ATB_ARCHIVE_URL.format(year=self._atb_year),
                 venue="NREL Annual Technology Baseline",
+                countries=["US"],
             ))
 
         return records

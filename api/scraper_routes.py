@@ -264,6 +264,15 @@ def approve_candidate(
             f"Candidate '{candidate_id}' not found or merge failed. "
             "Check server logs for details.",
         )
+    # Clear the in-process technology cache so the API immediately reflects
+    # the newly merged instance (no server restart required).
+    try:
+        from .routes import _load_all_technologies, _build_ontology_schema
+        _load_all_technologies.cache_clear()
+        _build_ontology_schema.cache_clear()
+        logger.info("Technology cache cleared after approving candidate %s", candidate_id)
+    except Exception as exc:
+        logger.warning("Could not clear technology cache: %s", exc)
     return ORJSONResponse({"status": "approved", "candidate": updated})
 
 

@@ -322,6 +322,8 @@ class ScrapingPipeline:
                     "Failed to merge instance for candidate %s: %s", candidate_id, exc
                 )
                 return None
+            # Also push the approved instance to Supabase technology_instances
+            self._sb_upsert_approved_instance(tech_id, instance)
 
         return self._candidates.update_status(
             candidate_id,
@@ -388,3 +390,60 @@ class ScrapingPipeline:
             "Merged instance '%s' into %s",
             new_instance.get("instance_id"), catalogue_path.name,
         )
+
+    def _sb_upsert_approved_instance(
+        self, tech_id: str, instance: dict[str, Any]
+    ) -> None:
+        """Push an approved proposed_instance to Supabase technology_instances (best-effort)."""
+        sb = getattr(self._candidates, "_sb", None)
+        if sb is None:
+            return  # Supabase not configured – file-only mode
+
+        def _to_float(v: object) -> float | None:
+            if v is None:
+                return None
+            try:
+                return float(str(v).replace(",", "").split()[0])
+            except (ValueError, AttributeError):
+                return None
+
+        instance_id = instance.get("instance_id") or instance.get("id")
+        if not instance_id:
+            logger.warning("_sb_upsert_approved_instance: missing instance_id, skipping")
+            return
+
+        row = {
+            "instance_id":      instance_id,
+            "technology_id":    tech_id,
+            "instance_name":    instance.get("instance_name") or instance.get("name", instance_id),
+            "scale":            instance.get("scale"),
+            "typical_capacity_mw":  _to_float(instance.get("typical_capacity_mw")),
+            "capex_usd_per_kw":     _to_float(instance.get("capex_usd_per_kw")),
+            "opex_fixed_usd_per_kw_yr": _to_float(instance.get("opex_fixed_usd_per_kw_yr")),
+            "opex_var_usd_per_mwh": _to_float(instance.get("opex_var_usd_per_mwh")),
+            "efficiency_percent":   _to_float(instance.get("efficiency_percent")),
+            "lifetime_years":       _to_float(instance.get("lifetime_years")),
+            "co2_emission_factor_operational_g_per_kwh": _to_float(
+                instance.get("co2_emission_factor_operational_g_per_kwh")
+            ),
+            "reference_source": instance.get("reference_source") or instance.get("source"),
+            "extra_fields": {
+                k: v for k, v in instance.items()
+                if k not in {
+                    "instance_id", "id", "instance_name", "name", "scale",
+                    "typical_capacity_mw", "capex_usd_per_kw", "opex_fixed_usd_per_kw_yr",
+                    "opex_var_usd_per_mwh", "efficiency_percent", "lifetime_years",
+                    "co2_emission_factor_operational_g_per_kwh", "reference_source", "source",
+                }
+            },
+        }
+        try:
+            sb.table("technology_instances").upsert(
+                row, on_conflict="instance_id"
+            ).execute()
+            logger.info("Supabase: upserted approved instance '%s' for %s", instance_id, tech_id)
+        except Exception as exc:
+            logger.warning(
+                "Supabase upsert for approved instance '%s' failed (non-fatal): %s",
+                instance_id, exc,
+            )

@@ -27,6 +27,16 @@ from scrapers.extractors.text_extractor import ExtractedValue
 from scrapers.extractors.llm_extractor import LLMExtractedParams
 
 
+ISO2_TO_COUNTRY = {
+    "DE": "Germany", "FR": "France", "ES": "Spain", "IT": "Italy", "GR": "Greece", "DK": "Denmark",
+    "GB": "United Kingdom", "UK": "United Kingdom", "NO": "Norway", "NL": "Netherlands", "PT": "Portugal",
+    "PL": "Poland", "BE": "Belgium", "IE": "Ireland", "SE": "Sweden", "FI": "Finland", "CH": "Switzerland",
+    "AT": "Austria", "US": "United States", "CA": "Canada", "MX": "Mexico", "BR": "Brazil", "CL": "Chile",
+    "AR": "Argentina", "AU": "Australia", "NZ": "New Zealand", "CN": "China", "IN": "India", "JP": "Japan",
+    "KR": "South Korea", "ZA": "South Africa", "EG": "Egypt", "MA": "Morocco", "SA": "Saudi Arabia", "AE": "United Arab Emirates",
+}
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -212,5 +222,14 @@ class Normalizer:
         if paper.doi:
             parts.append(f"doi:{paper.doi}")
         instance["reference_source"] = ", ".join(parts)
+
+        unique_countries = [c for c in sorted(set(paper.countries or [])) if len(c) == 2]
+        if unique_countries:
+            instance["_paper_countries"] = unique_countries
+            # Only assign a concrete country when the paper clearly maps to a single country.
+            if len(unique_countries) == 1:
+                iso2 = "GB" if unique_countries[0] == "UK" else unique_countries[0]
+                instance["country_iso2"] = iso2
+                instance["country"] = ISO2_TO_COUNTRY.get(iso2, iso2)
 
         return instance

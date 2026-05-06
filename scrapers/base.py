@@ -47,6 +47,7 @@ class PaperRecord:
         "source_name", "source_id", "doi", "title", "year",
         "authors", "abstract", "full_text",
         "open_access_pdf_url", "url", "venue",
+        "countries",
         "fetched_at",
     )
 
@@ -63,6 +64,7 @@ class PaperRecord:
         open_access_pdf_url: str | None = None,
         url: str | None = None,
         venue: str | None = None,
+        countries: list[str] | None = None,
     ) -> None:
         self.source_name = source_name
         self.source_id   = source_id
@@ -75,6 +77,7 @@ class PaperRecord:
         self.open_access_pdf_url = open_access_pdf_url
         self.url         = url
         self.venue       = venue
+        self.countries   = [c.upper() for c in (countries or []) if isinstance(c, str) and len(c) == 2]
         self.fetched_at  = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict[str, Any]:

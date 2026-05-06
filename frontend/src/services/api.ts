@@ -563,6 +563,8 @@ export async function approveScraperCandidate(
     throw new Error(detail);
   }
   const data = await response.json() as { status: string; candidate: unknown };
+  // Clear the promise cache so technology pages re-fetch and reflect the merged instance
+  invalidateAll();
   return { status: data.status, candidate: normalizeCandidate(data.candidate) };
 }
 

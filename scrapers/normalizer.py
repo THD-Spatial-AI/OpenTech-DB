@@ -36,6 +36,33 @@ ISO2_TO_COUNTRY = {
     "KR": "South Korea", "ZA": "South Africa", "EG": "Egypt", "MA": "Morocco", "SA": "Saudi Arabia", "AE": "United Arab Emirates",
 }
 
+COUNTRY_NAME_TO_ISO2 = {
+    "germany": "DE", "france": "FR", "spain": "ES", "italy": "IT", "greece": "GR", "denmark": "DK",
+    "united kingdom": "GB", "uk": "GB", "great britain": "GB", "norway": "NO", "netherlands": "NL",
+    "portugal": "PT", "poland": "PL", "belgium": "BE", "ireland": "IE", "sweden": "SE", "finland": "FI",
+    "switzerland": "CH", "austria": "AT", "united states": "US", "usa": "US", "canada": "CA",
+    "mexico": "MX", "brazil": "BR", "chile": "CL", "argentina": "AR", "australia": "AU",
+    "new zealand": "NZ", "china": "CN", "india": "IN", "japan": "JP", "south korea": "KR",
+    "korea": "KR", "south africa": "ZA", "egypt": "EG", "morocco": "MA", "saudi arabia": "SA",
+    "united arab emirates": "AE", "uae": "AE",
+}
+
+
+def _infer_paper_countries_from_text(paper: PaperRecord) -> list[str]:
+    text = " ".join([
+        paper.title or "",
+        paper.abstract or "",
+        paper.full_text or "",
+        paper.venue or "",
+    ]).lower()
+
+    found: set[str] = set()
+    for name, iso2 in COUNTRY_NAME_TO_ISO2.items():
+        if re.search(rf"\b{re.escape(name)}\b", text):
+            found.add(iso2)
+
+    return sorted(found)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -50,6 +77,19 @@ def _slug(text: str) -> str:
 
 def _year_tag() -> str:
     return str(date.today().year)
+
+
+def _tech_title(technology_id: str) -> str:
+    return technology_id.replace("_", " ").title()
+
+
+def _paper_title_snippet(title: str | None, max_len: int = 44) -> str:
+    if not title:
+        return ""
+    cleaned = re.sub(r"\s+", " ", title).strip()
+    if len(cleaned) <= max_len:
+        return cleaned
+    return cleaned[: max_len - 1].rstrip() + "…"
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +136,7 @@ class Normalizer:
             "status":          "pending",
             "technology_id":   technology_id,
             "source":          paper.source_name,
+            "paper_countries": sorted(set((paper.countries or []) + _infer_paper_countries_from_text(paper))),
             "paper_doi":       paper.doi,
             "paper_title":     paper.title,
             "paper_year":      paper.year,
@@ -181,14 +222,23 @@ class Normalizer:
         doi_slug = _slug(paper.doi or paper.source_id or "")[:20]
         instance_id = f"{technology_id}{capex_str}_{year}_scraped_{doi_slug}"
 
-        # Human-readable name
-        capex_label = ""
+        # Human-readable name: include tech title + source + year + a compact paper hint.
+        key_bits: list[str] = []
         if "capex_usd_per_kw" in params:
-            capex_label = f" – {params['capex_usd_per_kw']['value']:.0f} $/kW"
-        instance_name = (
-            f"{technology_id.replace('_', ' ').title()}{capex_label} "
-            f"(scraped {year}, {source_label})"
-        )
+            key_bits.append(f"CAPEX {params['capex_usd_per_kw']['value']:.0f} $/kW")
+        if "efficiency_percent" in params:
+            key_bits.append(f"Eff {params['efficiency_percent']['value']:.1f}%")
+        if "lifetime_years" in params:
+            key_bits.append(f"Life {params['lifetime_years']['value']:.0f}y")
+        brief = " | ".join(key_bits[:2])
+
+        name_parts = [f"{_tech_title(technology_id)} ({source_label}, {year})"]
+        title_hint = _paper_title_snippet(paper.title)
+        if title_hint:
+            name_parts.append(title_hint)
+        if brief:
+            name_parts.append(brief)
+        instance_name = " - ".join(name_parts)
 
         instance: dict[str, Any] = {
             "instance_id":   instance_id,
@@ -199,6 +249,15 @@ class Normalizer:
             "_paper_title":  paper.title,
             "_paper_year":   year,
             "_scraped_at":   datetime.now(timezone.utc).isoformat(),
+            "_extracted_params": {
+                p: {
+                    "value": d.get("value"),
+                    "unit": d.get("unit"),
+                    "confidence": d.get("confidence"),
+                    "source": d.get("source"),
+                }
+                for p, d in params.items()
+            },
         }
 
         # Map extracted params → catalogue field names
@@ -221,9 +280,13 @@ class Normalizer:
         parts = [source_label, str(year)]
         if paper.doi:
             parts.append(f"doi:{paper.doi}")
+        elif paper.url:
+            parts.append(str(paper.url))
         instance["reference_source"] = ", ".join(parts)
 
-        unique_countries = [c for c in sorted(set(paper.countries or [])) if len(c) == 2]
+        base_countries = [c for c in (paper.countries or []) if len(c) == 2]
+        inferred_from_text = _infer_paper_countries_from_text(paper)
+        unique_countries = sorted(set(base_countries + inferred_from_text))
         if unique_countries:
             instance["_paper_countries"] = unique_countries
             # Only assign a concrete country when the paper clearly maps to a single country.
@@ -231,5 +294,8 @@ class Normalizer:
                 iso2 = "GB" if unique_countries[0] == "UK" else unique_countries[0]
                 instance["country_iso2"] = iso2
                 instance["country"] = ISO2_TO_COUNTRY.get(iso2, iso2)
+                instance["country_inference_source"] = (
+                    "paper_metadata" if base_countries and len(base_countries) == 1 else "paper_text"
+                )
 
         return instance

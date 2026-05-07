@@ -16,10 +16,18 @@ import {
   fetchScraperCandidates,
   fetchScraperRuns,
   triggerScraperRun,
+  stopScraperRun,
   approveScraperCandidate,
   rejectScraperCandidate,
 } from "../../services/api";
-import type { ScraperStatus, ScraperCandidate, ScraperRun, ExtractedParam, ScraperSchedulerJob } from "../../types/api";
+import type {
+  ScraperStatus,
+  ScraperCandidate,
+  ScraperRun,
+  ScraperRunEvent,
+  ExtractedParam,
+  ScraperSchedulerJob,
+} from "../../types/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -422,6 +430,8 @@ function DashboardTab({
   loading,
   onRefresh,
   onRun,
+  onStop,
+  stopping,
   running,
   runStartTime,
   runs,
@@ -432,6 +442,8 @@ function DashboardTab({
   loading: boolean;
   onRefresh: () => void;
   onRun: () => void;
+  onStop: () => void;
+  stopping: boolean;
   running: boolean;
   runStartTime: Date | null;
   runs: ScraperRun[];
@@ -459,6 +471,10 @@ function DashboardTab({
   }
 
   const { scheduler, enabled_sources, candidates } = status;
+  const liveRun = status.current_run ?? null;
+  const logTail = (liveRun?.log_tail && liveRun.log_tail.length > 0)
+    ? liveRun.log_tail
+    : (status.current_log_tail ?? []);
 
   const nextJob: ScraperSchedulerJob | undefined =
     scheduler.jobs.length > 0
@@ -486,7 +502,11 @@ function DashboardTab({
         const progressPct = (running && avgSecs && elapsed > 0)
           ? Math.min(95, Math.round((elapsed / avgSecs) * 100))
           : null;
-        const remaining = (running && avgSecs) ? Math.max(0, avgSecs - elapsed) : null;
+        const elapsedSecs = liveRun?.elapsed_seconds ?? elapsed;
+        const progressPctLive = (running && avgSecs && elapsedSecs > 0)
+          ? Math.min(95, Math.round((elapsedSecs / avgSecs) * 100))
+          : null;
+        const remaining = (running && avgSecs) ? Math.max(0, avgSecs - elapsedSecs) : null;
 
         return running ? (
           <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 to-violet-600
@@ -498,12 +518,23 @@ function DashboardTab({
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm leading-none">Pipeline is running…</p>
                 <p className="text-indigo-200 text-xs mt-1">
-                  Querying {enabled_sources.length} source{enabled_sources.length !== 1 ? "s" : ""} across all technology categories
+                  {liveRun?.current_technology
+                    ? `Technology: ${liveRun.current_technology}`
+                    : `Querying ${enabled_sources.length} source${enabled_sources.length !== 1 ? "s" : ""}`}
                 </p>
+                <p className="text-indigo-100 text-[11px] mt-1">
+                  {liveRun?.current_source ? `Source: ${liveRun.current_source}` : "Source: preparing"}
+                  {liveRun?.current_phase ? ` • Phase: ${liveRun.current_phase}` : ""}
+                </p>
+                {liveRun && (
+                  <p className="text-indigo-200 text-[10px] mt-1">
+                    {liveRun.technologies_processed}/{Math.max(1, liveRun.technologies_total)} techs • {liveRun.papers_fetched} papers • {liveRun.candidates_created} candidates
+                  </p>
+                )}
                 {/* Phase labels */}
                 <div className="mt-2 flex items-center gap-3 text-[10px] font-semibold">
                   {["Fetch papers", "Extract params", "Store candidates"].map((phase, i) => {
-                    const phasePct = progressPct ?? 0;
+                    const phasePct = progressPctLive ?? 0;
                     const active = phasePct < 40 ? i === 0 : phasePct < 80 ? i === 1 : i === 2;
                     const done   = phasePct < 40 ? false : phasePct < 80 ? i === 0 : i < 2;
                     return (
@@ -523,7 +554,7 @@ function DashboardTab({
                 </div>
               </div>
               <div className="text-right flex-shrink-0 space-y-0.5">
-                <p className="text-2xl font-bold tabular-nums leading-none">{fmtElapsed(elapsed)}</p>
+                <p className="text-2xl font-bold tabular-nums leading-none">{fmtElapsed(elapsedSecs)}</p>
                 <p className="text-indigo-300 text-[10px]">elapsed</p>
                 {remaining !== null && (
                   <p className="text-indigo-200 text-[10px]">
@@ -537,10 +568,10 @@ function DashboardTab({
             </div>
             {/* Determinate or indeterminate progress bar */}
             <div className="h-1.5 bg-white/20">
-              {progressPct !== null ? (
+              {progressPctLive !== null ? (
                 <div
                   className="h-full bg-white/70 rounded-full transition-all duration-1000"
-                  style={{ width: `${progressPct}%` }}
+                  style={{ width: `${progressPctLive}%` }}
                 />
               ) : (
                 <div
@@ -569,6 +600,20 @@ function DashboardTab({
           </div>
         );
       })()}
+
+      {/* ── ACTIVE PROCESS STATUS ─────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-3 flex items-center gap-3">
+        <span className={`w-2.5 h-2.5 rounded-full ${(liveRun?.running ?? false) ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
+        <p className="text-sm font-semibold text-slate-700">
+          {(liveRun?.running ?? false) ? "Active pipeline process detected" : "No active pipeline process"}
+        </p>
+        {liveRun?.run_id && (
+          <span className="text-[10px] font-mono text-slate-400">run {String(liveRun.run_id).slice(0, 8)}</span>
+        )}
+        {liveRun?.current_phase && (
+          <span className="text-[10px] text-slate-500 ml-auto">phase: {liveRun.current_phase}</span>
+        )}
+      </div>
 
       {/* ── STAT CARDS ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -634,6 +679,18 @@ function DashboardTab({
               </span>
               {running ? "Running…" : "Run Now"}
             </button>
+            <button
+              onClick={onStop}
+              disabled={!running || stopping}
+              className="flex items-center gap-1.5 text-xs font-bold text-white bg-red-600
+                         hover:bg-red-700 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+              title={!running ? "No active run" : "Request pipeline stop"}
+            >
+              <span className={`material-symbols-outlined text-[14px] ${stopping ? "animate-spin" : ""}`}>
+                {stopping ? "progress_activity" : "stop"}
+              </span>
+              {stopping ? "Stopping…" : "Stop"}
+            </button>
           </div>
         </div>
       </div>
@@ -675,6 +732,52 @@ function DashboardTab({
             {runs.length > 0 ? `${runs.length} run${runs.length !== 1 ? "s" : ""}` : ""}
           </span>
         </div>
+
+        {(liveRun?.events?.length ?? 0) > 0 && (
+          <div className="px-5 py-4 border-b border-slate-100 bg-indigo-50/30">
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-2 h-2 rounded-full ${liveRun?.running ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">Live Events</p>
+              {liveRun?.running && <span className="text-[10px] text-indigo-500">running</span>}
+            </div>
+            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              {liveRun!.events.slice(-10).reverse().map((ev: ScraperRunEvent, i: number) => {
+                const tone = ev.level === "error"
+                  ? "text-red-700 bg-red-50"
+                  : ev.level === "warning"
+                    ? "text-amber-700 bg-amber-50"
+                    : "text-slate-700 bg-white";
+                return (
+                  <div key={`${ev.at}-${i}`} className={`rounded-lg border border-slate-100 px-3 py-1.5 ${tone}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-mono text-slate-400">{fmt(ev.at)}</span>
+                      {ev.technology_id && <span className="text-[9px] font-mono text-indigo-500">{ev.technology_id}</span>}
+                      {ev.source && <span className="text-[9px] font-mono text-violet-500">{ev.source}</span>}
+                    </div>
+                    <p className="text-[11px] leading-snug">{ev.message}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {logTail.length > 0 && (
+          <div className="px-5 py-4 border-b border-slate-100 bg-slate-950">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="material-symbols-outlined text-[13px] text-emerald-400">terminal</span>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">Pipeline Terminal</p>
+              <span className="ml-auto text-[9px] text-slate-400">{logTail.length} lines</span>
+            </div>
+            <div className="max-h-56 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 px-3 py-2">
+              {logTail.slice(-80).map((line, idx) => (
+                <p key={`${idx}-${line.slice(0, 18)}`} className="font-mono text-[10px] leading-relaxed text-emerald-200 whitespace-pre-wrap break-all">
+                  {line}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
 
         {runsError && (
           <div className="mx-5 my-4 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
@@ -1273,6 +1376,9 @@ export default function ScraperPanel({ token }: { token: string }) {
   const [runs,         setRuns]         = useState<ScraperRun[]>([]);
   const [runsLoading,  setRunsLoading]  = useState(false);
   const [runsError,    setRunsError]    = useState<string | null>(null);
+  const [stopping,     setStopping]     = useState(false);
+  const [awaitingStart, setAwaitingStart] = useState(false);
+  const isLiveRunning = Boolean(status?.current_run?.running);
 
   const loadStatus = useCallback(() => {
     setLoading(true);
@@ -1295,27 +1401,59 @@ export default function ScraperPanel({ token }: { token: string }) {
   // Initial load
   useEffect(() => { loadStatus(); loadRuns(); }, [loadStatus, loadRuns]);
 
-  // Auto-poll every 5 s while a run is active
+  // Poll status regularly so logs/timer appear even during run-start race windows.
   useEffect(() => {
-    if (!running) return;
     const id = setInterval(() => { loadStatus(); loadRuns(); }, 5000);
     return () => clearInterval(id);
-  }, [running, loadStatus, loadRuns]);
+  }, [loadStatus, loadRuns]);
+
+  useEffect(() => {
+    if (isLiveRunning) {
+      setAwaitingStart(false);
+      setRunning(false);
+      return;
+    }
+    if (awaitingStart && !isLiveRunning) {
+      const timeoutId = setTimeout(() => setAwaitingStart(false), 30000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [awaitingStart, isLiveRunning]);
 
   const handleRun = async () => {
     setRunning(true);
+    setAwaitingStart(true);
     setRunMsg(null);
     setRunStartTime(new Date());
     try {
       const res = await triggerScraperRun(token);
       setRunMsg(res.message);
+      loadStatus();
+      loadRuns();
       // Refresh status + runs after a short delay so counts update
       setTimeout(() => { loadStatus(); loadRuns(); }, 3000);
     } catch (e) {
       setRunMsg(e instanceof Error ? e.message : "Run failed.");
-    } finally {
+      setAwaitingStart(false);
       setRunning(false);
+    } finally {
       setRunStartTime(null);
+    }
+  };
+
+  const handleStop = async () => {
+    setStopping(true);
+    try {
+      const res = await stopScraperRun(token);
+      setRunMsg(res.message);
+      loadStatus();
+      loadRuns();
+      setTimeout(() => { loadStatus(); loadRuns(); }, 2000);
+    } catch (e) {
+      setRunMsg(e instanceof Error ? e.message : "Stop failed.");
+    } finally {
+      setStopping(false);
+      setAwaitingStart(false);
+      setRunning(false);
     }
   };
 
@@ -1390,7 +1528,9 @@ export default function ScraperPanel({ token }: { token: string }) {
           loading={loading}
           onRefresh={() => { loadStatus(); loadRuns(); }}
           onRun={handleRun}
-          running={running}
+          onStop={handleStop}
+          stopping={stopping}
+          running={running || awaitingStart || isLiveRunning}
           runStartTime={runStartTime}
           runs={runs}
           runsLoading={runsLoading}

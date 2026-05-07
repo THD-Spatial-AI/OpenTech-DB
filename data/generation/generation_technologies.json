@@ -27,7 +27,7 @@
       "BSW Wind Marktbericht 2023",
       "Bundesnetzagentur EEG Ausschreibungsdaten 2023"
     ],
-    "last_updated": "2026-04-08T13:52:22.173330+00:00"
+    "last_updated": "2026-05-07T07:41:21.284197+00:00"
   },
   "technologies": [
     {
@@ -362,6 +362,42 @@
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
           "reference_source": "IEA Carport PV 2023; Bouygues / Legrand solar carport"
+        },
+        {
+          "_source": "crossref",
+          "_scraped": true,
+          "_paper_doi": "10.9790/1684-2104016274",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-05-05T11:21:58.848431+00:00",
+          "instance_id": "solar_pv_utility_2024_scraped_10_9790_1684_2104016",
+          "_paper_title": "Economic Potential of Solar Projects in India: Assessing Levelized Cost of Electricity andPayback Period withVariations in PV Module Efficiency and Solar Irradiation",
+          "instance_name": "Solar Pv Utility (scraped 2024, Crossref)",
+          "reference_source": "Crossref, 2024, doi:10.9790/1684-2104016274",
+          "opex_var_usd_per_mwh": 49.0
+        },
+        {
+          "_source": "crossref",
+          "_scraped": true,
+          "_paper_doi": "10.59018/082436",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-05-05T11:21:58.744224+00:00",
+          "instance_id": "solar_pv_utility_2024_scraped_10_59018_082436",
+          "_paper_title": "Electrical characteristics of photovoltaic (PV) solar panel and hybrid PV/thermal (PV/T) solar panel",
+          "instance_name": "Solar Pv Utility (scraped 2024, Crossref)",
+          "reference_source": "Crossref, 2024, doi:10.59018/082436",
+          "efficiency_percent": 4.06
+        },
+        {
+          "_source": "crossref",
+          "_scraped": true,
+          "_paper_doi": "10.18623/rvd.v22.n3.3436",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-05T11:21:58.263063+00:00",
+          "instance_id": "solar_pv_utility_2025_scraped_10_18623_rvd_v22_n3_",
+          "_paper_title": "TOPOGRAPHICAL AND TECHNO-ECONOMIC ASSESSMENT OF UTILITY-SCALE SOLAR PV DEVELOPMENT IN LEDEK MOUNTAIN, CENTRAL JAVA, INDONESIA",
+          "instance_name": "Solar Pv Utility (scraped 2025, Crossref)",
+          "reference_source": "Crossref, 2025, doi:10.18623/rvd.v22.n3.3436",
+          "typical_capacity_mw": 18.0
         }
       ]
     },
@@ -3347,6 +3383,365 @@
           "co2_emission_factor_operational_g_per_kwh": 250.0,
           "ramping_rate_percent_per_min": 4.0,
           "reference_source": "IEA IGCC syngas 2023; Eastman/Air Products IGCC"
+        },
+        {
+          "_source": "crossref",
+          "_scraped": true,
+          "_paper_doi": "10.63680/ijsate052597.110",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-05T11:30:40.905580+00:00",
+          "instance_id": "ccgt_2025_scraped_10_63680_ijsate05259",
+          "_paper_title": "Engineering and Economic Implications of Conversion of a Simple Cycle Gas Turbine Plant to a Combined Cycle Plant",
+          "instance_name": "Ccgt (scraped 2025, Crossref)",
+          "lifetime_years": 20.0,
+          "reference_source": "Crossref, 2025, doi:10.63680/ijsate052597.110"
+        },
+        {
+          "_source": "crossref",
+          "_scraped": true,
+          "_paper_doi": "10.1115/1.4069489",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-05T11:30:40.798882+00:00",
+          "instance_id": "ccgt_2025_scraped_10_1115_1_4069489",
+          "_paper_title": "Integrating Turbine Blade Cooling With Exhaust Gas Recirculation for Enhanced Carbon Capture in Combined Cycle Gas Turbine",
+          "instance_name": "Ccgt (scraped 2025, Crossref)",
+          "reference_source": "Crossref, 2025, doi:10.1115/1.4069489",
+          "efficiency_percent": 2.0
+        },
+        {
+          "_source": "crossref",
+          "_scraped": true,
+          "_paper_doi": "10.3390/su16010075",
+          "_paper_year": 2023,
+          "_scraped_at": "2026-05-05T11:30:40.685176+00:00",
+          "instance_id": "ccgt_2023_scraped_10_3390_su16010075",
+          "_paper_title": "Economic Analysis of Gas Turbine Using to Increase Efficiency of the Organic Rankine Cycle",
+          "instance_name": "Ccgt (scraped 2023, Crossref)",
+          "reference_source": "Crossref, 2023, doi:10.3390/su16010075",
+          "opex_var_usd_per_mwh": 200.0
+        },
+        {
+          "_source": "crossref",
+          "_scraped": true,
+          "_paper_doi": "10.1115/1.4069488",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-05T11:30:40.333182+00:00",
+          "instance_id": "ccgt_2025_scraped_10_1115_1_4069488",
+          "_paper_title": "Efficiency Enhancement in Pressure Gain Combustion Combined Cycle Gas Turbine by Blade Cooling Integration With Bottoming Cycle",
+          "instance_name": "Ccgt (scraped 2025, Crossref)",
+          "reference_source": "Crossref, 2025, doi:10.1115/1.4069488",
+          "efficiency_percent": 65.0
+        },
+        {
+          "_source": "open_alex",
+          "_scraped": true,
+          "_paper_doi": "10.1016/j.applthermaleng.2023.121456",
+          "_paper_year": 2023,
+          "_scraped_at": "2026-05-05T11:29:50.143136+00:00",
+          "instance_id": "ccgt_2023_scraped_10_1016_j_appltherma",
+          "_paper_title": "Heat pump-driven adsorption CO2 capture for simple and cost-effective retrofits of coal power plants",
+          "instance_name": "Ccgt (scraped 2023, Open Alex)",
+          "_paper_countries": [
+            "IT",
+            "NO"
+          ],
+          "reference_source": "Open Alex, 2023, doi:10.1016/j.applthermaleng.2023.121456",
+          "opex_var_usd_per_mwh": 109.12000000000002
+        },
+        {
+          "_source": "open_alex",
+          "country": "United States",
+          "_scraped": true,
+          "_paper_doi": "10.3390/en16134955",
+          "_paper_year": 2023,
+          "_scraped_at": "2026-05-05T11:29:50.040426+00:00",
+          "instance_id": "ccgt_1976kw_2023_scraped_10_3390_en16134955",
+          "_paper_title": "Techno-Economic Analysis of Solid Oxide Fuel Cell-Gas Turbine Hybrid Systems for Stationary Power Applications Using Renewable Hydrogen",
+          "country_iso2": "US",
+          "instance_name": "Ccgt – 1976 $/kW (scraped 2023, Open Alex)",
+          "_paper_countries": [
+            "US"
+          ],
+          "capex_usd_per_kw": 1976.0,
+          "reference_source": "Open Alex, 2023, doi:10.3390/en16134955",
+          "efficiency_percent": 70.22
+        },
+        {
+          "_source": "open_alex",
+          "country": "Italy",
+          "_scraped": true,
+          "_paper_doi": "10.1016/j.biombioe.2024.107315",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-05-05T11:29:49.933202+00:00",
+          "instance_id": "ccgt_2024_scraped_10_1016_j_biombioe_2",
+          "_paper_title": "Bio-methanol with negative CO2 emissions from residual forestry biomass gasification: Modelling and techno-economic assessment of different process configurations",
+          "country_iso2": "IT",
+          "instance_name": "Ccgt (scraped 2024, Open Alex)",
+          "_paper_countries": [
+            "IT"
+          ],
+          "reference_source": "Open Alex, 2024, doi:10.1016/j.biombioe.2024.107315",
+          "efficiency_percent": 50.0
+        },
+        {
+          "_source": "open_alex",
+          "country": "Poland",
+          "_scraped": true,
+          "_paper_doi": "10.3390/en18154198",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-05T11:29:49.815930+00:00",
+          "instance_id": "ccgt_2025_scraped_10_3390_en18154198",
+          "_paper_title": "Comprehensive Energy and Economic Analysis of Selected Variants of a Large-Scale Photovoltaic Power Plant in a Temperate Climate",
+          "country_iso2": "PL",
+          "instance_name": "Ccgt (scraped 2025, Open Alex)",
+          "_paper_countries": [
+            "PL"
+          ],
+          "reference_source": "Open Alex, 2025, doi:10.3390/en18154198",
+          "efficiency_percent": 9.0
+        },
+        {
+          "_source": "open_alex",
+          "country": "Italy",
+          "_scraped": true,
+          "_paper_doi": "10.1007/s12649-025-02948-3",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-05T11:29:49.708987+00:00",
+          "instance_id": "ccgt_2025_scraped_10_1007_s12649_025_0",
+          "_paper_title": "Biomass Derived Combined Heat and Power from Decentralized Small-Scale Gasification: Updated Cost Conditions for the Italian Mountain Context and Competitiveness in Future Energy Markets",
+          "country_iso2": "IT",
+          "instance_name": "Ccgt (scraped 2025, Open Alex)",
+          "_paper_countries": [
+            "IT"
+          ],
+          "reference_source": "Open Alex, 2025, doi:10.1007/s12649-025-02948-3",
+          "opex_var_usd_per_mwh": 426.8
+        },
+        {
+          "_source": "open_alex",
+          "country": "United Kingdom",
+          "_scraped": true,
+          "_paper_doi": "10.36688/ewtec-2023-552",
+          "_paper_year": 2023,
+          "_scraped_at": "2026-05-05T11:29:49.599138+00:00",
+          "instance_id": "ccgt_2023_scraped_10_36688_ewtec_2023_",
+          "_paper_title": "Dimensioning and optimization of multi-source offshore renewable energy parks",
+          "country_iso2": "GB",
+          "instance_name": "Ccgt (scraped 2023, Open Alex)",
+          "lifetime_years": 30.0,
+          "_paper_countries": [
+            "GB"
+          ],
+          "reference_source": "Open Alex, 2023, doi:10.36688/ewtec-2023-552"
+        },
+        {
+          "_source": "open_alex",
+          "country": "United States",
+          "_scraped": true,
+          "_paper_doi": "10.3390/en16134867",
+          "_paper_year": 2023,
+          "_scraped_at": "2026-05-05T11:29:49.493466+00:00",
+          "instance_id": "ccgt_2023_scraped_10_3390_en16134867",
+          "_paper_title": "Techno-Economic Analysis and Optimization of a Compressed-Air Energy Storage System Integrated with a Natural Gas Combined-Cycle Plant",
+          "country_iso2": "US",
+          "instance_name": "Ccgt (scraped 2023, Open Alex)",
+          "_paper_countries": [
+            "US"
+          ],
+          "reference_source": "Open Alex, 2023, doi:10.3390/en16134867",
+          "opex_var_usd_per_mwh": 145.0
+        },
+        {
+          "_source": "open_alex",
+          "country": "United Kingdom",
+          "_scraped": true,
+          "_paper_doi": "10.1016/j.energy.2023.128158",
+          "_paper_year": 2023,
+          "_scraped_at": "2026-05-05T11:29:49.391328+00:00",
+          "instance_id": "ccgt_2023_scraped_10_1016_j_energy_202",
+          "_paper_title": "Multi-objective optimisation of a power generation system integrating solid oxide fuel cell and recuperated supercritical carbon dioxide cycle",
+          "country_iso2": "GB",
+          "instance_name": "Ccgt (scraped 2023, Open Alex)",
+          "_paper_countries": [
+            "GB"
+          ],
+          "reference_source": "Open Alex, 2023, doi:10.1016/j.energy.2023.128158",
+          "efficiency_percent": 64.0
+        },
+        {
+          "_source": "open_alex",
+          "country": "United Kingdom",
+          "_scraped": true,
+          "_paper_doi": "10.3389/fenrg.2024.1511996",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-05-05T11:29:49.280919+00:00",
+          "instance_id": "ccgt_2024_scraped_10_3389_fenrg_2024_1",
+          "_paper_title": "Thermodynamic integration in combined fuel and power plants producing low carbon hydrogen and power with CCUS",
+          "country_iso2": "GB",
+          "instance_name": "Ccgt (scraped 2024, Open Alex)",
+          "_paper_countries": [
+            "GB"
+          ],
+          "reference_source": "Open Alex, 2024, doi:10.3389/fenrg.2024.1511996",
+          "efficiency_percent": 2.6
+        },
+        {
+          "_source": "open_alex",
+          "country": "Poland",
+          "_scraped": true,
+          "_paper_doi": "10.3390/en17081970",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-05-05T11:29:49.173631+00:00",
+          "instance_id": "ccgt_2024_scraped_10_3390_en17081970",
+          "_paper_title": "Solution for Post-Mining Sites: Thermo-Economic Analysis of a Large-Scale Integrated Energy Storage System",
+          "country_iso2": "PL",
+          "instance_name": "Ccgt (scraped 2024, Open Alex)",
+          "_paper_countries": [
+            "PL"
+          ],
+          "reference_source": "Open Alex, 2024, doi:10.3390/en17081970",
+          "opex_var_usd_per_mwh": 83.44600000000001
+        },
+        {
+          "_source": "open_alex",
+          "_scraped": true,
+          "_paper_doi": "10.1016/j.esr.2024.101432",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-05-05T11:29:49.061993+00:00",
+          "instance_id": "ccgt_2024_scraped_10_1016_j_esr_2024_1",
+          "_paper_title": "The long term price elastic demand of hydrogen – A multi-model analysis for Germany",
+          "instance_name": "Ccgt (scraped 2024, Open Alex)",
+          "_paper_countries": [
+            "CH",
+            "DE"
+          ],
+          "reference_source": "Open Alex, 2024, doi:10.1016/j.esr.2024.101432",
+          "opex_var_usd_per_mwh": 61.60000000000001
+        },
+        {
+          "_source": "open_alex",
+          "_scraped": true,
+          "_paper_doi": "10.1016/j.applthermaleng.2024.123294",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-05-05T11:29:48.780819+00:00",
+          "instance_id": "ccgt_2024_scraped_10_1016_j_appltherma",
+          "_paper_title": "Onboard pre-combustion carbon capture with combined-cycle gas turbine power plant architectures for LNG-fuelled ship propulsion",
+          "instance_name": "Ccgt (scraped 2024, Open Alex)",
+          "_paper_countries": [
+            "GB",
+            "SG"
+          ],
+          "reference_source": "Open Alex, 2024, doi:10.1016/j.applthermaleng.2024.123294",
+          "efficiency_percent": 51.6
+        },
+        {
+          "_source": "semantic_scholar",
+          "_scraped": true,
+          "_paper_doi": "10.1149/ma2024-02422817mtgabs",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-05-05T10:59:13.230035+00:00",
+          "instance_id": "ccgt_2024_scraped_10_1149_ma2024_02422",
+          "_paper_title": "Development of Noble-Metal Free Bifunctional Catalysts for Hydrogen Evolution Reaction (HER) and Oxygen Evolution Reaction (OER) for the Application in an Electrical Rechargeable Galvanic Hydrogen Storage System",
+          "instance_name": "Ccgt (scraped 2024, Semantic Scholar)",
+          "reference_source": "Semantic Scholar, 2024, doi:10.1149/ma2024-02422817mtgabs",
+          "efficiency_percent": 80.0
+        },
+        {
+          "_source": "semantic_scholar",
+          "_scraped": true,
+          "_paper_doi": "10.1093/ce/zkae078",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-04-30T13:17:43.294615+00:00",
+          "instance_id": "ccgt_2024_scraped_10_1093_ce_zkae078",
+          "_paper_title": "Global status and prospects for hybrid hydrogen-natural gas systems for power plants in Sub-Saharan Africa",
+          "instance_name": "Ccgt (scraped 2024, Semantic Scholar)",
+          "reference_source": "Semantic Scholar, 2024, doi:10.1093/ce/zkae078",
+          "efficiency_percent": 42.0
+        },
+        {
+          "_source": "semantic_scholar",
+          "_scraped": true,
+          "_paper_doi": "10.3390/cleantechnol6040065",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-04-30T13:17:43.202321+00:00",
+          "instance_id": "ccgt_2024_scraped_10_3390_cleantechnol",
+          "_paper_title": "Techno-Economic Feasibility Analysis of Post-Combustion Carbon Capture in an NGCC Power Plant in Uzbekistan",
+          "instance_name": "Ccgt (scraped 2024, Semantic Scholar)",
+          "reference_source": "Semantic Scholar, 2024, doi:10.3390/cleantechnol6040065",
+          "efficiency_percent": 55.8
+        },
+        {
+          "_source": "semantic_scholar",
+          "_scraped": true,
+          "_paper_doi": "10.1149/ma2025-03120mtgabs",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-04-30T13:17:43.105965+00:00",
+          "instance_id": "ccgt_2025_scraped_10_1149_ma2025_03120",
+          "_paper_title": "Coupled Transient Operation and Emission Analysis of a Natural Gas-Fueled SOFC-Battery Hybrid Demonstrator for Maritime Application",
+          "instance_name": "Ccgt (scraped 2025, Semantic Scholar)",
+          "reference_source": "Semantic Scholar, 2025, doi:10.1149/ma2025-03120mtgabs",
+          "efficiency_percent": 60.0
+        },
+        {
+          "_source": "semantic_scholar",
+          "_scraped": true,
+          "_paper_doi": "10.37933/nipes/7.3.2025.1630",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-04-30T13:17:43.007338+00:00",
+          "instance_id": "ccgt_2025_scraped_10_37933_nipes_7_3_2",
+          "_paper_title": "Energy Analysis and Optimization of Open Cycle Gas Turbine Power Plant Through Exhaust Heat Recovery",
+          "instance_name": "Ccgt (scraped 2025, Semantic Scholar)",
+          "reference_source": "Semantic Scholar, 2025, doi:10.37933/nipes/7.3.2025.1630",
+          "efficiency_percent": 28.89,
+          "co2_emission_factor_operational_g_per_kwh": 260.0
+        },
+        {
+          "_source": "semantic_scholar",
+          "_scraped": true,
+          "_paper_doi": "10.3390/en19081887",
+          "_paper_year": 2026,
+          "_scraped_at": "2026-04-30T13:17:42.910580+00:00",
+          "instance_id": "ccgt_2026_scraped_10_3390_en19081887",
+          "_paper_title": "High-Efficiency Synthetic Natural Gas and Decarbonised Power Production from Biogenic Waste: Simulation, Energy Analysis and Thermal Optimisation of the Integrated System",
+          "instance_name": "Ccgt (scraped 2026, Semantic Scholar)",
+          "reference_source": "Semantic Scholar, 2026, doi:10.3390/en19081887",
+          "efficiency_percent": 70.1
+        },
+        {
+          "_source": "semantic_scholar",
+          "_scraped": true,
+          "_paper_doi": "10.31857/s0002331024010091",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-04-30T13:17:42.817938+00:00",
+          "instance_id": "ccgt_2024_scraped_10_31857_s0002331024",
+          "_paper_title": "Thermodynamic Analysis of a Trinary Power Plant",
+          "instance_name": "Ccgt (scraped 2024, Semantic Scholar)",
+          "reference_source": "Semantic Scholar, 2024, doi:10.31857/s0002331024010091",
+          "efficiency_percent": 51.3
+        },
+        {
+          "_source": "semantic_scholar",
+          "_scraped": true,
+          "_paper_doi": "10.5541/ijot.1649710",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-04-30T13:17:42.720778+00:00",
+          "instance_id": "ccgt_2025_scraped_10_5541_ijot_1649710",
+          "_paper_title": "Energy Analysis of ISCC Power Plant Under the Climatic Conditions of Hassi R'Mel in Algeria",
+          "instance_name": "Ccgt (scraped 2025, Semantic Scholar)",
+          "reference_source": "Semantic Scholar, 2025, doi:10.5541/ijot.1649710",
+          "efficiency_percent": 69.0
+        },
+        {
+          "_source": "semantic_scholar",
+          "_scraped": true,
+          "_paper_doi": "10.24425/ather.2024.151999",
+          "_paper_year": 2024,
+          "_scraped_at": "2026-04-30T13:17:42.495807+00:00",
+          "instance_id": "ccgt_2024_scraped_10_24425_ather_2024_",
+          "_paper_title": "Carbon dioxide capture in large-scale CCGT power plant from flue gases obtained from various fuel mixtures",
+          "instance_name": "Ccgt (scraped 2024, Semantic Scholar)",
+          "reference_source": "Semantic Scholar, 2024, doi:10.24425/ather.2024.151999",
+          "efficiency_percent": 90.0
         }
       ]
     },
@@ -3677,6 +4072,42 @@
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 30.0,
           "reference_source": "IRENA Smart Grids 2035; BloombergNEF VPP 2030"
+        },
+        {
+          "_source": "crossref",
+          "_scraped": true,
+          "_paper_doi": "10.37934/arfmts.104.1.3746",
+          "_paper_year": 2023,
+          "_scraped_at": "2026-05-07T07:40:37.493087+00:00",
+          "instance_id": "ocgt_2023_scraped_10_37934_arfmts_104_",
+          "_paper_title": "Exergy and Energy Analysis of Gas Turbine Generator X Combined Cycle Power Plant Using Cycle-Tempo Software",
+          "instance_name": "Ocgt (scraped 2023, Crossref)",
+          "reference_source": "Crossref, 2023, doi:10.37934/arfmts.104.1.3746",
+          "efficiency_percent": 34.069
+        },
+        {
+          "_source": "crossref",
+          "_scraped": true,
+          "_paper_doi": "10.55041/ijsrem41936",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-07T07:40:37.418321+00:00",
+          "instance_id": "ocgt_2025_scraped_10_55041_ijsrem41936",
+          "_paper_title": "Economic Evaluation of a Combined Cycle Gas Turbine Power Plant Integrated with an Absorption Chiller",
+          "instance_name": "Ocgt (scraped 2025, Crossref)",
+          "reference_source": "Crossref, 2025, doi:10.55041/ijsrem41936",
+          "efficiency_percent": 52.8
+        },
+        {
+          "_source": "crossref",
+          "_scraped": true,
+          "_paper_doi": "10.3390/en16155589",
+          "_paper_year": 2023,
+          "_scraped_at": "2026-05-07T07:40:37.350912+00:00",
+          "instance_id": "ocgt_2023_scraped_10_3390_en16155589",
+          "_paper_title": "Thermodynamic Analysis and Improvement Potential of Helium Closed Cycle Gas Turbine Power Plant at Four Loads",
+          "instance_name": "Ocgt (scraped 2023, Crossref)",
+          "reference_source": "Crossref, 2023, doi:10.3390/en16155589",
+          "efficiency_percent": 31.27
         }
       ]
     },

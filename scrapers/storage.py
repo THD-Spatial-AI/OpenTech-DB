@@ -175,6 +175,21 @@ class CandidateStore:
             return self._sb_get(candidate_id)
         return self._file_find(candidate_id)
 
+    def has_similar_candidate(
+        self,
+        technology_id: str,
+        source: str,
+        paper_doi: str | None = None,
+        paper_title: str | None = None,
+    ) -> bool:
+        """
+        True if a candidate already exists for the same tech+source+paper identity.
+        Uses DOI when available, otherwise falls back to normalized title.
+        """
+        if self._sb:
+            return self._sb_has_similar(technology_id, source, paper_doi, paper_title)
+        return self._file_has_similar(technology_id, source, paper_doi, paper_title)
+
     def count_by_status(self) -> dict[str, int]:
         if self._sb:
             return self._sb_count()
@@ -289,6 +304,33 @@ class CandidateStore:
             logger.error("Supabase count failed: %s", exc)
         return counts
 
+    def _sb_has_similar(
+        self,
+        technology_id: str,
+        source: str,
+        paper_doi: str | None,
+        paper_title: str | None,
+    ) -> bool:
+        try:
+            q = (
+                self._sb.table("scraper_candidates")
+                .select("candidate_id")
+                .eq("technology_id", technology_id)
+                .eq("source", source)
+            )
+            if paper_doi:
+                resp = q.eq("paper_doi", paper_doi).limit(1).execute()
+                return bool(resp.data)
+
+            if paper_title:
+                # Fallback: exact title match when DOI is absent.
+                resp = q.eq("paper_title", paper_title).limit(1).execute()
+                return bool(resp.data)
+            return False
+        except Exception as exc:
+            logger.debug("Supabase has_similar check failed: %s", exc)
+            return False
+
     def _sb_log_run(self, run_meta: dict[str, Any]) -> None:
         row = {
             "run_id":                 run_meta.get("run_id", str(uuid.uuid4())),
@@ -391,6 +433,32 @@ class CandidateStore:
                 except Exception:
                     return None
         return None
+
+    def _file_has_similar(
+        self,
+        technology_id: str,
+        source: str,
+        paper_doi: str | None,
+        paper_title: str | None,
+    ) -> bool:
+        title_norm = (paper_title or "").strip().lower()
+        for d in (self._pending, self._approved, self._rejected):
+            for path in d.glob("*.json"):
+                try:
+                    candidate = json.loads(path.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                if candidate.get("technology_id") != technology_id:
+                    continue
+                if candidate.get("source") != source:
+                    continue
+                existing_doi = (candidate.get("paper_doi") or "").strip()
+                if paper_doi and existing_doi and existing_doi == paper_doi.strip():
+                    return True
+                existing_title = (candidate.get("paper_title") or "").strip().lower()
+                if not paper_doi and title_norm and existing_title == title_norm:
+                    return True
+        return False
 
     def _file_log_run(self, run_meta: dict[str, Any]) -> None:
         log_path = self._runs / "run_log.json"

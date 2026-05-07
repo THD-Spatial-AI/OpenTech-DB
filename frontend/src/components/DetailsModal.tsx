@@ -68,6 +68,7 @@ const SOURCE_URLS: Record<string, string> = {
 function sourceBadge(source?: string | null) {
   if (!source) return null;
   const key = source.split(" ")[0].toLowerCase();
+  const label = source.length > 36 ? `${source.slice(0, 35)}…` : source;
   const colours = SOURCE_COLOURS[key] ?? { bg: "#eceff1", text: "#546e7a", border: "#546e7a" };
   const url = SOURCE_URLS[key];
 
@@ -76,7 +77,7 @@ function sourceBadge(source?: string | null) {
       className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold border"
       style={{ background: colours.bg, color: colours.text, borderColor: `${colours.border}33` }}
     >
-      {source.split(" ")[0].toUpperCase()}
+      {label}
       {url && (
         <span className="material-symbols-outlined" style={{ fontSize: "10px" }}>open_in_new</span>
       )}
@@ -182,7 +183,20 @@ function InstanceRow({
   const mainSource =
     inst.capex_per_kw?.source ??
     inst.opex_fixed_per_kw_yr?.source ??
+    (typeof inst.extra?.reference_source === "string" ? inst.extra.reference_source : null) ??
+    (typeof inst.extra?._source === "string" ? inst.extra._source : null) ??
     inst.manufacturer;
+
+  const extraEntries = Object.entries(inst.extra ?? {})
+    .filter(([k, v]) => {
+      if (v === null || v === "") return false;
+      return ![
+        "instance_id", "scale", "country", "country_iso2", "location", "country_code",
+        "reference_source", "_source", "_paper_doi", "_paper_title", "_paper_year", "_scraped_at",
+        "_paper_countries",
+      ].includes(k);
+    })
+    .slice(0, 3);
 
   return (
     <tr
@@ -205,6 +219,20 @@ function InstanceRow({
             JSON
           </button>
         </div>
+        {extraEntries.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {extraEntries.map(([k, v]) => (
+              <span
+                key={k}
+                className="inline-flex items-center gap-1 rounded-full border border-outline-variant/40 bg-surface-container px-1.5 py-0.5 text-[9px] text-on-surface-variant"
+                title={`${k}: ${String(v)}`}
+              >
+                <span className="font-semibold">{k.replace(/^_+/, "").replace(/_/g, " ")}</span>
+                <span className="font-mono">{typeof v === "number" ? fmt(v, 3) : String(v)}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </td>
       {/* Capacity */}
       <td className="px-5 py-5 font-medium text-center">
@@ -267,6 +295,12 @@ function exportToCSV(tech: Technology): void {
   ];
   const rows = tech.instances.map((inst) => {
     const eff = inst.electrical_efficiency?.value ?? inst.thermal_efficiency?.value;
+    const source =
+      inst.capex_per_kw?.source ??
+      inst.opex_fixed_per_kw_yr?.source ??
+      (typeof inst.extra?.reference_source === "string" ? inst.extra.reference_source : null) ??
+      (typeof inst.extra?._source === "string" ? inst.extra._source : null) ??
+      inst.manufacturer ?? "";
     return [
       inst.label,
       inst.capex_per_kw?.value ?? "",
@@ -275,7 +309,7 @@ function exportToCSV(tech: Technology): void {
       inst.economic_lifetime_yr?.value ?? "",
       inst.discount_rate ? (inst.discount_rate.value * 100).toFixed(1) : "",
       inst.co2_emission_factor ? (inst.co2_emission_factor.value * 1000).toFixed(0) : "",
-      inst.capex_per_kw?.source ?? inst.manufacturer ?? "",
+      source,
     ];
   });
 

@@ -239,6 +239,37 @@ export interface ScraperStatus {
   enabled_sources: string[];
   candidates: ScraperCandidateCounts;
   last_run: ScraperLastRun | null;
+  current_run?: ScraperCurrentRun | null;
+  current_log_tail?: string[];
+}
+
+export interface ScraperRunEvent {
+  at: string;
+  level: "info" | "warning" | "error" | string;
+  message: string;
+  phase?: string;
+  technology_id?: string;
+  source?: string;
+  paper_id?: string;
+}
+
+export interface ScraperCurrentRun {
+  run_id: string;
+  running: boolean;
+  started_at: string | null;
+  finished_at: string | null;
+  elapsed_seconds: number;
+  current_phase: string | null;
+  current_technology: string | null;
+  current_source: string | null;
+  technologies_total: number;
+  technologies_processed: number;
+  sources_total: number;
+  papers_fetched: number;
+  candidates_created: number;
+  errors_count: number;
+  events: ScraperRunEvent[];
+  log_tail?: string[];
 }
 
 export interface ScraperRun {

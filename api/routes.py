@@ -207,9 +207,23 @@ def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> d
     Convert one flat catalogue instance dict into a dict that matches
     the EquipmentInstance Pydantic schema (nested ParameterValue objects).
     """
-    cap_mw      = inst.get("typical_capacity_mw")
-    eff_pct     = inst.get("efficiency_percent")
-    co2_g_kwh   = inst.get("co2_emission_factor_operational_g_per_kwh")
+    extracted = inst.get("_extracted_params") if isinstance(inst.get("_extracted_params"), dict) else {}
+
+    def _value_from_inst(primary_key: str, extracted_key: str | None = None) -> Any:
+        if inst.get(primary_key) is not None:
+            return inst.get(primary_key)
+        key = extracted_key or primary_key
+        entry = extracted.get(key)
+        if isinstance(entry, dict):
+            return entry.get("value")
+        return None
+
+    cap_mw      = _value_from_inst("typical_capacity_mw")
+    eff_pct     = _value_from_inst("efficiency_percent")
+    co2_g_kwh   = _value_from_inst(
+        "co2_emission_factor_operational_g_per_kwh",
+        "co2_emission_factor_g_per_kwh",
+    )
     ramp        = inst.get("ramping_rate_percent_per_min")
     ref         = inst.get("reference_source") or source
 
@@ -222,6 +236,31 @@ def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> d
 
     label = inst.get("instance_name") or inst.get("instance_id", "Unknown")
 
+    explicit_extra = {
+        "instance_id":                   inst.get("instance_id"),
+        "scale":                         inst.get("scale"),
+        "country_iso2":                  inst.get("country_iso2"),
+        "country":                       inst.get("country"),
+        "location":                      inst.get("location"),
+        "country_code":                  inst.get("country_code"),
+        "reference_source":              inst.get("reference_source"),
+        "degradation_rate_percent_per_yr": inst.get("degradation_rate_percent_per_yr"),
+        "construction_time_years":         inst.get("construction_time_years"),
+        **({"energy_capacity_mwh": inst["energy_capacity_mwh"]}
+            if "energy_capacity_mwh" in inst else {}),
+        **({"duration_hours": inst["duration_hours"]}
+            if "duration_hours" in inst else {}),
+        **({"corridor_length_km": inst["corridor_length_km"]}
+            if "corridor_length_km" in inst else {}),
+    }
+    reserved = {
+        "instance_id", "instance_name", "reference_source", "generation_profile",
+        "typical_capacity_mw", "capex_usd_per_kw", "opex_fixed_usd_per_kw_yr",
+        "opex_var_usd_per_mwh", "efficiency_percent", "lifetime_years",
+        "co2_emission_factor_operational_g_per_kwh", "ramping_rate_percent_per_min",
+    }
+    passthrough_extra = {k: v for k, v in inst.items() if k not in reserved}
+
     return {
         "id":   str(uuid.uuid5(_UUID_NS, inst.get("instance_id", label))),
         "label": label,
@@ -230,10 +269,10 @@ def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> d
         "life_cycle_stage": _detect_lifecycle(label),
 
         # Economic
-        "capex_per_kw":          _pv(inst.get("capex_usd_per_kw"),         "USD/kW",     ref),
-        "opex_fixed_per_kw_yr":  _pv(inst.get("opex_fixed_usd_per_kw_yr"), "USD/kW/yr",  ref),
-        "opex_variable_per_mwh": _pv(inst.get("opex_var_usd_per_mwh"),     "USD/MWh",    ref),
-        "economic_lifetime_yr":  _pv(inst.get("lifetime_years"),            "years",      ref),
+        "capex_per_kw":          _pv(_value_from_inst("capex_usd_per_kw"),                "USD/kW",     ref),
+        "opex_fixed_per_kw_yr":  _pv(_value_from_inst("opex_fixed_usd_per_kw_yr"),        "USD/kW/yr",  ref),
+        "opex_variable_per_mwh": _pv(_value_from_inst("opex_var_usd_per_mwh"),            "USD/MWh",    ref),
+        "economic_lifetime_yr":  _pv(_value_from_inst("lifetime_years"),                  "years",      ref),
 
         # Technical
         "electrical_efficiency": _pv(eff_fraction, "fraction", ref),
@@ -248,22 +287,7 @@ def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> d
         "generation_profile": _load_generation_profile(inst.get("generation_profile"), base_dir, ref),
 
         # Pass-through extras
-        "extra": {
-            "instance_id":                   inst.get("instance_id"),
-            "scale":                         inst.get("scale"),
-            "country_iso2":                  inst.get("country_iso2"),
-            "country":                       inst.get("country"),
-            "location":                      inst.get("location"),
-            "country_code":                  inst.get("country_code"),
-            "degradation_rate_percent_per_yr": inst.get("degradation_rate_percent_per_yr"),
-            "construction_time_years":         inst.get("construction_time_years"),
-            **({"energy_capacity_mwh": inst["energy_capacity_mwh"]}
-               if "energy_capacity_mwh" in inst else {}),
-            **({"duration_hours": inst["duration_hours"]}
-               if "duration_hours" in inst else {}),
-            **({"corridor_length_km": inst["corridor_length_km"]}
-               if "corridor_length_km" in inst else {}),
-        },
+                "extra": {**explicit_extra, **passthrough_extra},
     }
 
 
@@ -328,8 +352,14 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 model_cls = _CATEGORY_MODEL_MAP[cat]
 
             # Map instances
+            source_name = (
+                tech_raw.get("source")
+                or raw.get("metadata", {}).get("source")
+                or raw.get("metadata", {}).get("source_name")
+                or tech_raw.get("technology_name")
+            )
             instances = [
-                _map_catalogue_instance(inst, tech_raw.get("technology_name"), path.parent)
+                _map_catalogue_instance(inst, source_name, path.parent)
                 for inst in tech_raw.get("instances", [])
             ]
 

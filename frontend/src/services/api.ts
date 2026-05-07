@@ -503,10 +503,31 @@ export async function triggerScraperRun(
   });
   if (!response.ok) {
     let detail = `Error ${response.status}`;
-    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    try {
+      const body = await response.json() as { detail?: string; message?: string };
+      detail = body.message ?? body.detail ?? detail;
+    } catch { /* ignore */ }
     throw new Error(detail);
   }
   return response.json() as Promise<{ status: string; message: string }>;
+}
+
+export async function stopScraperRun(
+  token: string,
+): Promise<{ status: string; message: string; run_id?: string }> {
+  const response = await fetch(`${BASE_URL}/scraper/stop`, {
+    method: "POST",
+    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try {
+      const body = await response.json() as { detail?: string; message?: string };
+      detail = body.message ?? body.detail ?? detail;
+    } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<{ status: string; message: string; run_id?: string }>;
 }
 
 export async function fetchScraperCandidates(

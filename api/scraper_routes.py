@@ -133,6 +133,7 @@ def _get_store():
 def get_status() -> ORJSONResponse:
     try:
         from scrapers.config import ScraperConfig
+        from scrapers.pipeline import get_current_run_status, get_current_run_log_tail
         from scrapers.scheduler import get_scheduler_status
         cfg = ScraperConfig.load()
         store = _get_store()
@@ -141,6 +142,8 @@ def get_status() -> ORJSONResponse:
             "enabled_sources": cfg.enabled_sources,
             "candidates":      store.count_by_status(),
             "last_run":        store.last_run(),
+            "current_run":     get_current_run_status(),
+            "current_log_tail": get_current_run_log_tail(120),
         })
     except Exception as exc:
         logger.exception("Status endpoint error")
@@ -163,6 +166,23 @@ def trigger_run(
 ) -> ORJSONResponse:
     _require_admin(authorization)
 
+    try:
+        from scrapers.pipeline import get_current_run_status
+        current = get_current_run_status()
+        if current and current.get("running"):
+            return ORJSONResponse(
+                {
+                    "status": "already_running",
+                    "message": "A pipeline run is already in progress.",
+                    "run_id": current.get("run_id"),
+                    "current_phase": current.get("current_phase"),
+                },
+                status_code=409,
+            )
+    except Exception:
+        # Best-effort guard; do not block run start on status-check errors.
+        pass
+
     def _run() -> None:
         try:
             pipeline = _get_pipeline()
@@ -182,6 +202,36 @@ def trigger_run(
         {"status": "accepted", "message": "Pipeline run started in background."},
         status_code=202,
     )
+
+
+@router.post(
+    "/stop",
+    summary="Stop active pipeline run",
+    description="Requests a safe stop of the currently running scraping pipeline.",
+)
+def stop_run(
+    authorization: Annotated[str | None, Header()] = None,
+) -> ORJSONResponse:
+    _require_admin(authorization)
+    try:
+        from scrapers.pipeline import request_stop_current_run
+        result = request_stop_current_run(reason="admin_api")
+        if not result.get("requested"):
+            return ORJSONResponse(
+                {"status": "idle", "message": result.get("message", "No active run.")},
+                status_code=409,
+            )
+        return ORJSONResponse(
+            {
+                "status": "accepted",
+                "message": result.get("message", "Stop requested."),
+                "run_id": result.get("run_id"),
+            },
+            status_code=202,
+        )
+    except Exception as exc:
+        logger.exception("Stop endpoint error")
+        raise HTTPException(500, f"Internal error: {exc}") from exc
 
 
 @router.get(

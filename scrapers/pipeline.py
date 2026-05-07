@@ -13,7 +13,10 @@ Entry points
 
 from __future__ import annotations
 
+import json
 import logging
+import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,6 +46,213 @@ _SOURCE_CLASSES = {
     "arxiv":            "scrapers.sources.arxiv_source.ArXivScraper",
     "europe_pmc":       "scrapers.sources.europe_pmc.EuropePMCScraper",
 }
+
+_RUN_STATE_LOCK = threading.Lock()
+_CURRENT_RUN_STATE: dict[str, Any] | None = None
+_MAX_LIVE_EVENTS = 200
+_RUNS_DIR = Path(__file__).resolve().parent.parent / "data" / "scraped" / "runs"
+_LIVE_STATE_FILE = _RUNS_DIR / "current_run.json"
+_STOP_REQUEST_FILE = _RUNS_DIR / "stop_request.json"
+_LIVE_LOG_FILE = _RUNS_DIR / "current_run.log"
+
+
+def _ensure_runs_dir() -> None:
+    _RUNS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _persist_live_state(state: dict[str, Any] | None) -> None:
+    _ensure_runs_dir()
+    if state is None:
+        try:
+            _LIVE_STATE_FILE.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return
+
+    serializable = {k: v for k, v in state.items() if k != "_t0"}
+    try:
+        _LIVE_STATE_FILE.write_text(
+            json.dumps(serializable, ensure_ascii=True, default=str, indent=2),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        logger.debug("Could not persist live run state: %s", exc)
+
+
+def _load_persisted_live_state() -> dict[str, Any] | None:
+    if not _LIVE_STATE_FILE.exists():
+        return None
+    try:
+        raw = json.loads(_LIVE_STATE_FILE.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            return None
+        return raw
+    except Exception:
+        return None
+
+
+def _reset_live_log(run_id: str) -> None:
+    _ensure_runs_dir()
+    try:
+        _LIVE_LOG_FILE.write_text(f"[{_now_utc_iso()}] run={run_id} log initialized\n", encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _append_live_log(line: str) -> None:
+    _ensure_runs_dir()
+    safe = line.replace("\r", " ").replace("\n", " ")
+    try:
+        with _LIVE_LOG_FILE.open("a", encoding="utf-8") as fh:
+            fh.write(f"[{_now_utc_iso()}] {safe}\n")
+    except Exception:
+        pass
+
+
+def get_current_run_log_tail(max_lines: int = 120) -> list[str]:
+    if max_lines < 1:
+        return []
+    if not _LIVE_LOG_FILE.exists():
+        return []
+    try:
+        lines = _LIVE_LOG_FILE.read_text(encoding="utf-8", errors="ignore").splitlines()
+        return lines[-max_lines:]
+    except Exception:
+        return []
+
+
+def request_stop_current_run(reason: str = "admin_request") -> dict[str, Any]:
+    """Request cancellation of the current run (cooperative stop)."""
+    with _RUN_STATE_LOCK:
+        run_id = _CURRENT_RUN_STATE.get("run_id") if _CURRENT_RUN_STATE else None
+        running = bool(_CURRENT_RUN_STATE and _CURRENT_RUN_STATE.get("running"))
+
+    if not run_id or not running:
+        persisted = _load_persisted_live_state()
+        if persisted and persisted.get("running") and persisted.get("run_id"):
+            run_id = str(persisted.get("run_id"))
+            running = True
+
+    if not run_id or not running:
+        return {"requested": False, "message": "No active pipeline run to stop.", "run_id": None}
+
+    payload = {
+        "run_id": run_id,
+        "requested_at": _now_utc_iso(),
+        "reason": reason,
+    }
+    try:
+        _ensure_runs_dir()
+        _STOP_REQUEST_FILE.write_text(json.dumps(payload, ensure_ascii=True), encoding="utf-8")
+    except Exception as exc:
+        return {
+            "requested": False,
+            "message": f"Failed to write stop request: {exc}",
+            "run_id": run_id,
+        }
+
+    with _RUN_STATE_LOCK:
+        if _CURRENT_RUN_STATE and _CURRENT_RUN_STATE.get("run_id") == run_id:
+            _CURRENT_RUN_STATE["stop_requested"] = True
+            events = _CURRENT_RUN_STATE.setdefault("events", [])
+            events.append(
+                {
+                    "at": _now_utc_iso(),
+                    "level": "warning",
+                    "message": "Stop requested by admin. Waiting for a safe checkpoint…",
+                    "phase": "stopping",
+                }
+            )
+            if len(events) > _MAX_LIVE_EVENTS:
+                del events[: len(events) - _MAX_LIVE_EVENTS]
+            _persist_live_state(_CURRENT_RUN_STATE)
+
+    return {
+        "requested": True,
+        "message": "Stop request accepted. The pipeline will stop shortly.",
+        "run_id": run_id,
+    }
+
+
+def _is_stop_requested(run_id: str) -> bool:
+    try:
+        if _STOP_REQUEST_FILE.exists():
+            payload = json.loads(_STOP_REQUEST_FILE.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                return True
+            target_run_id = payload.get("run_id")
+            return not target_run_id or str(target_run_id) == run_id
+    except Exception:
+        return True
+    return False
+
+
+def _clear_stop_request(run_id: str | None = None) -> None:
+    try:
+        if not _STOP_REQUEST_FILE.exists():
+            return
+        if run_id is None:
+            _STOP_REQUEST_FILE.unlink(missing_ok=True)
+            return
+        payload = json.loads(_STOP_REQUEST_FILE.read_text(encoding="utf-8"))
+        target_run_id = payload.get("run_id") if isinstance(payload, dict) else None
+        if not target_run_id or str(target_run_id) == run_id:
+            _STOP_REQUEST_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def _now_utc_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def get_current_run_status() -> dict[str, Any] | None:
+    """Return a snapshot of the current/most-recent run progress for admin APIs."""
+    with _RUN_STATE_LOCK:
+        state = _CURRENT_RUN_STATE
+        snapshot: dict[str, Any] | None = None
+        if state is not None:
+            snapshot = {
+                "run_id": state.get("run_id"),
+                "running": bool(state.get("running", False)),
+                "started_at": state.get("started_at"),
+                "finished_at": state.get("finished_at"),
+                "elapsed_seconds": int(state.get("elapsed_seconds", 0)),
+                "current_phase": state.get("current_phase"),
+                "current_technology": state.get("current_technology"),
+                "current_source": state.get("current_source"),
+                "technologies_total": int(state.get("technologies_total", 0)),
+                "technologies_processed": int(state.get("technologies_processed", 0)),
+                "sources_total": int(state.get("sources_total", 0)),
+                "papers_fetched": int(state.get("papers_fetched", 0)),
+                "candidates_created": int(state.get("candidates_created", 0)),
+                "errors_count": int(state.get("errors_count", 0)),
+                "events": list(state.get("events", [])),
+                "stop_requested": bool(state.get("stop_requested", False)),
+                "_t0": state.get("_t0"),
+            }
+
+    if snapshot is None:
+        snapshot = _load_persisted_live_state()
+        if snapshot is None:
+            return None
+        snapshot.setdefault("events", [])
+        snapshot.setdefault("elapsed_seconds", 0)
+        snapshot.setdefault("stop_requested", False)
+
+    t0 = snapshot.get("_t0")
+    if snapshot["running"] and isinstance(t0, (int, float)):
+        snapshot["elapsed_seconds"] = max(0, int(time.perf_counter() - t0))
+    elif snapshot.get("running") and snapshot.get("started_at"):
+        try:
+            started = datetime.fromisoformat(str(snapshot["started_at"]).replace("Z", "+00:00"))
+            now_utc = datetime.now(timezone.utc)
+            snapshot["elapsed_seconds"] = max(0, int((now_utc - started).total_seconds()))
+        except Exception:
+            pass
+    snapshot.pop("_t0", None)
+    snapshot["log_tail"] = get_current_run_log_tail(120)
+    return snapshot
 
 
 def _load_scraper_class(dotted_path: str) -> type:
@@ -138,6 +348,7 @@ class ScrapingPipeline:
         sources  : optional list of source names to use (subset of enabled sources).
         """
         result = PipelineResult()
+        run_t0 = time.perf_counter()
         logger.info("Pipeline run %s started.", result.run_id)
 
         enabled_sources = self.cfg.enabled_sources
@@ -148,64 +359,289 @@ class ScrapingPipeline:
         if tech_ids:
             technology_ids = [t for t in technology_ids if t in tech_ids]
 
-        # Track DOIs seen this run for deduplication
-        seen_doi_this_run: set[str] = set()
-
+        selected_tech_ids: list[str] = []
         for tech_id in technology_ids:
             tech_cfg = self.cfg.technologies.get(tech_id)
             if not tech_cfg:
                 continue
-
             queries = getattr(tech_cfg, "search_queries", [])
-            if not queries:
-                continue
+            if queries:
+                selected_tech_ids.append(tech_id)
 
-            result.technologies_processed += 1
-            logger.info("Processing technology: %s", tech_id)
+        self._live_run_init(
+            result=result,
+            technologies=selected_tech_ids,
+            sources=enabled_sources,
+            t0=run_t0,
+        )
+        _reset_live_log(result.run_id)
+        _clear_stop_request(result.run_id)
+        self._live_event(
+            level="info",
+            message=(
+                f"Run started for {len(selected_tech_ids)} techs across "
+                f"{len(enabled_sources)} source(s)."
+            ),
+            phase="started",
+        )
 
-            for source_name in enabled_sources:
-                try:
-                    papers = self._fetch_papers(
-                        source_name, tech_id, queries, result
-                    )
-                except Exception as exc:
-                    msg = f"Source {source_name} failed for {tech_id}: {exc}"
-                    logger.warning(msg)
-                    result.errors.append(msg)
+        # Track DOIs seen this run for deduplication
+        seen_doi_this_run: set[str] = set()
+        stop_requested = False
+
+        try:
+            for tech_index, tech_id in enumerate(selected_tech_ids, start=1):
+                if _is_stop_requested(result.run_id):
+                    stop_requested = True
+                    break
+                tech_cfg = self.cfg.technologies.get(tech_id)
+                if not tech_cfg:
                     continue
 
-                for paper in papers:
-                    result.papers_fetched += 1
+                queries = getattr(tech_cfg, "search_queries", [])
+                if not queries:
+                    continue
 
-                    # DOI-level dedup within this run
-                    if self.cfg.output.get("dedup_by_doi", True):
-                        key = paper.dedup_key
-                        if key.startswith("doi:") and key in seen_doi_this_run:
-                            logger.debug("Dedup skip (DOI seen): %s", paper.doi)
-                            continue
-                        seen_doi_this_run.add(key)
+                result.technologies_processed += 1
+                self._live_run_update(
+                    current_phase="technology",
+                    current_technology=tech_id,
+                    current_source=None,
+                    technologies_processed=result.technologies_processed,
+                )
+                self._live_event(
+                    level="info",
+                    message=f"[{tech_index}/{len(selected_tech_ids)}] Processing technology '{tech_id}'.",
+                    technology_id=tech_id,
+                    phase="technology",
+                )
+                logger.info(
+                    "[run=%s +%ss] Processing technology %s (%d/%d)",
+                    result.run_id,
+                    int(time.perf_counter() - run_t0),
+                    tech_id,
+                    tech_index,
+                    len(selected_tech_ids),
+                )
 
+                for source_name in enabled_sources:
+                    if _is_stop_requested(result.run_id):
+                        stop_requested = True
+                        break
+                    self._live_run_update(current_phase="fetch", current_source=source_name)
+                    self._live_event(
+                        level="info",
+                        message=f"Fetching papers for '{tech_id}' from '{source_name}'.",
+                        technology_id=tech_id,
+                        source=source_name,
+                        phase="fetch",
+                    )
+                    source_t0 = time.perf_counter()
                     try:
-                        created = self._process_paper(paper, tech_id)
-                        if created:
-                            result.candidates_created += 1
+                        papers = self._fetch_papers(
+                            source_name, tech_id, queries, result
+                        )
                     except Exception as exc:
-                        msg = f"Processing failed for {paper.source_id}: {exc}"
+                        msg = f"Source {source_name} failed for {tech_id}: {exc}"
                         logger.warning(msg)
                         result.errors.append(msg)
+                        self._live_run_update(errors_count=len(result.errors))
+                        self._live_event(
+                            level="error",
+                            message=msg,
+                            technology_id=tech_id,
+                            source=source_name,
+                            phase="fetch",
+                        )
+                        continue
 
-        result.finish()
-        self._candidates.log_run(result.to_dict())
+                    source_elapsed = int(time.perf_counter() - source_t0)
+                    self._live_event(
+                        level="info",
+                        message=(
+                            f"Fetched {len(papers)} paper(s) for '{tech_id}' from '{source_name}' "
+                            f"in {source_elapsed}s."
+                        ),
+                        technology_id=tech_id,
+                        source=source_name,
+                        phase="fetch",
+                    )
+
+                    for paper in papers:
+                        if _is_stop_requested(result.run_id):
+                            stop_requested = True
+                            break
+                        result.papers_fetched += 1
+                        self._live_run_update(
+                            current_phase="extract",
+                            papers_fetched=result.papers_fetched,
+                            current_technology=tech_id,
+                            current_source=source_name,
+                        )
+
+                        # DOI-level dedup within this run
+                        if self.cfg.output.get("dedup_by_doi", True):
+                            key = paper.dedup_key
+                            if key.startswith("doi:") and key in seen_doi_this_run:
+                                logger.debug("Dedup skip (DOI seen): %s", paper.doi)
+                                continue
+                            seen_doi_this_run.add(key)
+
+                        try:
+                            created = self._process_paper(paper, tech_id)
+                            if created:
+                                result.candidates_created += 1
+                                self._live_run_update(
+                                    current_phase="store",
+                                    candidates_created=result.candidates_created,
+                                )
+                                self._live_event(
+                                    level="info",
+                                    message=(
+                                        f"Candidate created for '{tech_id}' from '{source_name}' "
+                                        f"(paper: {paper.source_id})."
+                                    ),
+                                    technology_id=tech_id,
+                                    source=source_name,
+                                    paper_id=paper.source_id,
+                                    phase="store",
+                                )
+                        except Exception as exc:
+                            msg = f"Processing failed for {paper.source_id}: {exc}"
+                            logger.warning(msg)
+                            result.errors.append(msg)
+                            self._live_run_update(errors_count=len(result.errors))
+                            self._live_event(
+                                level="error",
+                                message=msg,
+                                technology_id=tech_id,
+                                source=source_name,
+                                paper_id=paper.source_id,
+                                phase="extract",
+                            )
+                if stop_requested:
+                    break
+
+            if stop_requested:
+                stop_msg = "Run stopped by admin request."
+                logger.warning("Pipeline run %s stopped by request.", result.run_id)
+                result.errors.append(stop_msg)
+                self._live_run_update(current_phase="stopped")
+                self._live_event(level="warning", message=stop_msg, phase="stopped")
+        except Exception as exc:
+            msg = f"Fatal pipeline error: {exc}"
+            result.errors.append(msg)
+            logger.exception(msg)
+            self._live_run_update(errors_count=len(result.errors))
+            self._live_event(level="error", message=msg, phase="fatal")
+        finally:
+            result.finish()
+            self._candidates.log_run(result.to_dict())
+            elapsed = int(time.perf_counter() - run_t0)
+            self._live_run_complete(result, elapsed, stopped=stop_requested)
+            _clear_stop_request(result.run_id)
 
         logger.info(
-            "Pipeline run %s finished: %d technologies, %d papers, %d candidates, %d errors.",
+            "Pipeline run %s finished in %ss: %d technologies, %d papers, %d candidates, %d errors.",
             result.run_id,
+            int(time.perf_counter() - run_t0),
             result.technologies_processed,
             result.papers_fetched,
             result.candidates_created,
             len(result.errors),
         )
         return result
+
+    def _live_run_init(
+        self,
+        result: PipelineResult,
+        technologies: list[str],
+        sources: list[str],
+        t0: float,
+    ) -> None:
+        global _CURRENT_RUN_STATE
+        state = {
+            "run_id": result.run_id,
+            "running": True,
+            "started_at": result.started_at,
+            "finished_at": None,
+            "elapsed_seconds": 0,
+            "current_phase": "initialising",
+            "current_technology": None,
+            "current_source": None,
+            "technologies_total": len(technologies),
+            "technologies_processed": 0,
+            "sources_total": len(sources),
+            "papers_fetched": 0,
+            "candidates_created": 0,
+            "errors_count": 0,
+            "events": [],
+            "_t0": t0,
+        }
+        with _RUN_STATE_LOCK:
+            _CURRENT_RUN_STATE = state
+            _persist_live_state(_CURRENT_RUN_STATE)
+
+    def _live_run_update(self, **updates: Any) -> None:
+        with _RUN_STATE_LOCK:
+            if _CURRENT_RUN_STATE is None:
+                return
+            _CURRENT_RUN_STATE.update(updates)
+            t0 = _CURRENT_RUN_STATE.get("_t0")
+            if _CURRENT_RUN_STATE.get("running") and isinstance(t0, (int, float)):
+                _CURRENT_RUN_STATE["elapsed_seconds"] = max(0, int(time.perf_counter() - t0))
+            _persist_live_state(_CURRENT_RUN_STATE)
+
+    def _live_event(self, level: str, message: str, **meta: Any) -> None:
+        event = {
+            "at": _now_utc_iso(),
+            "level": level,
+            "message": message,
+            **meta,
+        }
+        _append_live_log(
+            f"level={level} phase={meta.get('phase', '-') or '-'} "
+            f"tech={meta.get('technology_id', '-') or '-'} "
+            f"source={meta.get('source', '-') or '-'} :: {message}"
+        )
+        with _RUN_STATE_LOCK:
+            if _CURRENT_RUN_STATE is None:
+                return
+            events = _CURRENT_RUN_STATE.setdefault("events", [])
+            events.append(event)
+            if len(events) > _MAX_LIVE_EVENTS:
+                del events[: len(events) - _MAX_LIVE_EVENTS]
+            _persist_live_state(_CURRENT_RUN_STATE)
+
+    def _live_run_complete(self, result: PipelineResult, elapsed_seconds: int, stopped: bool = False) -> None:
+        self._live_event(
+            level="info",
+            message=(
+                f"Run {'stopped' if stopped else 'finished'} in {elapsed_seconds}s: "
+                f"{result.technologies_processed} tech(s), "
+                f"{result.papers_fetched} paper(s), {result.candidates_created} candidate(s), "
+                f"{len(result.errors)} error(s)."
+            ),
+            phase="stopped" if stopped else "finished",
+        )
+        with _RUN_STATE_LOCK:
+            if _CURRENT_RUN_STATE is None:
+                return
+            _CURRENT_RUN_STATE.update(
+                {
+                    "running": False,
+                    "finished_at": result.finished_at,
+                    "elapsed_seconds": elapsed_seconds,
+                    "current_phase": "stopped" if stopped else "finished",
+                    "current_source": None,
+                }
+            )
+            _persist_live_state(_CURRENT_RUN_STATE)
+        _append_live_log(
+            f"run_complete stopped={stopped} elapsed_s={elapsed_seconds} "
+            f"techs={result.technologies_processed} papers={result.papers_fetched} "
+            f"candidates={result.candidates_created} errors={len(result.errors)}"
+        )
 
     # ------------------------------------------------------------------
     # Internal steps
@@ -287,6 +723,32 @@ class ScrapingPipeline:
         if candidate is None:
             return False
 
+        if self._candidates.has_similar_candidate(
+            technology_id=tech_id,
+            source=paper.source_name,
+            paper_doi=paper.doi,
+            paper_title=paper.title,
+        ):
+            logger.info(
+                "Dedup skip (existing candidate) tech=%s source=%s doi=%s title=%s",
+                tech_id,
+                paper.source_name,
+                paper.doi,
+                (paper.title or "")[:80],
+            )
+            self._live_event(
+                level="warning",
+                message=(
+                    f"Duplicate candidate skipped for '{tech_id}' from '{paper.source_name}' "
+                    f"(paper: {paper.source_id})."
+                ),
+                technology_id=tech_id,
+                source=paper.source_name,
+                paper_id=paper.source_id,
+                phase="dedup",
+            )
+            return False
+
         self._candidates.save_candidate(candidate)
         return True
 
@@ -366,18 +828,35 @@ class ScrapingPipeline:
                 f"Cannot find catalogue JSON for technology_id='{tech_id}'"
             )
 
+        def _is_blank(v: Any) -> bool:
+            return v is None or (isinstance(v, str) and not v.strip())
+
         # Locate the technology entry
         for tech_entry in catalogue_data["technologies"]:
             if tech_entry.get("technology_id") == tech_id:
                 instances = tech_entry.setdefault("instances", [])
-                # Avoid duplicate instance_ids
-                existing_ids = {i.get("instance_id") for i in instances}
-                if new_instance.get("instance_id") in existing_ids:
-                    logger.warning(
-                        "Instance %s already exists in %s – skipping merge.",
-                        new_instance.get("instance_id"), tech_id,
+                new_instance_id = new_instance.get("instance_id")
+                existing = next((i for i in instances if i.get("instance_id") == new_instance_id), None)
+
+                # If instance already exists, enrich it instead of skipping so repeated scrapes
+                # can add newly discovered parameters/provenance.
+                if existing is not None:
+                    for key, value in new_instance.items():
+                        if key not in existing or _is_blank(existing.get(key)):
+                            existing[key] = value
+                            continue
+
+                        if isinstance(existing.get(key), dict) and isinstance(value, dict):
+                            merged = dict(existing[key])
+                            merged.update(value)
+                            existing[key] = merged
+                    logger.info(
+                        "Merged updates into existing instance '%s' for %s",
+                        new_instance_id,
+                        tech_id,
                     )
-                    return
+                    break
+
                 instances.append(new_instance)
                 break
 
@@ -416,6 +895,9 @@ class ScrapingPipeline:
             "instance_id":      instance_id,
             "technology_id":    tech_id,
             "instance_name":    instance.get("instance_name") or instance.get("name", instance_id),
+            "country":          instance.get("country"),
+            "country_iso2":     instance.get("country_iso2"),
+            "country_inference_source": instance.get("country_inference_source"),
             "scale":            instance.get("scale"),
             "typical_capacity_mw":  _to_float(instance.get("typical_capacity_mw")),
             "capex_usd_per_kw":     _to_float(instance.get("capex_usd_per_kw")),
@@ -431,6 +913,7 @@ class ScrapingPipeline:
                 k: v for k, v in instance.items()
                 if k not in {
                     "instance_id", "id", "instance_name", "name", "scale",
+                    "country", "country_iso2", "country_inference_source",
                     "typical_capacity_mw", "capex_usd_per_kw", "opex_fixed_usd_per_kw_yr",
                     "opex_var_usd_per_mwh", "efficiency_percent", "lifetime_years",
                     "co2_emission_factor_operational_g_per_kwh", "reference_source", "source",

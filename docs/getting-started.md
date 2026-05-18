@@ -79,15 +79,55 @@ docker run -p 8000:8000 -v ./data:/app/data opentech-db
 
 ---
 
-## Backend environment variables (authentication)
+## Backend environment variables
 
-Required only for ORCID login and protected endpoints:
+### Authentication (required for protected endpoints)
 
 ```env
 ORCID_CLIENT_ID=<your-orcid-client-id>
 ORCID_CLIENT_SECRET=<your-orcid-client-secret>
 ORCID_REDIRECT_URI=http://localhost:8000/api/v1/auth/orcid/callback
-JWT_SECRET=<random-long-secret>
+JWT_SECRET_KEY=<random-long-secret>
+FRONTEND_URL=http://localhost:5173
+```
+
+Register your application at <https://orcid.org/developer-tools> to obtain ORCID credentials.
+
+### Admin account (built-in)
+
+```env
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD_HASH=<bcrypt hash>
+```
+
+Generate a bcrypt hash with:
+
+```python
+import bcrypt
+print(bcrypt.hashpw(b"your-password", bcrypt.gensalt()).decode())
+```
+
+### Supabase (optional — enables scraper candidate storage and Supabase auth)
+
+```env
+SUPABASE_URL=https://<your-project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+```
+
+Run the migration once after configuring Supabase:
+
+```bash
+# Apply scraper tables migration
+psql "$SUPABASE_DB_URL" -f db/migrations/001_scraper_tables.sql
+```
+
+### Scraper API keys (optional — enables premium sources)
+
+```env
+SCOPUS_API_KEY=<elsevier-api-key>
+SCOPUS_INST_TOKEN=<institutional-token>
+OPENAI_API_KEY=<openai-key>         # enables LLM parameter extraction
+ANTHROPIC_API_KEY=<anthropic-key>   # alternative LLM
 ```
 
 ---
@@ -95,12 +135,33 @@ JWT_SECRET=<random-long-secret>
 ## Verify the installation
 
 ```bash
-# Check health
+# Check health and version
 curl http://localhost:8000/health
 
-# List all technologies
-curl http://localhost:8000/api/v1/technologies
+# List all generation technologies
+curl http://localhost:8000/api/v1/technologies/category/generation
 
-# Reload data from disk (useful after editing JSON files)
+# Get a specific technology
+curl http://localhost:8000/api/v1/technologies/ccgt
+
+# Get PyPSA-ready parameters for CCGT (7% discount rate)
+curl "http://localhost:8000/api/v1/adapt/pypsa/ccgt?discount_rate=0.07"
+
+# Reload data from disk (after editing JSON files)
 curl -X POST http://localhost:8000/api/v1/debug/reload
+```
+
+---
+
+## MkDocs documentation (this site)
+
+```bash
+# Install docs dependencies
+pip install -r docs/requirements.txt
+
+# Serve locally with hot reload
+python -m mkdocs serve   # → http://localhost:8000 (uses port 8001 if backend is running)
+
+# Build static site
+python -m mkdocs build   # → site/
 ```

@@ -191,3 +191,66 @@ where new profiles are reviewed before publication.
 **Consequences:** A two-request pattern is needed to get a VRE technology's full data
 (technology record + profile). The profile catalogue must be kept in sync with technology
 `profile_key` references.
+
+---
+
+## ADR-011: Automated scraper pipeline with APScheduler
+
+**Status:** Accepted
+
+**Context:** The technology catalogue needs to stay current with the academic literature.
+Manual curation is time-consuming and requires researchers to actively monitor publications.
+
+**Decision:** Implement an automated scraper pipeline orchestrated by APScheduler that
+searches OpenAlex, Semantic Scholar, NREL ATB, IRENA, Crossref, and arXiv for relevant
+papers, extracts structured parameter values, and queues them as candidates for admin review.
+
+**Rationale:** Automation reduces curation effort and ensures new publications are captured
+promptly. The human-in-the-loop review step (approve/reject candidates) preserves data
+quality before new values enter the official catalogue. APScheduler integrates directly
+into the FastAPI lifespan with a SQLite job store that survives process restarts.
+
+**Consequences:** Requires additional optional dependencies (pdfplumber, scholarly,
+pybliometrics for premium sources). The pipeline runs within the API process on a
+scheduled basis; for high load, it could be extracted to a separate worker process.
+
+---
+
+## ADR-012: Dual extractor strategy (regex primary, LLM optional)
+
+**Status:** Accepted
+
+**Context:** Extracting numeric parameter values from free-text academic papers is
+non-trivial. Pure regex is brittle; pure LLM is expensive and requires API keys.
+
+**Decision:** Implement a layered extraction strategy: regex-based `TextExtractor` runs
+always (free, fast, deterministic); `LLMExtractor` (GPT/Claude) runs optionally when
+`llm_enabled: true` in config. LLM values override regex values where confidence exceeds
+the configured threshold.
+
+**Rationale:** The regex extractor handles the common patterns that appear in most papers
+(e.g. "CAPEX of 850 USD/kW"). The LLM handles more complex phrasing and table extraction.
+Making LLM optional keeps the system functional without API keys and avoids cost at scale.
+
+**Consequences:** Extraction quality varies by source and technology. Per-field `confidence`
+scores are stored with each candidate so reviewers can assess reliability before approval.
+
+---
+
+## ADR-013: Candidate review workflow before catalogue merge
+
+**Status:** Accepted
+
+**Context:** Automatically extracted parameters may be inaccurate, out of context, or
+represent outlier values that should not replace curated data.
+
+**Decision:** All scraper outputs are stored as `pending` candidates. An admin must
+explicitly approve each candidate before it is merged into the technology catalogue.
+Reject moves it to an `archived` state with optional review notes.
+
+**Rationale:** This protects the catalogue data quality from automatic writes. The
+approval UI (ScraperPanel) shows the extracted values, the source paper and context
+sentences, and the proposed instance diff, giving reviewers full traceability.
+
+**Consequences:** Candidates that are never reviewed remain in `pending` indefinitely.
+A bulk-approve flow may be needed as candidate volumes grow.

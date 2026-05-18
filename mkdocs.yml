@@ -120,6 +120,7 @@ nav:
   - Data Model: data-model.md
   - Data Formats: data-formats.md
   - Framework Adapters: adapters.md
+  - Scraper Pipeline: scrapers.md
   - Time-Series Catalogue: timeseries.md
   - Authentication: authentication.md
   - Web Frontend: frontend.md

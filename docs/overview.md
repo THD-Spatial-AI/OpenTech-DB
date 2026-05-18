@@ -2,12 +2,14 @@
 
 ## Design Principles
 
-- **OEO Alignment** — every technology record carries `oeo_class` and `oeo_uri` fields linking to [Open Energy Ontology](https://openenergy-platform.org/ontology/oeo/) concepts.
-- **Multi-instance** — a single technology (e.g. Gas Turbine) stores multiple `EquipmentInstance` rows: different manufacturers, vintages, or projection scenarios.
-- **Uncertainty-aware** — every parameter is a `ParameterValue` object with `value`, `unit`, `min`, `max`, `source`, and `year`.
-- **Framework-agnostic** — built-in adapter modules translate OEO records into PyPSA and Calliope parameter dicts.
-- **Time-series profiles** — hourly capacity factors and load profiles linked to VRE records via the time-series catalogue.
-- **Contributor workflow** — authenticated researchers can submit new technologies and profiles; admins review and approve.
+- **OEO Alignment** — every technology record carries `oeo_class` and `oeo_uri` fields linking to [Open Energy Ontology](https://openenergy-platform.org/ontology/oeo/) concepts, enabling semantic interoperability with the Open Energy Platform.
+- **Multi-instance** — a single technology (e.g. Gas Turbine) stores multiple `EquipmentInstance` rows: different manufacturers, vintages, or projection scenarios. Each instance carries its own complete parameter set.
+- **Uncertainty-aware** — every parameter is a `ParameterValue` object with `value`, `unit`, `min`, `max`, `source`, and `year`, enabling transparent uncertainty quantification in model results.
+- **Framework-agnostic** — built-in adapter modules translate OEO records into PyPSA-ready component dicts and Calliope-ready YAML config blocks.
+- **Time-series profiles** — hourly capacity factors and load profiles linked to VRE records via the time-series catalogue, covering 8+ European countries.
+- **Automated data acquisition** — a background scraper pipeline pulls parameter data from academic databases (OpenAlex, Semantic Scholar, NREL ATB, IRENA) and extracts structured values using regex and optional LLM extraction.
+- **Contributor workflow** — authenticated researchers can submit new technologies and profiles; admins review and approve submissions before they enter the catalogue.
+- **Geographic context** — technology instances carry country-level metadata enabling world-map visualisation of where data originates from.
 
 ---
 
@@ -70,28 +72,72 @@ HVAC Overhead Lines · HVDC Overhead Lines · HVAC Underground Cables · HVDC Su
 
 ---
 
+## Fraunhofer ISE / Academic Sources
+
+The following sources are also used for European and global parameter references:
+
+| Source | Used for |
+|---|---|
+| Fraunhofer ISE Reports | PV and wind (European focus) |
+| IPCC AR6 WG3 | CO₂ lifecycle emission factors |
+| EIA Annual Energy Outlook | US gas and coal parameters |
+| PNNL Grid Energy Storage Assessment 2022 | Storage benchmarks |
+| EU Hydrogen Backbone Study 2021 | H₂ pipeline infrastructure |
+
+---
+
 ## Project Structure
 
 ```
 opentech-db/
-├── main.py                        # FastAPI entry point
-├── requirements.txt
-├── Dockerfile
-├── docker-compose.yml
-├── data/                          # Technology data (JSON)
-│   ├── generation/
-│   ├── storage/
-│   ├── transmission/
-│   ├── conversion/
-│   └── timeseries/
-├── schemas/models.py              # Pydantic models (OEO-aligned)
+├── main.py                        # FastAPI entry point (lifespan, CORS, routers)
+├── requirements.txt               # Python dependencies
+├── Dockerfile                     # Two-stage container build (python:3.11-slim)
+├── docker-compose.yml             # Single-service Compose stack
+├── render.yaml                    # Render.com PaaS deployment config
+├── scraper_config.yaml            # Scraper schedule, sources, and extraction settings
+│
+├── schemas/
+│   └── models.py                  # Pydantic v2 models: Technology hierarchy,
+│                                  #   EquipmentInstance, ParameterValue, enums
+│
 ├── api/
-│   ├── routes.py                  # Technology CRUD, admin, submissions
-│   ├── auth.py                    # ORCID OAuth + JWT
-│   └── timeseries.py              # Time-series catalogue
+│   ├── routes.py                  # Technology CRUD + debug + ontology + admin routers
+│   ├── auth.py                    # ORCID OAuth 2.0 + JWT issuance + /auth/me
+│   ├── timeseries.py              # Time-series catalogue: list, data, submit, approve
+│   └── scraper_routes.py          # Scraper management: status, run, candidates, review
+│
 ├── adapters/
-│   ├── pypsa_adapter.py
-│   └── calliope_adapter.py
-├── frontend/                      # React 19 SPA (TypeScript + Vite 8)
-└── documentation/                 # arc42 architecture docs (LaTeX)
+│   ├── pypsa_adapter.py           # Technology → PyPSA component dict (CRF annualisation)
+│   └── calliope_adapter.py        # Technology → Calliope YAML config block
+│
+├── scrapers/
+│   ├── pipeline.py                # Orchestrates full scrape-extract-normalise-store cycle
+│   ├── scheduler.py               # APScheduler integration (twice-monthly runs)
+│   ├── base.py                    # BaseScraper: HTTP client, rate limiting, disk cache
+│   ├── normalizer.py              # Raw extractions → catalogue-format candidate instances
+│   ├── storage.py                 # Candidate storage: Supabase primary / file fallback
+│   ├── config.py                  # ScraperConfig from scraper_config.yaml + env overrides
+│   ├── sources/                   # Per-source scrapers (OpenAlex, Semantic Scholar, etc.)
+│   └── extractors/                # Text / PDF / LLM parameter extractors
+│
+├── data/
+│   ├── generation/                # generation_technologies.json (21+ techs)
+│   ├── storage/                   # storage_technologies.json (12+ techs)
+│   ├── transmission/              # transmission_technologies.json (30+ techs)
+│   ├── conversion/                # conversion_technologies.json (15+ techs)
+│   └── timeseries/                # Hourly profile JSONs + timeseries_catalogue.json
+│
+├── db/
+│   └── migrations/                # SQL migrations for Supabase schema
+│
+├── frontend/                      # React 19 SPA (TypeScript + Vite 8 + TailwindCSS)
+│   └── src/
+│       ├── components/            # TechGrid, TechCard, DetailsModal, WorldMap, Admin…
+│       ├── services/              # API client (promise memoisation for React use() hook)
+│       ├── context/               # AuthContext: ORCID JWT + Supabase session
+│       └── types/                 # TypeScript interfaces for API responses
+│
+├── docs/                          # MkDocs documentation (this site)
+└── documentation/                 # arc42 architecture docs (LaTeX/PDF)
 ```

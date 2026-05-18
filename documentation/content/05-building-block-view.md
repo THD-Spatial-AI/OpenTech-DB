@@ -184,5 +184,64 @@ main.tsx
                ├── AuthPage  (ORCID redirect + Supabase forms)
                ├── OAuthCallback (receives ?token= from ORCID)
                ├── AdminPanel (guarded by isAdmin)
-               └── ContributorWorkspace (guarded by isAuthenticated)
+               │     └── ScraperPanel (pipeline status + candidate review)
+               ├── ContributorWorkspace (guarded by isAuthenticated)
+               └── WorldMapView (Leaflet map + CountryPanel)
 ```
+
+## scrapers/ — Automated Data Acquisition Pipeline
+
+The scraper subsystem runs automatically twice per month (via APScheduler) and can also
+be triggered manually via the `/api/v1/scraper/run` endpoint or CLI. Its purpose is to
+automatically discover and extract energy technology parameters from academic literature
+and grey-literature sources, reducing the manual curation burden.
+
+```
+ScrapingPipeline.run()
+   |
+   +-- for each enabled source × technology:
+   |     Source.search() → list[PaperRecord]
+   |
+   +-- for each PaperRecord:
+   |     TextExtractor.extract()    → list[ExtractedValue]   (regex)
+   |     PDFExtractor.extract_pdf() → full_text              (pdfplumber, optional)
+   |     LLMExtractor.extract()     → LLMExtractedParams     (GPT/Claude, optional)
+   |
+   +-- Normalizer.build_candidate()
+   |     merges LLM + regex outputs (LLM wins on conflict)
+   |     builds flat catalogue-format instance dict
+   |     infers country from paper text
+   |
+   +-- Storage.save_candidate()
+         Supabase (primary) → scraper_candidates table
+         File fallback        → data/scraped/candidates/pending/
+```
+
+| Module | Responsibility |
+|---|---|
+| `scrapers/pipeline.py` | Orchestrates full run; emits live events for `/scraper/status` |
+| `scrapers/scheduler.py` | APScheduler: twice-monthly cron; SQLite job store |
+| `scrapers/base.py` | `BaseScraper`: HTTP client, rate limiting, disk cache, retry |
+| `scrapers/config.py` | `ScraperConfig` from `scraper_config.yaml` + env overrides |
+| `scrapers/normalizer.py` | Extracted values → flat catalogue candidate instance |
+| `scrapers/storage.py` | Supabase primary / filesystem fallback candidate persistence |
+| `scrapers/sources/` | Per-source scrapers (OpenAlex, Semantic Scholar, NREL ATB, …) |
+| `scrapers/extractors/` | Text (regex), PDF (pdfplumber), LLM (OpenAI/Anthropic) |
+
+### Candidate lifecycle
+
+```
+[scraped]  →  pending  →  approved  (merged into catalogue)
+                    \→  rejected  (archived)
+```
+
+Admin reviews candidates in `AdminPanel > ScraperPanel` or via the `/api/v1/scraper/candidates` endpoints.
+
+## db/migrations/ — Database Schema
+
+SQL migration files for the optional Supabase backend:
+
+| File | Creates |
+|---|---|
+| `001_scraper_tables.sql` | `scraper_candidates` + `scraper_runs` tables; indexes; RLS bypass |
+| `003_instance_country_columns.sql` | Adds `country_iso2`, `country`, `location` to instance records |

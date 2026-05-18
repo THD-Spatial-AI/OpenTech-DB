@@ -247,6 +247,79 @@ PyPSA script             FastAPI              pypsa_adapter
   | network.optimize()       |                     |
 ```
 
+---
+
+## Scenario 8 — Automated scraper pipeline run
+
+```
+APScheduler              ScrapingPipeline       Sources (OpenAlex, etc.)
+  |                          |                       |
+  | cron trigger             |                       |
+  | (1st of month, 02:00 UTC)|                       |
+  |-- run job() ------------>|                       |
+  |                          | load ScraperConfig    |
+  |                          | for each source ×     |
+  |                          |   technology:         |
+  |                          |-- source.search() ---->|
+  |                          |<-- list[PaperRecord] --|
+  |                          |                       |
+  |                          | for each paper:       |
+  |                          |   TextExtractor       |
+  |                          |   (optional: PDF,LLM) |
+  |                          |   Normalizer          |
+  |                          |   → candidate JSON    |
+  |                          |                       |
+  |                          |-- Storage.save() ---->|
+  |                          |   Supabase:           |
+  |                          |   scraper_candidates  |
+  |                          |   status=pending      |
+  |                          |                       |
+  |<-- job complete          |                       |
+  |   (run_id stored in      |                       |
+  |    scraper_runs table)   |                       |
+```
+
+---
+
+## Scenario 9 — Admin reviews and approves a scraper candidate
+
+```
+Admin browser            ScraperPanel (React)    Backend
+  |                          |                      |
+  | open ScraperPanel        |                      |
+  |------------------------->|                      |
+  |                          |-- GET /api/v1/       |
+  |                          |   scraper/candidates |
+  |                          |   ?status=pending -->|
+  |                          |<-- 200 [candidates] -|
+  |                          |                      |
+  | view candidate:          |                      |
+  |  - paper title, DOI      |                      |
+  |  - extracted values      |                      |
+  |  - confidence scores     |                      |
+  |  - context sentences     |                      |
+  |  - proposed instance     |                      |
+  |                          |                      |
+  | click "Approve"          |                      |
+  |------------------------->|                      |
+  |                          |-- POST /api/v1/      |
+  |                          |   scraper/candidates/|
+  |                          |   {id}/approve ----->|
+  |                          |                      | merge proposed_instance
+  |                          |                      | into catalogue JSON
+  |                          |                      | status → approved
+  |                          |<-- 200 {merged: true}|
+  |                          |                      |
+  |                          | candidate now in     |
+  |                          | official catalogue   |
+```
+  |                          |                     |
+  | network.add("Generator", |                     |
+  |   name, **parameters)    |                     |
+  |                          |                     |
+  | network.optimize()       |                     |
+```
+
 The adapter computes the annualised capital cost using the Capital Recovery Factor so the PyPSA script receives a ready-to-use `capital_cost [EUR/MW/yr]` and never handles unit conversions manually.
 
 ---

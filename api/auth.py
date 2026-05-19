@@ -87,8 +87,11 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from jose import JWTError, jwt
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router  = APIRouter(prefix="/auth", tags=["Auth"])
+_limiter = Limiter(key_func=get_remote_address)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -100,7 +103,14 @@ ORCID_REDIRECT_URI  = os.getenv(
 )
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
-JWT_SECRET_KEY     = os.getenv("JWT_SECRET_KEY") or secrets.token_urlsafe(32)
+_jwt_secret = os.getenv("JWT_SECRET_KEY")
+if not _jwt_secret:
+    raise RuntimeError(
+        "JWT_SECRET_KEY env var is not set. Tokens become invalid on every restart without it.\n"
+        "Generate one with:  python -c \"import secrets; print(secrets.token_urlsafe(32))\"\n"
+        "Then add JWT_SECRET_KEY=<value> to your .env file."
+    )
+JWT_SECRET_KEY     = _jwt_secret
 JWT_ALGORITHM      = "HS256"
 JWT_EXPIRE_SECONDS = 60 * 60 * 24  # 24 h
 
@@ -265,11 +275,13 @@ class AdminLoginResponse(BaseModel):
     user:     AuthUser
 
 @router.post("/admin/login", response_model=AdminLoginResponse, summary="Admin credential login")
-def admin_login(body: AdminLoginRequest):
+@_limiter.limit("5/minute")
+def admin_login(request: Request, body: AdminLoginRequest):
     """
     Authenticate with the admin credentials stored in environment variables.
     Returns a signed JWT with ``is_admin: true`` if correct.
     Uses bcrypt for timing-safe, salted password comparison.
+    Rate-limited to 5 attempts per minute per IP.
     """
     if not _ADMIN_EMAIL or not _ADMIN_PASSWORD_HASH:
         raise HTTPException(status_code=401, detail="Invalid admin credentials.")

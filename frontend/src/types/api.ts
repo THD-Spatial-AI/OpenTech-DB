@@ -195,6 +195,7 @@ export interface SubmissionRecord {
   description:      string | null;
   submitter_email:  string | null;  // user who submitted (linked to Supabase auth)
   rejection_reason: string | null;  // populated when admin rejects
+  pr_url:           string | null;  // GitHub PR URL created on approval
   filename:         string;          // empty for DB records
   payload:          CreateTechnologyPayload | null;  // full submission details
 }

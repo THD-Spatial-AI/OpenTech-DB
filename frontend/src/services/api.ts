@@ -251,7 +251,7 @@ export async function actOnSubmission(
   reason?: string,
   editedPayload?: Record<string, unknown> | null,
   adminNotes?: string,
-): Promise<{ status: string; submission_id: string }> {
+): Promise<{ status: string; submission_id: string; pr_url?: string }> {
   const response = await fetch(
     `${BASE_URL}/admin/submissions/${encodeURIComponent(submissionId)}`,
     {

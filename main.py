@@ -24,6 +24,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from api.routes import router as tech_router, debug_router, ontology_router, admin_router, submissions_router
 from api.auth import router as auth_router
@@ -71,6 +74,8 @@ async def _lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 # App factory
 # ---------------------------------------------------------------------------
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(lifespan=_lifespan,
     title="Energy Technology Database API",
     description=(
@@ -115,6 +120,9 @@ app = FastAPI(lifespan=_lifespan,
 # ---------------------------------------------------------------------------
 # Middleware
 # ---------------------------------------------------------------------------
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     # In development: allow the Vite dev server (port 5173 or 5174).

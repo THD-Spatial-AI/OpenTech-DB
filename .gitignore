@@ -75,3 +75,6 @@ data/scraped/
 github/
 __pycache__/
 docker-compose.yml
+/.agents
+CLAUDE.md
+/.claude

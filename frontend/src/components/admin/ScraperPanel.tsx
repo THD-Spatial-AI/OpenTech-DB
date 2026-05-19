@@ -499,9 +499,6 @@ function DashboardTab({
         const avgSecs = completedDurs.length
           ? Math.round(completedDurs.reduce((a, b) => a + b, 0) / completedDurs.length)
           : null;
-        const progressPct = (running && avgSecs && elapsed > 0)
-          ? Math.min(95, Math.round((elapsed / avgSecs) * 100))
-          : null;
         const elapsedSecs = liveRun?.elapsed_seconds ?? elapsed;
         const progressPctLive = (running && avgSecs && elapsedSecs > 0)
           ? Math.min(95, Math.round((elapsedSecs / avgSecs) * 100))

@@ -119,7 +119,7 @@ function SubmissionCard({
 }: {
   record: SubmissionRecord;
   token: string;
-  onAction: (id: string, action: "approve" | "reject", reason?: string) => void;
+  onAction: (id: string, action: "approve" | "reject", prUrl?: string) => void;
 }) {
   const [expanded,    setExpanded]    = useState(false);
   const [rejectMode,  setRejectMode]  = useState(false);
@@ -161,7 +161,7 @@ function SubmissionCard({
     setActionError(null);
     try {
       const edited = buildEditedPayload();
-      await actOnSubmission(
+      const result = await actOnSubmission(
         token,
         record.submission_id,
         action,
@@ -169,7 +169,7 @@ function SubmissionCard({
         edited,
         adminNotes || undefined,
       );
-      onAction(record.submission_id, action, reason || undefined);
+      onAction(record.submission_id, action, result.pr_url);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -406,6 +406,18 @@ function SubmissionCard({
                 {/* ── Footer meta ── */}
                 <div className="px-5 py-2.5 bg-slate-50/40 flex items-center gap-4">
                   <p className="text-[9px] font-mono text-slate-300 flex-1">ID: {record.submission_id}</p>
+                  {record.pr_url && (
+                    <a
+                      href={record.pr_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[11px] font-semibold text-indigo-600
+                                 hover:text-indigo-800 hover:underline"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                      View GitHub PR
+                    </a>
+                  )}
                   {isPending && (
                     <p className="text-[9px] text-indigo-400 italic">
                       Edits above are saved when you Approve or Reject
@@ -1426,12 +1438,16 @@ export default function AdminPanel() {
   }, [isAdmin, token]);
 
   const handleAction = useCallback(
-    (id: string, action: "approve" | "reject") => {
+    (id: string, action: "approve" | "reject", prUrl?: string) => {
       setSubmissions((prev) =>
         prev
           ? prev.map((s) =>
               s.submission_id === id
-                ? { ...s, status: (action === "approve" ? "approved" : "rejected") as SubmissionRecord["status"] }
+                ? {
+                    ...s,
+                    status: (action === "approve" ? "approved" : "rejected") as SubmissionRecord["status"],
+                    pr_url: prUrl ?? s.pr_url ?? null,
+                  }
                 : s
             )
           : prev

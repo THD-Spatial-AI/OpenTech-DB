@@ -36,7 +36,7 @@ const fakeStatus: ScraperStatus = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockFetchRuns.mockResolvedValue({ runs: [] })
+  mockFetchRuns.mockResolvedValue({ count: 0, runs: [] })
 })
 
 describe('ScraperPanel', () => {
@@ -57,7 +57,7 @@ describe('ScraperPanel', () => {
   it('calls triggerScraperRun with the token when Run Now is clicked', async () => {
     const statusPromise = Promise.resolve(fakeStatus)
     mockFetchStatus.mockReturnValue(statusPromise)
-    mockTriggerRun.mockResolvedValue({ message: 'Run started' })
+    mockTriggerRun.mockResolvedValue({ status: 'started', message: 'Run started' })
     render(<ScraperPanel token="test-token" />)
     await act(async () => { await statusPromise })
     await userEvent.click(screen.getByRole('button', { name: /run now/i }))

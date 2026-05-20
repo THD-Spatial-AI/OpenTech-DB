@@ -27,6 +27,7 @@ const emptyFilters: FilterState = {
 function makeTech(overrides: Partial<TechnologySummary> = {}): TechnologySummary {
   return {
     id: 'tech-1',
+    slug: null,
     name: 'Solar PV',
     category: 'generation',
     oeo_class: 'OEO_00000165',
@@ -34,24 +35,6 @@ function makeTech(overrides: Partial<TechnologySummary> = {}): TechnologySummary
     n_instances: 3,
     ...overrides,
   }
-}
-
-async function renderGrid(props: Partial<Parameters<typeof TechGrid>[0]> = {}) {
-  const promise = mockFetch.mock.results[0]?.value ?? Promise.resolve({ technologies: [], total: 0 })
-  await act(async () => {
-    render(
-      <Suspense fallback={<div>loading</div>}>
-        <TechGrid
-          category="generation"
-          searchQuery=""
-          filters={emptyFilters}
-          onOpenTech={vi.fn()}
-          {...props}
-        />
-      </Suspense>
-    )
-    await promise
-  })
 }
 
 beforeEach(() => {

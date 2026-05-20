@@ -40,7 +40,7 @@ const mockFetchSubmissions = vi.mocked(fetchAdminSubmissions)
 const mockFetchProfileSubmissions = vi.mocked(fetchAdminProfileSubmissions)
 
 const adminAuth = {
-  user: { id: 'u1', email: 'admin@test.com', is_admin: true },
+  user: { id: 'u1', username: 'admin', email: 'admin@test.com', auth_provider: 'admin', is_contributor: false, is_admin: true },
   token: 'test-token',
   isAdmin: true,
   isLoading: false,
@@ -60,6 +60,8 @@ function makeSubmission(overrides: Partial<SubmissionRecord> = {}): SubmissionRe
     submitter_email: null,
     rejection_reason: null,
     pr_url: null,
+    filename: '',
+    payload: null,
     ...overrides,
   }
 }
@@ -81,7 +83,7 @@ describe('AdminPanel', () => {
     mockUseAuth.mockReturnValue({
       ...adminAuth,
       isAdmin: false,
-      user: { id: 'u2', email: 'user@test.com', is_admin: false },
+      user: { id: 'u2', username: 'user', email: 'user@test.com', auth_provider: 'email', is_contributor: false, is_admin: false },
     })
     render(<AdminPanel />)
     expect(screen.getByText('Admin access required')).toBeInTheDocument()

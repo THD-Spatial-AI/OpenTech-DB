@@ -83,6 +83,11 @@ class TestJwtRoundTrip:
 class TestAdminLogin:
     def setup_method(self):
         os.environ.setdefault("JWT_SECRET_KEY", "test-secret-for-unit-tests")
+        # ADMIN_EMAIL and ADMIN_PASSWORD must be set in the environment before running tests.
+        # ADMIN_PASSWORD_HASH must be the bcrypt hash of ADMIN_PASSWORD.
+        if not os.environ.get("ADMIN_EMAIL") or not os.environ.get("ADMIN_PASSWORD") or not os.environ.get("ADMIN_PASSWORD_HASH"):
+            import pytest
+            pytest.skip("ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_PASSWORD_HASH env vars required for admin login tests")
         import importlib
         import api.auth as _auth_mod
         importlib.reload(_auth_mod)
@@ -105,8 +110,8 @@ class TestAdminLogin:
 
     def test_correct_credentials_return_token(self):
         resp = self._login(
-            os.environ.get("ADMIN_EMAIL", "ricardo.miranda-castillo@th-deg.de"),
-            "***ADMIN_PASSWORD_REMOVED***",
+            os.environ["ADMIN_EMAIL"],
+            os.environ["ADMIN_PASSWORD"],
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -115,13 +120,13 @@ class TestAdminLogin:
 
     def test_wrong_password_returns_401(self):
         resp = self._login(
-            os.environ.get("ADMIN_EMAIL", "ricardo.miranda-castillo@th-deg.de"),
+            os.environ["ADMIN_EMAIL"],
             "wrong-password",
         )
         assert resp.status_code == 401
 
     def test_wrong_email_returns_401(self):
-        resp = self._login("notadmin@example.com", "***ADMIN_PASSWORD_REMOVED***")
+        resp = self._login("notadmin@example.com", os.environ["ADMIN_PASSWORD"])
         assert resp.status_code == 401
 
     def test_empty_body_returns_422(self):

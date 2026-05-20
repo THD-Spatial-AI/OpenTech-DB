@@ -67,9 +67,9 @@ FRONTEND_URL         — SPA origin, e.g. http://localhost:5173
 JWT_SECRET_KEY       — Random secret for signing JWTs (generate once with:
                         python -c "import secrets; print(secrets.token_urlsafe(32))")
 
-ADMIN_EMAIL          — Super-admin email (defaults to the built-in value)
-ADMIN_PASSWORD_HASH  — bcrypt hash of the super-admin password.
-                       To generate a hash for a new password:
+ADMIN_EMAIL          — Super-admin email (required, no default)
+ADMIN_PASSWORD_HASH  — bcrypt hash of the super-admin password (required, no default).
+                       Generate with:
                          python -c "import bcrypt; print(bcrypt.hashpw(b'<pw>', bcrypt.gensalt(12)).decode())"
 """
 
@@ -124,19 +124,20 @@ else:
     ORCID_TOKEN_URL = "https://sandbox.orcid.org/oauth/token"
 
 # ── Admin credentials ─────────────────────────────────────────────────────────
-# Loaded from environment variables at startup so the plaintext password never
-# lives in source code.  A built-in default is provided for local development;
-# override both vars in production / Docker.
+# Both vars are required — the server refuses to start if either is missing.
 #
-# To regenerate the hash for a new password:
+# To generate a bcrypt hash for a new password:
 #   python -c "import bcrypt; print(bcrypt.hashpw(b'<pw>', bcrypt.gensalt(12)).decode())"
 
-_ADMIN_EMAIL         = os.getenv("ADMIN_EMAIL",  "ricardo.miranda-castillo@th-deg.de").strip().lower()
-# Default is the bcrypt hash of "***ADMIN_PASSWORD_REMOVED***" (rounds=12, safe to store — it's a one-way hash)
-_ADMIN_PASSWORD_HASH = os.getenv(
-    "ADMIN_PASSWORD_HASH",
-    "***ADMIN_HASH_REMOVED***",
-).strip()
+_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").strip().lower()
+_ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH", "").strip()
+
+if not _ADMIN_EMAIL or not _ADMIN_PASSWORD_HASH:
+    raise RuntimeError(
+        "ADMIN_EMAIL and ADMIN_PASSWORD_HASH env vars are required.\n"
+        "Generate a hash with:  python -c \"import bcrypt; print(bcrypt.hashpw(b'<pw>', bcrypt.gensalt(12)).decode())\"\n"
+        "Then add both to your .env file."
+    )
 
 # ── Response model ─────────────────────────────────────────────────────────────
 

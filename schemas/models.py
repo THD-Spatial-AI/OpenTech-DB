@@ -372,6 +372,7 @@ class ConversionTechnology(Technology):
 class TechnologySummary(BaseModel):
     """Lightweight summary used in list endpoints."""
     id:         UUID
+    slug:       str | None = None
     name:       str
     category:   TechnologyCategory
     oeo_class:  str | None

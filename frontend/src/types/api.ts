@@ -115,6 +115,7 @@ export interface Technology {
 
 export interface TechnologySummary {
   id: string;
+  slug: string | null;
   name: string;
   category: TechnologyCategory;
   oeo_class: string | null;

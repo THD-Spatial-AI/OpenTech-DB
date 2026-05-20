@@ -38,8 +38,9 @@ import {
   Suspense,
   startTransition,
 } from "react";
+import { createPortal } from "react-dom";
 import type { EquipmentInstance, Technology, TechnologySummary } from "../types/api";
-import { fetchTechnology } from "../services/api";
+import { fetchTechnology, fetchTechModelExport, fetchAllTechsModelExport, type ModelFormat } from "../services/api";
 
 // Lazy-load ECharts (large library) so it doesn't bloat the initial bundle
 const TechCharts = lazy(() =>
@@ -172,10 +173,14 @@ function InstanceRow({
   inst,
   index,
   techName,
+  techId,
+  originalIndex,
 }: {
   inst: EquipmentInstance;
   index: number;
   techName: string;
+  techId: string;
+  originalIndex: number;
 }) {
   const bg = index % 2 !== 0 ? "bg-surface-container-low/20" : "";
 
@@ -207,17 +212,12 @@ function InstanceRow({
                      group-hover:bg-transparent backdrop-blur-sm z-10">
         <div className="flex items-center gap-2">
           <span>{inst.label}</span>
-          <button
-            onClick={() => downloadInstanceJSON(inst, techName)}
-            title="Download variant as JSON"
-            aria-label={`Download ${inst.label} as JSON`}
-            className="flex items-center gap-1 px-2 py-0.5 rounded border border-outline-variant/40
-                       text-[10px] font-bold text-on-surface-variant bg-surface-container
-                       hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>download</span>
-            JSON
-          </button>
+          <InstanceDownloadMenu
+            inst={inst}
+            techId={techId}
+            techName={techName}
+            originalIndex={originalIndex}
+          />
         </div>
         {extraEntries.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
@@ -274,16 +274,191 @@ function InstanceRow({
   );
 }
 
+// ── Generic blob download helper ───────────────────────────────────────────────────────────
+
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement("a");
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Minimal YAML serialiser (handles the nested-dict structure of Calliope output) ────
+
+function toYaml(v: unknown, depth = 0): string {
+  const pad = "  ".repeat(depth);
+  if (v === null || v === undefined) return "null";
+  if (typeof v === "boolean") return v ? "true" : "false";
+  if (typeof v === "number") return isFinite(v) ? String(v) : "null";
+  if (typeof v === "string") {
+    const needsQuotes = !v || /[:#\[\]{},|>&*!?'"]/.test(v) || v.includes("\n") || /^\s|\s$/.test(v);
+    return needsQuotes
+      ? `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`
+      : v;
+  }
+  if (Array.isArray(v)) {
+    if (!v.length) return "[]";
+    return v.map((item) => `\n${pad}- ${toYaml(item, depth + 1)}`).join("");
+  }
+  const entries = Object.entries(v as Record<string, unknown>).filter(
+    ([, val]) => val !== null && val !== undefined,
+  );
+  if (!entries.length) return "{}";
+  return entries
+    .map(([k, val]) => {
+      if (val !== null && typeof val === "object" && !Array.isArray(val)) {
+        const nested = toYaml(val, depth + 1);
+        return `${pad}${k}:${nested.startsWith("\n") ? nested : "\n" + nested}`;
+      }
+      return `${pad}${k}: ${toYaml(val, depth)}`;
+    })
+    .join("\n");
+}
+
 // ── Per-variant JSON download ────────────────────────────────────────────────
 
 function downloadInstanceJSON(inst: EquipmentInstance, techName: string): void {
-  const blob = new Blob([JSON.stringify(inst, null, 2)], { type: "application/json" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href     = url;
-  a.download = `${techName.replace(/\s+/g, "_")}_${inst.label.replace(/\s+/g, "_")}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  triggerDownload(
+    new Blob([JSON.stringify(inst, null, 2)], { type: "application/json" }),
+    `${techName.replace(/\s+/g, "_")}_${inst.label.replace(/\s+/g, "_")}.json`,
+  );
+}
+
+// ── Per-instance model-format download menu ─────────────────────────────────────────
+
+const INSTANCE_EXPORT_OPTIONS = [
+  { id: "raw",       label: "Raw JSON",  ext: "json", icon: "data_object" },
+  { id: "calliope",  label: "Calliope",  ext: "yaml", icon: "description" },
+  { id: "pypsa",     label: "PyPSA",     ext: "json", icon: "electrical_services" },
+  { id: "osemosys",  label: "OSeMOSYS",  ext: "json", icon: "table_chart" },
+  { id: "adoptnet0", label: "ADOPTNet0", ext: "json", icon: "hub" },
+] as const;
+
+type InstanceExportId = (typeof INSTANCE_EXPORT_OPTIONS)[number]["id"];
+
+function InstanceDownloadMenu({
+  inst,
+  techId,
+  techName,
+  originalIndex,
+}: {
+  inst: EquipmentInstance;
+  techId: string;
+  techName: string;
+  originalIndex: number;
+}) {
+  const [open,    setOpen]   = useState(false);
+  const [loading, setLoading] = useState<InstanceExportId | null>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  function handleOpen() {
+    if (loading !== null) return;
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setDropPos({ top: r.bottom + 4, left: r.left });
+    }
+    setOpen(true);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e: MouseEvent) {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    }
+    function onScroll() { setOpen(false); }
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("scroll",    onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("scroll",    onScroll, true);
+    };
+  }, [open]);
+
+  async function doExport(id: InstanceExportId) {
+    if (loading) return;
+    setLoading(id);
+    setOpen(false);
+    try {
+      if (id === "raw") {
+        downloadInstanceJSON(inst, techName);
+      } else {
+        const data = await fetchTechModelExport(techId, id as ModelFormat, originalIndex);
+        const safe = `${techName.replace(/\s+/g, "_")}_inst${originalIndex}`;
+        if (id === "calliope") {
+          const key = techName.toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
+          triggerDownload(
+            new Blob([`techs:\n${toYaml({ [key]: data }, 1)}`], { type: "text/yaml" }),
+            `${safe}_calliope.yaml`,
+          );
+        } else {
+          triggerDownload(
+            new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+            `${safe}_${id}.json`,
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Instance export failed:", err);
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  const dropdown = open ? createPortal(
+    <div
+      role="listbox"
+      style={{ position: "fixed", top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
+      className="bg-surface border border-outline-variant/30 rounded-md shadow-lg shadow-black/20 min-w-[150px] overflow-hidden"
+    >
+      {INSTANCE_EXPORT_OPTIONS.map(({ id, label, ext, icon }) => (
+        <button
+          key={id}
+          role="option"
+          onMouseDown={(e) => { e.stopPropagation(); doExport(id); }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium
+                     text-on-surface-variant hover:bg-primary/8 hover:text-primary
+                     transition-colors text-left"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>{icon}</span>
+          <span className="flex-1">{label}</span>
+          <span className="text-[9px] opacity-40 font-normal">.{ext}</span>
+        </button>
+      ))}
+    </div>,
+    document.body,
+  ) : null;
+
+  return (
+    <div className="inline-block">
+      <button
+        ref={btnRef}
+        onClick={() => (open ? setOpen(false) : handleOpen())}
+        disabled={loading !== null}
+        title="Download this variant"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex items-center gap-1 px-2 py-0.5 rounded border border-outline-variant/40
+                   text-[10px] font-bold text-on-surface-variant bg-surface-container
+                   hover:border-primary hover:text-primary hover:bg-primary/5
+                   disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      >
+        {loading ? (
+          <span className="material-symbols-outlined animate-spin" style={{ fontSize: "12px" }}>progress_activity</span>
+        ) : (
+          <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>download</span>
+        )}
+        {loading
+          ? INSTANCE_EXPORT_OPTIONS.find((o) => o.id === loading)?.label ?? "…"
+          : "Export"}
+        <span className="material-symbols-outlined" style={{ fontSize: "10px" }}>expand_more</span>
+      </button>
+      {dropdown}
+    </div>
+  );
 }
 
 // ── Export CSV helper ─────────────────────────────────────────────────────────
@@ -400,6 +575,34 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
         {sortDir === "asc" ? "arrow_upward" : "arrow_downward"}
       </span>
     );
+  }
+
+  // ── Full-catalog model export ──────────────────────────────────────────────────
+  const [bulkDownloading, setBulkDownloading] = useState<ModelFormat | null>(null);
+
+  async function handleBulkExport(format: ModelFormat) {
+    if (bulkDownloading) return;
+    setBulkDownloading(format);
+    try {
+      const data = await fetchAllTechsModelExport(format);
+      if (format === "calliope") {
+        // Response: { techs: {...}, meta: {...} }
+        const techs = (data as Record<string, unknown>).techs ?? data;
+        triggerDownload(
+          new Blob([`techs:\n${toYaml(techs, 1)}`], { type: "text/yaml" }),
+          `opentech_catalog_calliope.yaml`,
+        );
+      } else {
+        triggerDownload(
+          new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+          `opentech_catalog_${format}.json`,
+        );
+      }
+    } catch (err) {
+      console.error(`Bulk export failed (${format}):`, err);
+    } finally {
+      setBulkDownloading(null);
+    }
   }
 
   // useOptimistic for the "Share Metadata" button toast
@@ -565,6 +768,7 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
 
           {/* Action buttons pinned to bottom */}
           <div className="flex-shrink-0 p-4 border-t border-outline-variant/15 space-y-2">
+            {/* Raw CSV */}
             <button
               onClick={() => exportToCSV(tech)}
               className="w-full px-4 py-2 technical-gradient text-on-primary text-xs font-bold
@@ -575,6 +779,46 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
               <span className="material-symbols-outlined text-sm">download</span>
               Export (.csv)
             </button>
+
+            {/* Full-catalog export – all technologies */}
+            <div>
+              <p className="text-[9px] uppercase tracking-widest font-bold text-on-surface-variant/50 mb-0.5 px-0.5">
+                Full Catalog
+              </p>
+              <p className="text-[9px] text-on-surface-variant/40 mb-1.5 px-0.5">all {`${tech.category}`} • every technology</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(
+                  [
+                    { format: "calliope"  as ModelFormat, label: "Calliope",  ext: "yaml", icon: "description"        },
+                    { format: "pypsa"     as ModelFormat, label: "PyPSA",     ext: "json", icon: "electrical_services" },
+                    { format: "osemosys"  as ModelFormat, label: "OSeMOSYS",  ext: "json", icon: "table_chart"         },
+                    { format: "adoptnet0" as ModelFormat, label: "ADOPTNet0", ext: "json", icon: "hub"                 },
+                  ] as const
+                ).map(({ format, label, ext, icon }) => (
+                  <button
+                    key={format}
+                    onClick={() => handleBulkExport(format)}
+                    disabled={bulkDownloading !== null}
+                    title={`Download full catalog – ${label} (.${ext})`}
+                    className="flex flex-col items-center justify-center gap-0.5 px-2 py-2.5
+                               bg-surface-container-low border border-outline-variant/20 rounded
+                               text-[10px] font-bold text-on-surface-variant
+                               hover:bg-surface-container hover:border-secondary/40 hover:text-secondary
+                               disabled:opacity-40 disabled:cursor-not-allowed transition-all group"
+                  >
+                    {bulkDownloading === format ? (
+                      <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-base group-hover:text-secondary">{icon}</span>
+                    )}
+                    <span className="leading-none">{label}</span>
+                    <span className="text-[8px] opacity-50 font-normal">.{ext}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Share */}
             <button
               onClick={handleShare}
               className="w-full px-4 py-2 border border-outline text-on-surface-variant text-xs
@@ -733,7 +977,14 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                 <tbody className="divide-y divide-outline-variant/10">
                   {sortedInstances.length > 0 ? (
                     sortedInstances.map((inst, idx) => (
-                      <InstanceRow key={inst.id} inst={inst} index={idx} techName={tech.name} />
+                      <InstanceRow
+                        key={inst.id}
+                        inst={inst}
+                        index={idx}
+                        techName={tech.name}
+                        techId={String(tech.id)}
+                        originalIndex={tech.instances.indexOf(inst)}
+                      />
                     ))
                   ) : (
                     <tr>

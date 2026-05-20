@@ -88,6 +88,33 @@ export function fetchTechnology(id: string): Promise<Technology> {
 }
 
 /**
+ * Fetch a single technology translated to a modeling-framework format.
+ * NOT cached — every call hits the API fresh so instance_index changes are honoured.
+ */
+export type ModelFormat = "calliope" | "pypsa" | "osemosys" | "adoptnet0";
+
+export async function fetchTechModelExport(
+  techId: string,
+  format: ModelFormat,
+  instanceIndex = 0,
+): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>(
+    `/technologies/${techId}/${format}?instance_index=${instanceIndex}`
+  );
+}
+
+/**
+ * Fetch ALL technologies translated to a modeling-framework format (full catalog export).
+ * For Calliope the response shape is `{ techs: {...}, meta: {...} }`.
+ * For PyPSA / OSeMOSYS / ADOPTNet0 the shape is `{ technologies: {...}, meta: {...} }`.
+ */
+export async function fetchAllTechsModelExport(
+  format: ModelFormat,
+): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>(`/technologies/${format}`);
+}
+
+/**
  * Invalidates the promise cache for a category so the next call
  * triggers a fresh network request.
  */

@@ -26,6 +26,24 @@ GET  /technologies/calliope?category=generation    → filtered by category
 GET  /technologies/{tech_id}/calliope              → single tech, Calliope format
 GET  /technologies/{tech_id}/calliope?instance_index=1  → specific instance
 POST /technologies/{tech_id}/calliope              → single tech + constraint overrides
+
+PyPSA adapter endpoints
+-----------------------
+GET  /technologies/pypsa                           → ALL techs as PyPSA component dicts
+GET  /technologies/pypsa?category=generation       → filtered by category
+GET  /technologies/{tech_id}/pypsa                 → single tech, PyPSA format
+
+OSeMOSYS adapter endpoints
+--------------------------
+GET  /technologies/osemosys                        → ALL techs as OSeMOSYS parameter dicts
+GET  /technologies/osemosys?category=generation    → filtered by category
+GET  /technologies/{tech_id}/osemosys              → single tech, OSeMOSYS format
+
+ADOPTNet0 adapter endpoints
+---------------------------
+GET  /technologies/adoptnet0                       → ALL techs as ADOPTNet0 JSON dicts
+GET  /technologies/adoptnet0?category=generation   → filtered by category
+GET  /technologies/{tech_id}/adoptnet0             → single tech, ADOPTNet0 format
 """
 
 from __future__ import annotations
@@ -43,7 +61,10 @@ from fastapi import APIRouter, Body, HTTPException, Query, Path as FPath, Header
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel, Field
 
-from adapters.calliope_adapter import to_calliope
+from adapters.calliope_adapter  import to_calliope
+from adapters.pypsa_adapter     import to_pypsa
+from adapters.osemosys_adapter  import to_osemosys
+from adapters.adoptnet0_adapter import to_adoptnet0
 
 from schemas.models import (
     Technology,
@@ -527,6 +548,12 @@ def list_technologies(
     summaries = [
         TechnologySummary(
             id=t.id,
+            slug=(
+                getattr(t, "technology_type", None)
+                or getattr(t, "storage_type", None)
+                or getattr(t, "conversion_type", None)
+                or getattr(t, "transmission_type", None)
+            ),
             name=t.name,
             category=t.category,
             oeo_class=t.oeo_class,
@@ -554,6 +581,12 @@ def list_by_category(
     summaries = [
         TechnologySummary(
             id=t.id,
+            slug=(
+                getattr(t, "technology_type", None)
+                or getattr(t, "storage_type", None)
+                or getattr(t, "conversion_type", None)
+                or getattr(t, "transmission_type", None)
+            ),
             name=t.name,
             category=t.category,
             oeo_class=t.oeo_class,
@@ -691,6 +724,261 @@ def post_calliope_with_overrides(
         idx = min(overrides.instance_index, len(tech.instances) - 1) if tech.instances else None
         result = to_calliope(tech, instance_index=idx, cost_class=overrides.cost_class)
         return _apply_calliope_overrides(result, overrides)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# PyPSA adapter endpoints
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/pypsa",
+    summary="All technologies in PyPSA format",
+    response_description="PyPSA-ready component parameter dicts for all loaded technologies.",
+)
+def get_all_pypsa(
+    category: Annotated[
+        TechnologyCategory | None,
+        Query(description="Filter by category (generation | storage | transmission | conversion)."),
+    ] = None,
+    discount_rate: Annotated[
+        float,
+        Query(ge=0.0, le=1.0, description="Annual discount rate used for CAPEX annualization (CRF). Default 0.07."),
+    ] = 0.07,
+    instance_index: Annotated[
+        int,
+        Query(ge=0, description="Which equipment instance to use for every technology (0-based)."),
+    ] = 0,
+) -> dict[str, Any]:
+    """
+    Return **all** technologies as PyPSA component parameter dictionaries.
+
+    Each technology is keyed by its snake_case name.  The ``component_type``
+    field in every record indicates the PyPSA component to use
+    (``Generator``, ``StorageUnit``, ``Link``).
+
+    Usage example (Python)::
+
+        import requests, pypsa
+        resp = requests.get(".../technologies/pypsa?category=generation")
+        network = pypsa.Network()
+        for name, params in resp.json()["technologies"].items():
+            ct = params.pop("component_type", "Generator")
+            network.add(ct, name, **{k: v for k, v in params.items() if not k.startswith("_")})
+    """
+    all_techs = list(_get_all().values())
+    if category:
+        all_techs = [t for t in all_techs if t.category == category]
+
+    result: dict[str, Any] = {}
+    errors: list[dict] = []
+
+    for tech in all_techs:
+        try:
+            idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
+            params = to_pypsa(tech, instance_index=idx, discount_rate=discount_rate)
+            key = re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
+            result[key] = params
+        except Exception as exc:  # noqa: BLE001
+            errors.append({"tech": tech.name, "error": str(exc)})
+
+    return {
+        "technologies": result,
+        "meta": {
+            "total":          len(result),
+            "discount_rate":  discount_rate,
+            "instance_index": instance_index,
+            "errors":         errors,
+        },
+    }
+
+
+@router.get(
+    "/{tech_id}/pypsa",
+    summary="Single technology in PyPSA format",
+)
+def get_pypsa(
+    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    instance_index: Annotated[
+        int,
+        Query(ge=0, description="Which equipment instance to use (0-based)."),
+    ] = 0,
+    discount_rate: Annotated[
+        float,
+        Query(ge=0.0, le=1.0, description="Annual discount rate used for CAPEX annualization."),
+    ] = 0.07,
+) -> dict[str, Any]:
+    tech = _get_all().get(tech_id)
+    if not tech:
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
+    try:
+        idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
+        return to_pypsa(tech, instance_index=idx, discount_rate=discount_rate)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# OSeMOSYS adapter endpoints
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/osemosys",
+    summary="All technologies in OSeMOSYS format",
+    response_description="OSeMOSYS-ready parameter dicts for all loaded technologies.",
+)
+def get_all_osemosys(
+    category: Annotated[
+        TechnologyCategory | None,
+        Query(description="Filter by category (generation | storage | transmission | conversion)."),
+    ] = None,
+    instance_index: Annotated[
+        int,
+        Query(ge=0, description="Which equipment instance to use for every technology (0-based)."),
+    ] = 0,
+) -> dict[str, Any]:
+    """
+    Return **all** technologies as OSeMOSYS parameter dictionaries.
+
+    Capacity costs are expressed in **MEUR/GW** (= EUR/kW numerically).
+    Energy costs are in **MEUR/PJ**.  ``CapacityToActivityUnit`` = 31.536 PJ/GW/yr.
+
+    For storage technologies the ``storage_model`` sub-key contains separate
+    charge/discharge technology records and the STORAGE entity definition.
+
+    Usage example (Python / otoole)::
+
+        import requests, yaml
+        resp = requests.get(".../technologies/osemosys?category=generation")
+        with open("otoole_params.yaml", "w") as f:
+            yaml.dump(resp.json()["technologies"], f, sort_keys=False)
+    """
+    all_techs = list(_get_all().values())
+    if category:
+        all_techs = [t for t in all_techs if t.category == category]
+
+    result: dict[str, Any] = {}
+    errors: list[dict] = []
+
+    for tech in all_techs:
+        try:
+            idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
+            params = to_osemosys(tech, instance_index=idx)
+            key = re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
+            result[key] = params
+        except Exception as exc:  # noqa: BLE001
+            errors.append({"tech": tech.name, "error": str(exc)})
+
+    return {
+        "technologies": result,
+        "meta": {
+            "total":          len(result),
+            "instance_index": instance_index,
+            "unit_system":    {"cost": "MEUR/GW or MEUR/PJ", "capacity": "GW", "energy": "PJ"},
+            "errors":         errors,
+        },
+    }
+
+
+@router.get(
+    "/{tech_id}/osemosys",
+    summary="Single technology in OSeMOSYS format",
+)
+def get_osemosys(
+    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    instance_index: Annotated[
+        int,
+        Query(ge=0, description="Which equipment instance to use (0-based)."),
+    ] = 0,
+) -> dict[str, Any]:
+    tech = _get_all().get(tech_id)
+    if not tech:
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
+    try:
+        idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
+        return to_osemosys(tech, instance_index=idx)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# ADOPTNet0 adapter endpoints
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/adoptnet0",
+    summary="All technologies in ADOPTNet0 format",
+    response_description="ADOPTNet0-ready JSON parameter blocks for all loaded technologies.",
+)
+def get_all_adoptnet0(
+    category: Annotated[
+        TechnologyCategory | None,
+        Query(description="Filter by category (generation | storage | transmission | conversion)."),
+    ] = None,
+    instance_index: Annotated[
+        int,
+        Query(ge=0, description="Which equipment instance to use for every technology (0-based)."),
+    ] = 0,
+) -> dict[str, Any]:
+    """
+    Return **all** technologies formatted for ADOPTNet0 ingestion.
+
+    Every parameter is wrapped in a provenance envelope
+    ``{"value": …, "unit": …, "min": …, "max": …, "source": …, "year": …}``
+    preserving full OEO traceability in the export.
+
+    Usage example (Python)::
+
+        import requests, json
+        resp = requests.get(".../technologies/adoptnet0?category=conversion")
+        with open("adoptnet0_techs.json", "w") as f:
+            json.dump(resp.json(), f, indent=2)
+    """
+    all_techs = list(_get_all().values())
+    if category:
+        all_techs = [t for t in all_techs if t.category == category]
+
+    result: dict[str, Any] = {}
+    errors: list[dict] = []
+
+    for tech in all_techs:
+        try:
+            idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
+            params = to_adoptnet0(tech, instance_index=idx)
+            key = re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
+            result[key] = params
+        except Exception as exc:  # noqa: BLE001
+            errors.append({"tech": tech.name, "error": str(exc)})
+
+    return {
+        "technologies": result,
+        "meta": {
+            "total":          len(result),
+            "instance_index": instance_index,
+            "format":         "ADOPTNet0",
+            "errors":         errors,
+        },
+    }
+
+
+@router.get(
+    "/{tech_id}/adoptnet0",
+    summary="Single technology in ADOPTNet0 format",
+)
+def get_adoptnet0(
+    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    instance_index: Annotated[
+        int,
+        Query(ge=0, description="Which equipment instance to use (0-based)."),
+    ] = 0,
+) -> dict[str, Any]:
+    tech = _get_all().get(tech_id)
+    if not tech:
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
+    try:
+        idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
+        return to_adoptnet0(tech, instance_index=idx)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

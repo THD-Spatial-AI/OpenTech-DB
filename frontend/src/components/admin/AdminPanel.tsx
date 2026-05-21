@@ -1183,6 +1183,7 @@ function ProfileSubmissionCard({
   // Load chart data when first expanded
   useEffect(() => {
     if (!expanded || chartData || chartLoading) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setChartLoading(true);
     setChartError(null);
     fetchAdminProfileSubmissionData(token, record.submission_id)

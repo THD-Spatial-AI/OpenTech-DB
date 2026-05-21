@@ -272,6 +272,7 @@ export default function TimeSeriesCatalogue() {
   const [catalogueVersion, setCatalogueVersion]    = useState(0);
   const [isPending, startTransitionRaw]            = useTransition();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const cataloguePromise = useMemo(() => fetchTimeSeriesCatalogue(), [catalogueVersion]);
 
   const handleSelect = (p: TimeSeriesProfile) => {

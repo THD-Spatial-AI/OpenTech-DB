@@ -59,7 +59,6 @@ function CarrierNode({ id, data, selected }: NodeProps<Node<CarrierNodeData>>) {
   if (data.pressureBar  !== null)  params.push(`${data.pressureBar} bar`);
 
   return (
-    /* eslint-disable-next-line jsx-a11y/click-events-have-key-events */
     <div
       role="button"
       tabIndex={0}

@@ -121,6 +121,7 @@ export default function TechGeoMap({
 
   useEffect(() => {
     if (geoDataRef.current) return; // already fetched
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
     fetch(GEOJSON_URL)

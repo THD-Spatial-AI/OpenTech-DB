@@ -66,7 +66,6 @@ function CustomTechNode({ id, data, selected }: NodeProps<Node<TechNodeData>>) {
   const domainLabel = meta ? data.domain.charAt(0).toUpperCase() + data.domain.slice(1) : oeoId;
 
   return (
-    /* eslint-disable-next-line jsx-a11y/click-events-have-key-events */
     <div
       role="button"
       tabIndex={0}

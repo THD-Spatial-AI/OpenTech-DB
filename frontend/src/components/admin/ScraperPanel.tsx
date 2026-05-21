@@ -453,6 +453,7 @@ function DashboardTab({
   // Tick elapsed seconds while a run is active
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!runStartTime) { setElapsed(0); return; }
     const id = setInterval(
       () => setElapsed(Math.floor((Date.now() - runStartTime.getTime()) / 1000)),
@@ -1051,7 +1052,7 @@ function CandidatesTab({ token }: { token: string }) {
 
   // Toggle helper for individual checkbox
   const toggleCheck = (id: string) =>
-    setChecked((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setChecked((prev) => { const n = new Set(prev); if (n.has(id)) { n.delete(id); } else { n.add(id); } return n; });
 
   // Group-level select-all
   const toggleGroupAll = (items: ScraperCandidate[]) => {
@@ -1256,7 +1257,7 @@ function CandidatesTab({ token }: { token: string }) {
                   <button
                     onClick={() => setCollapsed((prev) => {
                       const n = new Set(prev);
-                      n.has(techId) ? n.delete(techId) : n.add(techId);
+                      if (n.has(techId)) { n.delete(techId); } else { n.add(techId); }
                       return n;
                     })}
                     className="flex-1 flex items-center gap-2 text-left"

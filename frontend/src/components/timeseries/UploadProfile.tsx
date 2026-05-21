@@ -479,6 +479,7 @@ function FilePreview({ file }: { file: File }) {
   const [preview, setPreview] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPreview(null);
     let cancelled = false;
     const reader = new FileReader();

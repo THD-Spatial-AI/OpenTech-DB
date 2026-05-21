@@ -301,7 +301,7 @@ function toYaml(v: unknown, depth = 0): string {
   if (typeof v === "boolean") return v ? "true" : "false";
   if (typeof v === "number") return isFinite(v) ? String(v) : "null";
   if (typeof v === "string") {
-    const needsQuotes = !v || /[:#\[\]{},|>&*!?'"]/.test(v) || v.includes("\n") || /^\s|\s$/.test(v);
+    const needsQuotes = !v || /[:#[\]{},|>&*!?'"]/.test(v) || v.includes("\n") || /^\s|\s$/.test(v);
     return needsQuotes
       ? `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`
       : v;

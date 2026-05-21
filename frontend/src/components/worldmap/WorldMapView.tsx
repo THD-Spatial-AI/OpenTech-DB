@@ -83,9 +83,11 @@ export default function WorldMapView() {
   const [selectedIso3,  setSelectedIso3]  = useState<string | null>(null);
   const [, setSelectedName]  = useState<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const techOptions = useMemo(() => getWorldMapTechnologies(), [catalogueVersion]);
   const countryOptions = useMemo(
     () => getWorldMapCountries().filter((c) => c.entries.length > 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [catalogueVersion],
   );
   const continentOptions = useMemo(() => {

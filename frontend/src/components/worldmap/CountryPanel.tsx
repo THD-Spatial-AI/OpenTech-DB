@@ -168,7 +168,7 @@ export default function CountryPanel({
         },
       ],
     };
-  }, [evolutionSeries, param, year]);
+  }, [evolutionSeries, year]);
 
   const evolutionRef = useEChart(evolutionOption);
 

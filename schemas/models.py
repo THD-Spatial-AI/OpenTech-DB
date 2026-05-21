@@ -386,3 +386,4 @@ class TechnologyCatalogue(BaseModel):
     """Top-level catalogue response."""
     total: int
     technologies: list[TechnologySummary]
+    has_more: bool = Field(False, description="True when more items exist beyond this page.")

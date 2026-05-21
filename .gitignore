@@ -81,7 +81,7 @@ data/wind_turbine_library.csv
 # ──────────────────────────────────────────────────────────────────
 data/scraped/
 
-.github/
+.github/agents/
 github/
 __pycache__/
 docker-compose.yml

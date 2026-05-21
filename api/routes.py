@@ -540,13 +540,19 @@ def get_worldmap_country_values() -> WorldMapCountryValuesResponse:
 )
 def list_technologies(
     skip: Annotated[int, Query(ge=0, description="Offset for pagination.")] = 0,
-    limit: Annotated[int, Query(ge=1, le=200, description="Max items to return.")] = 50,
+    limit: Annotated[int, Query(ge=1, le=100, description="Max items to return (max 100).")] = 50,
     tag: Annotated[str | None, Query(description="Filter by tag.")] = None,
+    category: Annotated[
+        TechnologyCategory | None,
+        Query(description="Filter by category (generation | storage | transmission | conversion)."),
+    ] = None,
 ) -> TechnologyCatalogue:
     all_techs = list(_get_all().values())
 
     if tag:
         all_techs = [t for t in all_techs if tag.lower() in [x.lower() for x in t.tags]]
+    if category:
+        all_techs = [t for t in all_techs if t.category == category]
 
     total = len(all_techs)
     page  = all_techs[skip : skip + limit]
@@ -568,18 +574,19 @@ def list_technologies(
         )
         for t in page
     ]
-    return TechnologyCatalogue(total=total, technologies=summaries)
+    return TechnologyCatalogue(total=total, technologies=summaries, has_more=skip + limit < total)
 
 
 @router.get(
     "/category/{category}",
     response_model=TechnologyCatalogue,
     summary="List technologies by category",
+    description="Prefer `GET /technologies?category=<value>` — this path is kept for backwards compatibility.",
 )
 def list_by_category(
     category: TechnologyCategory,
     skip: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> TechnologyCatalogue:
     filtered = [t for t in _get_all().values() if t.category == category]
     total    = len(filtered)
@@ -601,7 +608,7 @@ def list_by_category(
         )
         for t in page
     ]
-    return TechnologyCatalogue(total=total, technologies=summaries)
+    return TechnologyCatalogue(total=total, technologies=summaries, has_more=skip + limit < total)
 
 
 @router.get(

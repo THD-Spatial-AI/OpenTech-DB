@@ -82,6 +82,7 @@ class TimeSeriesProfileMeta(BaseModel):
 class TimeSeriesCatalogueResponse(BaseModel):
     total:    int
     profiles: list[TimeSeriesProfileMeta]
+    has_more: bool = False
 
 
 class TimeSeriesDataPoint(BaseModel):
@@ -202,7 +203,7 @@ def list_profiles(
 
     total = len(profiles)
     page  = profiles[skip : skip + limit]
-    return TimeSeriesCatalogueResponse(total=total, profiles=page)
+    return TimeSeriesCatalogueResponse(total=total, profiles=page, has_more=skip + limit < total)
 
 
 @router.get(

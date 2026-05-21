@@ -15,12 +15,13 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid as _uuid
 from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -111,6 +112,26 @@ app = FastAPI(lifespan=_lifespan,
             ),
         },
         {
+            "name":        "Admin",
+            "description": "Catalogue management operations (admin-only).",
+        },
+        {
+            "name":        "Auth",
+            "description": "Authentication via ORCID OAuth and built-in admin credentials.",
+        },
+        {
+            "name":        "Ontology",
+            "description": "OEO-aligned controlled vocabularies for contributor submissions.",
+        },
+        {
+            "name":        "TimeSeries",
+            "description": "Generation and load profiles: upload, browse, and manage.",
+        },
+        {
+            "name":        "Debug",
+            "description": "Data-loading diagnostics and cache management (admin-only).",
+        },
+        {
             "name":        "System",
             "description": "Health checks and metadata.",
         },
@@ -122,6 +143,16 @@ app = FastAPI(lifespan=_lifespan,
 # ---------------------------------------------------------------------------
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    """Propagate or generate X-Request-ID for every response."""
+    request_id = request.headers.get("X-Request-ID") or str(_uuid.uuid4())
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -179,48 +210,38 @@ def _load_tech_from_id(tech_id: str):
     "/api/v1/adapt/pypsa/{tech_id}",
     tags=["Adapters"],
     summary="Translate a technology to PyPSA parameters",
+    deprecated=True,
     response_class=JSONResponse,
+    description="Deprecated — use `GET /api/v1/technologies/{tech_id}/pypsa` instead.",
 )
 def adapt_pypsa(tech_id: str, instance_index: int = 0, discount_rate: float = 0.07):
-    """
-    Return a PyPSA-ready parameter dictionary for a stored technology.
-
-    - **tech_id**: UUID of the technology record.
-    - **instance_index**: which EquipmentInstance to translate (0-based).
-    - **discount_rate**: annual discount rate for annualised capex calculation.
-    """
     tech = _load_tech_from_id(tech_id)
     if tech is None:
-        return JSONResponse({"detail": f"Technology '{tech_id}' not found."}, status_code=404)
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
         params = to_pypsa(tech, instance_index=instance_index, discount_rate=discount_rate)
         return JSONResponse({"technology": tech.name, "framework": "PyPSA", "parameters": params})
-    except IndexError as e:
-        return JSONResponse({"detail": str(e)}, status_code=400)
+    except IndexError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get(
     "/api/v1/adapt/calliope/{tech_id}",
     tags=["Adapters"],
     summary="Translate a technology to Calliope parameters",
+    deprecated=True,
     response_class=JSONResponse,
+    description="Deprecated — use `GET /api/v1/technologies/{tech_id}/calliope` instead.",
 )
 def adapt_calliope(tech_id: str, instance_index: int = 0, cost_class: str = "monetary"):
-    """
-    Return a Calliope-ready technology configuration dict for a stored technology.
-
-    - **tech_id**: UUID of the technology record.
-    - **instance_index**: which EquipmentInstance to translate (0-based).
-    - **cost_class**: Calliope cost class key (default: ``monetary``).
-    """
     tech = _load_tech_from_id(tech_id)
     if tech is None:
-        return JSONResponse({"detail": f"Technology '{tech_id}' not found."}, status_code=404)
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
         params = to_calliope(tech, instance_index=instance_index, cost_class=cost_class)
         return JSONResponse({"technology": tech.name, "framework": "Calliope", "parameters": params})
-    except IndexError as e:
-        return JSONResponse({"detail": str(e)}, status_code=400)
+    except IndexError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # ---------------------------------------------------------------------------

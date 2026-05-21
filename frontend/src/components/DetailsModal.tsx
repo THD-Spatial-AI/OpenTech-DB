@@ -600,6 +600,54 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
     ),
   ).sort();
 
+  // ── Column filter state ───────────────────────────────────────
+  const [showFilters, setShowFilters] = useState(false);
+  const [colFilters,  setColFilters]  = useState<Record<string, string>>({});
+
+  const activeFilterCount = Object.values(colFilters).filter(Boolean).length;
+
+  function setFilter(key: string, val: string) {
+    setColFilters((prev) => ({ ...prev, [key]: val }));
+  }
+
+  /** Resolve the rendered value for a column key from an instance. */
+  function getInstColVal(inst: EquipmentInstance, key: string): number | string | null | undefined {
+    switch (key) {
+      case "capex_per_kw":         return inst.capex_per_kw?.value;
+      case "opex_fixed_per_kw_yr": return inst.opex_fixed_per_kw_yr?.value;
+      case "efficiency":           return inst.electrical_efficiency?.value ?? inst.thermal_efficiency?.value;
+      case "capacity_kw":          return inst.capacity_kw?.value;
+      case "economic_lifetime_yr": return inst.economic_lifetime_yr?.value;
+      default:                     return inst.extra?.[key] as number | string | null | undefined;
+    }
+  }
+
+  /** Match a value against a filter string.
+   *  Supports numeric operators: >N  >=N  <N  <=N  =N
+   *  Otherwise: case-insensitive substring match.
+   */
+  function matchesFilter(val: number | string | null | undefined, raw: string): boolean {
+    if (!raw.trim()) return true;
+    if (val === null || val === undefined) return false;
+    const m = raw.trim().match(/^([<>]=?|=)\s*(-?\d*\.?\d+)$/);
+    if (m && typeof val === "number") {
+      const n = parseFloat(m[2]);
+      if (m[1] === ">" ) return val >  n;
+      if (m[1] === ">=") return val >= n;
+      if (m[1] === "<" ) return val <  n;
+      if (m[1] === "<=") return val <= n;
+      if (m[1] === "=" ) return val === n;
+    }
+    return String(val).toLowerCase().includes(raw.toLowerCase());
+  }
+
+  // Apply column filters on top of sorted instances
+  const displayInstances = sortedInstances.filter((inst) =>
+    Object.entries(colFilters).every(([key, raw]) =>
+      matchesFilter(getInstColVal(inst, key), raw),
+    ),
+  );
+
   // Helper to render a sort indicator arrow
   function SortIcon({ field }: { field: SortField }) {
     if (field !== sortField) {
@@ -935,6 +983,7 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
           {/* Instances Table */}
           <div className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border border-outline-variant/10">
             {/* Sort toolbar */}
+            {/* Sort + filter toolbar */}
             <div className="flex items-center gap-3 px-5 py-3 border-b border-outline-variant/10 bg-surface-container/30 flex-wrap">
               <span className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">
                 Sort by
@@ -965,10 +1014,112 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                   </span>
                 </button>
               ))}
-              <span className="ml-auto text-[10px] text-on-surface-variant/50">
-                {sortedInstances.length} variant{sortedInstances.length !== 1 ? "s" : ""}
+              <span className="ml-auto flex items-center gap-2">
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={() => setColFilters({})}
+                    className="flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold
+                               bg-error/10 text-error border border-error/30 hover:bg-error/20 transition-colors"
+                    title="Clear all filters"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "11px" }}>filter_alt_off</span>
+                    Clear {activeFilterCount}
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowFilters((v) => !v)}
+                  className={[
+                    "flex items-center gap-0.5 px-2.5 py-1 rounded text-[10px] font-bold border transition-colors",
+                    showFilters || activeFilterCount > 0
+                      ? "bg-secondary text-on-secondary border-secondary"
+                      : "text-on-surface-variant border-outline-variant/50 hover:bg-surface-container-high",
+                  ].join(" ")}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: "11px" }}>filter_alt</span>
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span className="ml-0.5 bg-on-secondary/20 text-on-secondary rounded-full w-3.5 h-3.5
+                                     flex items-center justify-center text-[9px] font-bold">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+                <span className="text-[10px] text-on-surface-variant/50">
+                  {displayInstances.length}{displayInstances.length !== sortedInstances.length ? `/${sortedInstances.length}` : ""} variant{sortedInstances.length !== 1 ? "s" : ""}
+                </span>
               </span>
             </div>
+
+            {/* Filter row — shown when toggled, adapts to this technology’s columns */}
+            {showFilters && (
+              <div className="px-5 py-3 border-b border-outline-variant/10 bg-surface-container-lowest/60
+                              flex flex-wrap gap-x-4 gap-y-2 items-end">
+                {/* Fixed standard columns */}
+                {([
+                  { key: "capacity_kw",          label: "Capacity (kW)",     numeric: true  },
+                  { key: "capex_per_kw",         label: "CAPEX ($/kW)",      numeric: true  },
+                  { key: "opex_fixed_per_kw_yr", label: "Fixed OPEX",        numeric: true  },
+                  { key: "efficiency",           label: "Efficiency (%)",    numeric: true  },
+                  { key: "economic_lifetime_yr", label: "Lifetime (yrs)",    numeric: true  },
+                ] as { key: string; label: string; numeric: boolean }[]).map(({ key, label, numeric }) => (
+                  <div key={key} className="flex flex-col gap-0.5">
+                    <label className="text-[9px] font-bold uppercase tracking-[0.06em] text-on-surface-variant/60">
+                      {label}
+                    </label>
+                    <input
+                      type="text"
+                      value={colFilters[key] ?? ""}
+                      onChange={(e) => setFilter(key, e.target.value)}
+                      placeholder={numeric ? "> 0" : "search"}
+                      className={[
+                        "w-28 px-2 py-1 rounded border text-[11px] font-mono bg-surface-container-lowest",
+                        "text-on-surface placeholder:text-on-surface-variant/30 outline-none",
+                        "transition-colors focus:ring-1 focus:ring-primary/40",
+                        colFilters[key] ? "border-primary/50" : "border-outline-variant/30",
+                      ].join(" ")}
+                    />
+                  </div>
+                ))}
+
+                {/* Tech-specific extra param columns */}
+                {extraParamKeys.length > 0 && (
+                  <>
+                    <div className="w-px self-stretch bg-outline-variant/20 mx-1" />
+                    <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-primary/60 self-end pb-1">
+                      {tech.name.split(" ")[0]} params
+                    </span>
+                    {extraParamKeys.map((key) => {
+                      const sample = tech.instances.find(
+                        (i) => i.extra?.[key] !== null && i.extra?.[key] !== undefined,
+                      )?.extra?.[key];
+                      const isNumeric = typeof sample === "number";
+                      return (
+                        <div key={key} className="flex flex-col gap-0.5">
+                          <label
+                            className="text-[9px] font-bold uppercase tracking-[0.06em] text-on-surface-variant/60"
+                            title={key}
+                          >
+                            {key.replace(/_/g, " ").slice(0, 20)}
+                          </label>
+                          <input
+                            type="text"
+                            value={colFilters[key] ?? ""}
+                            onChange={(e) => setFilter(key, e.target.value)}
+                            placeholder={isNumeric ? "> 0" : "search"}
+                            className={[
+                              "w-28 px-2 py-1 rounded border text-[11px] font-mono bg-surface-container-lowest",
+                              "text-on-surface placeholder:text-on-surface-variant/30 outline-none",
+                              "transition-colors focus:ring-1 focus:ring-primary/40",
+                              colFilters[key] ? "border-primary/50" : "border-outline-variant/30",
+                            ].join(" ")}
+                          />
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table
                 className="w-full text-left border-collapse"
@@ -1021,8 +1172,8 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
-                  {sortedInstances.length > 0 ? (
-                    sortedInstances.map((inst, idx) => (
+                  {displayInstances.length > 0 ? (
+                    displayInstances.map((inst, idx) => (
                       <InstanceRow
                         key={inst.id}
                         inst={inst}

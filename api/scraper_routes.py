@@ -45,14 +45,9 @@ router = APIRouter(prefix="/scraper", tags=["Scraper"])
 # ---------------------------------------------------------------------------
 
 def _require_admin(authorization: str | None) -> None:
-    """
-    Raise 403 unless the caller presents a valid admin JWT.
-
-    Accepts the same ``Authorization: Bearer <token>`` header used by all
-    other admin endpoints so the frontend can reuse the same auth context.
-    """
+    """Raise 401 if no/invalid token, 403 if authenticated but not admin."""
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=403, detail="Admin authentication required.")
+        raise HTTPException(status_code=401, detail="Authentication required.")
 
     import base64 as _b64, json as _json, time as _t
     token = authorization.removeprefix("Bearer ")
@@ -66,14 +61,12 @@ def _require_admin(authorization: str | None) -> None:
             raise ValueError("Bad JWT structure")
         payload = _json.loads(_b64d(parts[1]))
     except Exception as exc:
-        raise HTTPException(status_code=403, detail=f"Malformed token: {exc}") from exc
+        raise HTTPException(status_code=401, detail=f"Invalid token: {exc}") from exc
 
-    # Check expiry
     exp = payload.get("exp", 0)
     if exp and _t.time() > exp:
-        raise HTTPException(status_code=403, detail="Token expired.")
+        raise HTTPException(status_code=401, detail="Token expired.")
 
-    # Accept Supabase JWT with app_metadata.is_admin OR our HS256 admin JWT
     is_admin = (
         payload.get("is_admin")
         or payload.get("app_metadata", {}).get("is_admin")
@@ -241,7 +234,9 @@ def stop_run(
 )
 def get_run_history(
     limit: int = Query(20, ge=1, le=100),
+    authorization: Annotated[str | None, Header()] = None,
 ) -> ORJSONResponse:
+    _require_admin(authorization)
     try:
         store = _get_store()
         history = store.get_run_history(limit=limit)
@@ -260,7 +255,9 @@ def list_candidates(
     status: str | None = Query(None, description="pending | approved | rejected"),
     technology_id: str | None = Query(None, description="Filter by technology_id"),
     limit: int = Query(50, ge=1, le=500),
+    authorization: Annotated[str | None, Header()] = None,
 ) -> ORJSONResponse:
+    _require_admin(authorization)
     from scrapers.storage import CandidateStatus
 
     _status: CandidateStatus | None = None
@@ -279,7 +276,11 @@ def list_candidates(
     "/candidates/{candidate_id}",
     summary="Get a single candidate",
 )
-def get_candidate(candidate_id: str) -> ORJSONResponse:
+def get_candidate(
+    candidate_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> ORJSONResponse:
+    _require_admin(authorization)
     store = _get_store()
     item  = store.get_candidate(candidate_id)
     if item is None:

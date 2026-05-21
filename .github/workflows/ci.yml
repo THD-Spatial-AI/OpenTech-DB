@@ -1,0 +1,115 @@
+name: CI / CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Backend ───────────────────────────────────────────────────────────────────
+  backend:
+    name: Backend tests (pytest)
+    runs-on: ubuntu-latest
+    env:
+      ADMIN_EMAIL: ci@example.com
+      JWT_SECRET_KEY: ci-test-jwt-secret-not-for-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # api/auth.py raises RuntimeError at import if ADMIN_PASSWORD_HASH is missing.
+      # Generate a real bcrypt hash at cost 4 (fast in CI) so all auth tests run.
+      - name: Generate CI admin credentials
+        run: |
+          echo "ADMIN_PASSWORD=ci-test-password" >> $GITHUB_ENV
+          echo "ADMIN_PASSWORD_HASH=$(python -c "import bcrypt; print(bcrypt.hashpw(b'ci-test-password', bcrypt.gensalt(4)).decode())")" >> $GITHUB_ENV
+
+      - run: pytest
+
+  # ── Frontend ──────────────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend (lint + typecheck + build + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build   # includes tsc -b
+      - run: npm test
+
+  # ── Docker build + vulnerability scan ─────────────────────────────────────────
+  docker:
+    name: Docker build + Trivy scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t opentech-db:${{ github.sha }} .
+
+      - name: Scan for CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: opentech-db:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          severity: CRITICAL
+          ignore-unfixed: true
+
+  # ── Push to GHCR (main branch only, all CI must pass) ─────────────────────────
+  push-image:
+    name: Push to GHCR
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [backend, frontend, docker]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # metadata-action auto-lowercases the image name (required by GHCR)
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

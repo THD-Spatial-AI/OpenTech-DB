@@ -273,6 +273,107 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
             0.95, "%/yr",
         ),
     ],
+
+    # ------------------------------------------------- Wind: rotor diameter
+    "rotor_diameter_m": [
+        (rf"rotor\s+diameter\s+(?:of\s+)?{_NUM}\s*m", 0.88, "m"),
+        (rf"{_NUM}\s*m\s+rotor", 0.82, "m"),
+        (rf"rotor_diameter_m\s*=\s*{_NUM}", 0.95, "m"),
+    ],
+
+    # ------------------------------------------------- Wind: hub height
+    "hub_height_m": [
+        (rf"hub\s+height\s+(?:of\s+)?{_NUM}\s*m", 0.88, "m"),
+        (rf"{_NUM}\s*m\s+hub", 0.80, "m"),
+        (rf"hub_height_m\s*=\s*{_NUM}", 0.95, "m"),
+    ],
+
+    # ------------------------------------------------- Wind: rated speed
+    "wind_rated_speed_ms": [
+        (rf"(?:rated|cut-out|nominal)\s+wind\s+speed\s+(?:of\s+)?{_NUM}\s*m/s", 0.88, "m/s"),
+        (rf"{_NUM}\s*m/s\s+rated", 0.80, "m/s"),
+        (rf"wind_rated_speed_ms\s*=\s*{_NUM}", 0.95, "m/s"),
+    ],
+
+    # ------------------------------------------------- Solar: module efficiency
+    "module_efficiency_fraction": [
+        (rf"module\s+efficiency\s+(?:of\s+)?{_NUM}\s*%", 0.88, "%"),
+        (rf"cell\s+efficiency\s+(?:of\s+)?{_NUM}\s*%", 0.82, "%"),
+        (rf"module_efficiency_fraction\s*=\s*{_NUM}", 0.95, "fraction"),
+    ],
+
+    # ------------------------------------------------- Solar: performance ratio
+    "performance_ratio": [
+        (rf"performance\s+ratio\s+(?:PR\s+)?(?:of\s+)?{_NUM}", 0.88, "fraction"),
+        (rf"PR\s*=\s*{_NUM}", 0.80, "fraction"),
+        (rf"performance_ratio\s*=\s*{_NUM}", 0.95, "fraction"),
+    ],
+
+    # ------------------------------------------------- CSP: solar multiple
+    "solar_multiple": [
+        (rf"solar\s+multiple\s+(?:SM\s+)?(?:of\s+)?{_NUM}", 0.88, ""),
+        (rf"SM\s*[=:]\s*{_NUM}", 0.82, ""),
+        (rf"solar_multiple\s*=\s*{_NUM}", 0.95, ""),
+    ],
+
+    # ------------------------------------------------- CSP: TES hours
+    "thermal_storage_h": [
+        (rf"thermal\s+energy\s+storage\s+(?:of\s+)?{_NUM}\s*h(?:ours?)?", 0.88, "h"),
+        (rf"TES\s+(?:of\s+)?{_NUM}\s*h(?:ours?)?", 0.85, "h"),
+        (rf"thermal_storage_h\s*=\s*{_NUM}", 0.95, "h"),
+    ],
+
+    # ------------------------------------------------- Thermal: heat rate
+    "heat_rate_mj_per_mwh": [
+        (rf"heat\s+rate\s+(?:of\s+)?{_NUM}\s*MJ/MWh", 0.90, "MJ/MWh"),
+        (rf"heat\s+rate\s+(?:of\s+)?{_NUM}\s*BTU/kWh", 0.85, "BTU/kWh"),
+        (rf"heat_rate_mj_per_mwh\s*=\s*{_NUM}", 0.95, "MJ/MWh"),
+    ],
+
+    # ------------------------------------------------- Thermal: min load
+    "min_load_fraction": [
+        (rf"minimum\s+(?:stable\s+)?load\s+(?:of\s+)?{_NUM}\s*%", 0.88, "%"),
+        (rf"min(?:imum)?\s+load\s+fraction\s+(?:of\s+)?{_NUM}", 0.85, "fraction"),
+        (rf"min_load_fraction\s*=\s*{_NUM}", 0.95, "fraction"),
+    ],
+
+    # ------------------------------------------------- Thermal: start-up time
+    "start_up_time_h": [
+        (rf"(?:warm\s+)?start[\-\s]?up\s+time\s+(?:of\s+)?{_NUM}\s*h(?:ours?)?", 0.88, "h"),
+        (rf"start_up_time_h\s*=\s*{_NUM}", 0.95, "h"),
+    ],
+
+    # ------------------------------------------------- Electrolyzer: stack lifetime
+    "stack_lifetime_h": [
+        (rf"stack\s+lifetime\s+(?:of\s+)?{_NUM}\s*(?:h|hours?)", 0.88, "h"),
+        (rf"stack_lifetime_h\s*=\s*{_NUM}", 0.95, "h"),
+    ],
+
+    # ------------------------------------------------- Storage: roundtrip efficiency
+    "roundtrip_efficiency_fraction": [
+        (rf"round[\-\s]?trip\s+efficiency\s+(?:of\s+)?{_NUM}\s*%", 0.88, "%"),
+        (rf"RTE\s+(?:of\s+)?{_NUM}\s*%", 0.82, "%"),
+        (rf"roundtrip_efficiency_fraction\s*=\s*{_NUM}", 0.95, "fraction"),
+    ],
+
+    # ------------------------------------------------- Transmission: loss rate
+    "loss_rate_pct_per_km": [
+        (rf"(?:line\s+)?loss(?:es)?\s+(?:of\s+)?{_NUM}\s*%\s*(?:per\s+)?km", 0.88, "%/km"),
+        (rf"loss_rate_pct_per_km\s*=\s*{_NUM}", 0.95, "%/km"),
+    ],
+
+    # ------------------------------------------------- Storage: cycle lifetime
+    "cycle_lifetime_cycles": [
+        (rf"cycle\s+(?:life\s+)?(?:of\s+)?{_NUM}\s*cycles?", 0.88, "cycles"),
+        (rf"{_NUM}\s*cycles?\s+(?:lifetime|life)", 0.82, "cycles"),
+        (rf"cycle_lifetime_cycles\s*=\s*{_NUM}", 0.95, "cycles"),
+    ],
+
+    # ------------------------------------------------- Heat pump: COP
+    "cop_heating_at_a7_w35": [
+        (rf"COP\s+(?:of\s+)?{_NUM}\s*(?:at\s+A7/W35|heating)?", 0.85, ""),
+        (rf"cop_heating_at_a7_w35\s*=\s*{_NUM}", 0.95, ""),
+    ],
 }
 
 

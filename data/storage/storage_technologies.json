@@ -41,7 +41,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "NREL Grid Storage Cost Assessment 2022"
+          "reference_source": "NREL Grid Storage Cost Assessment 2022",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.86,
+          "dod_max_fraction": 0.83,
+          "cycle_lifetime_cycles": 3050,
+          "c_rate_max_charge": 0.51,
+          "c_rate_max_discharge": 0.51,
+          "land_use_m2_per_kwh": 8.1
         },
         {
           "instance_id": "li_ion_bess_100mw_4h_current",
@@ -59,7 +67,15 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "BloombergNEF Energy Storage Outlook 2023"
+          "reference_source": "BloombergNEF Energy Storage Outlook 2023",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.92,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.84,
+          "cycle_lifetime_cycles": 3500,
+          "c_rate_max_charge": 0.55,
+          "c_rate_max_discharge": 0.6,
+          "land_use_m2_per_kwh": 9.0
         },
         {
           "instance_id": "li_ion_bess_200mw_4h_future_2035",
@@ -77,7 +93,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "NREL ATB 2023 – Utility-scale Battery Storage, Advanced 2035"
+          "reference_source": "NREL ATB 2023 – Utility-scale Battery Storage, Advanced 2035",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.86,
+          "cycle_lifetime_cycles": 6200,
+          "c_rate_max_charge": 0.6,
+          "c_rate_max_discharge": 0.7,
+          "land_use_m2_per_kwh": 10.0
         },
         {
           "instance_id": "liion_100kwh_residential",
@@ -93,7 +117,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "BloombergNEF BESS 2023; Tesla Powerwall 2"
+          "reference_source": "BloombergNEF BESS 2023; Tesla Powerwall 2",
+          "charge_efficiency_fraction": 0.99,
+          "discharge_efficiency_fraction": 0.96,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.88,
+          "cycle_lifetime_cycles": 3000,
+          "c_rate_max_charge": 0.5,
+          "c_rate_max_discharge": 0.5,
+          "land_use_m2_per_kwh": 8.0
         },
         {
           "instance_id": "liion_1mwh_commercial",
@@ -109,7 +141,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "NREL BESS 2023; Fluence commercial"
+          "reference_source": "NREL BESS 2023; Fluence commercial",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.86,
+          "cycle_lifetime_cycles": 3001,
+          "c_rate_max_charge": 0.5,
+          "c_rate_max_discharge": 0.5,
+          "land_use_m2_per_kwh": 8.0
         },
         {
           "instance_id": "liion_10mwh_c_i",
@@ -125,7 +165,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "NREL BESS 2023; Wärtsilä Greensmith"
+          "reference_source": "NREL BESS 2023; Wärtsilä Greensmith",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.86,
+          "cycle_lifetime_cycles": 3012,
+          "c_rate_max_charge": 0.5,
+          "c_rate_max_discharge": 0.5,
+          "land_use_m2_per_kwh": 8.0
         },
         {
           "instance_id": "liion_100mwh_utility",
@@ -141,7 +189,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "BloombergNEF 2023; Neoen Hornsdale"
+          "reference_source": "BloombergNEF 2023; Neoen Hornsdale",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.86,
+          "cycle_lifetime_cycles": 3125,
+          "c_rate_max_charge": 0.51,
+          "c_rate_max_discharge": 0.53,
+          "land_use_m2_per_kwh": 8.2
         },
         {
           "instance_id": "liion_500mwh_large",
@@ -157,7 +213,15 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "NREL 2023; Vistra Moss Landing"
+          "reference_source": "NREL 2023; Vistra Moss Landing",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.86,
+          "cycle_lifetime_cycles": 3625,
+          "c_rate_max_charge": 0.56,
+          "c_rate_max_discharge": 0.62,
+          "land_use_m2_per_kwh": 9.2
         },
         {
           "instance_id": "liion_1gwh_hyperscale",
@@ -173,7 +237,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "IRENA Storage 2023; AES/Fluence hyperscale"
+          "reference_source": "IRENA Storage 2023; AES/Fluence hyperscale",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.86,
+          "cycle_lifetime_cycles": 4450,
+          "c_rate_max_charge": 0.62,
+          "c_rate_max_discharge": 0.75,
+          "land_use_m2_per_kwh": 10.5
         },
         {
           "instance_id": "liion_lfp_2022",
@@ -189,7 +261,15 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "BloombergNEF LFP 2023; CATL LFP utility"
+          "reference_source": "BloombergNEF LFP 2023; CATL LFP utility",
+          "charge_efficiency_fraction": 0.99,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.94,
+          "dod_max_fraction": 0.87,
+          "cycle_lifetime_cycles": 3500,
+          "c_rate_max_charge": 0.55,
+          "c_rate_max_discharge": 0.6,
+          "land_use_m2_per_kwh": 9.0
         },
         {
           "instance_id": "liion_nmc_2024",
@@ -205,7 +285,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "NREL NMC 2023; Panasonic NMC811"
+          "reference_source": "NREL NMC 2023; Panasonic NMC811",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.86,
+          "cycle_lifetime_cycles": 3250,
+          "c_rate_max_charge": 0.53,
+          "c_rate_max_discharge": 0.55,
+          "land_use_m2_per_kwh": 8.5
         },
         {
           "instance_id": "liion_ev_v2g",
@@ -221,7 +309,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "IRENA V2G 2023; Nissan Leaf/Volkswagen V2G"
+          "reference_source": "IRENA V2G 2023; Nissan Leaf/Volkswagen V2G",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.92,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.84,
+          "cycle_lifetime_cycles": 3300,
+          "c_rate_max_charge": 0.51,
+          "c_rate_max_discharge": 0.52,
+          "land_use_m2_per_kwh": 8.2
         },
         {
           "instance_id": "liion_island_50mwh",
@@ -237,7 +333,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "IRENA island grid 2023; Wärtsilä Greensmith island"
+          "reference_source": "IRENA island grid 2023; Wärtsilä Greensmith island",
+          "charge_efficiency_fraction": 0.97,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.91,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 3062,
+          "c_rate_max_charge": 0.51,
+          "c_rate_max_discharge": 0.51,
+          "land_use_m2_per_kwh": 8.1
         },
         {
           "instance_id": "liion_frequency",
@@ -253,7 +357,15 @@
           "construction_time_years": 0.4,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Neoen Hornsdale FCAS 2023; NREL ancillary"
+          "reference_source": "Neoen Hornsdale FCAS 2023; NREL ancillary",
+          "charge_efficiency_fraction": 0.99,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.94,
+          "dod_max_fraction": 0.87,
+          "cycle_lifetime_cycles": 3250,
+          "c_rate_max_charge": 0.53,
+          "c_rate_max_discharge": 0.55,
+          "land_use_m2_per_kwh": 8.5
         },
         {
           "instance_id": "liion_2030_forecast",
@@ -269,7 +381,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "BloombergNEF BESS 2030 forecast; IRENA 2030"
+          "reference_source": "BloombergNEF BESS 2030 forecast; IRENA 2030",
+          "charge_efficiency_fraction": 0.99,
+          "discharge_efficiency_fraction": 0.96,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.88,
+          "cycle_lifetime_cycles": 4825,
+          "c_rate_max_charge": 0.56,
+          "c_rate_max_discharge": 0.62,
+          "land_use_m2_per_kwh": 9.2
         },
         {
           "instance_id": "liion_soc_mgmt",
@@ -285,7 +405,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "NREL AI-BMS 2023; Fluence Mosaic AI"
+          "reference_source": "NREL AI-BMS 2023; Fluence Mosaic AI",
+          "charge_efficiency_fraction": 0.99,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.94,
+          "dod_max_fraction": 0.87,
+          "cycle_lifetime_cycles": 3450,
+          "c_rate_max_charge": 0.53,
+          "c_rate_max_discharge": 0.55,
+          "land_use_m2_per_kwh": 8.5
         },
         {
           "instance_id": "liion_solar_co_loc",
@@ -301,7 +429,15 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "NREL solar+storage 2023; Sunrun/Fluence co-loc"
+          "reference_source": "NREL solar+storage 2023; Sunrun/Fluence co-loc",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.86,
+          "cycle_lifetime_cycles": 3250,
+          "c_rate_max_charge": 0.53,
+          "c_rate_max_discharge": 0.55,
+          "land_use_m2_per_kwh": 8.5
         },
         {
           "instance_id": "liion_offshore_wind",
@@ -317,7 +453,15 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Ørsted/Fluence offshore 2023; Orion BESS"
+          "reference_source": "Ørsted/Fluence offshore 2023; Orion BESS",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.86,
+          "cycle_lifetime_cycles": 3825,
+          "c_rate_max_charge": 0.56,
+          "c_rate_max_discharge": 0.62,
+          "land_use_m2_per_kwh": 9.2
         },
         {
           "instance_id": "liion_na_solid_state_2028",
@@ -333,7 +477,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "QuantumScape solid-state 2023; Toyota 2028"
+          "reference_source": "QuantumScape solid-state 2023; Toyota 2028",
+          "charge_efficiency_fraction": 0.99,
+          "discharge_efficiency_fraction": 0.97,
+          "roundtrip_efficiency_fraction": 0.96,
+          "dod_max_fraction": 0.88,
+          "cycle_lifetime_cycles": 3925,
+          "c_rate_max_charge": 0.51,
+          "c_rate_max_discharge": 0.53,
+          "land_use_m2_per_kwh": 8.2
         },
         {
           "instance_id": "liion_shipping_container",
@@ -349,7 +501,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "CATL EnerC container 2023; Tesla Megapack modular"
+          "reference_source": "CATL EnerC container 2023; Tesla Megapack modular",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.86,
+          "cycle_lifetime_cycles": 3001,
+          "c_rate_max_charge": 0.5,
+          "c_rate_max_discharge": 0.5,
+          "land_use_m2_per_kwh": 8.0
         },
         {
           "_source": "open_alex",
@@ -389,7 +549,15 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "PNNL Grid Storage Cost Review 2022"
+          "reference_source": "PNNL Grid Storage Cost Review 2022",
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.86,
+          "roundtrip_efficiency_fraction": 0.75,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 20.5
         },
         {
           "instance_id": "vrfb_20mw_8h_current",
@@ -407,7 +575,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "BloombergNEF Long-Duration Storage Outlook 2023"
+          "reference_source": "BloombergNEF Long-Duration Storage Outlook 2023",
+          "charge_efficiency_fraction": 0.88,
+          "discharge_efficiency_fraction": 0.86,
+          "roundtrip_efficiency_fraction": 0.76,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 22.0
         },
         {
           "instance_id": "vrfb_50mw_10h_future_2035",
@@ -425,7 +601,15 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "IRENA Electricity Storage Roadmap 2020 – Future Projections"
+          "reference_source": "IRENA Electricity Storage Roadmap 2020 – Future Projections",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 15500,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 25.0
         },
         {
           "instance_id": "rfb_1mwh_vanadium",
@@ -441,7 +625,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "IRENA Flow Battery 2023; Invinity energy"
+          "reference_source": "IRENA Flow Battery 2023; Invinity energy",
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.86,
+          "roundtrip_efficiency_fraction": 0.75,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 20.0
         },
         {
           "instance_id": "rfb_5mwh_vanadium",
@@ -457,7 +649,15 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "Sumitomo Electric VRB 2023; Rongke Power China"
+          "reference_source": "Sumitomo Electric VRB 2023; Rongke Power China",
+          "charge_efficiency_fraction": 0.88,
+          "discharge_efficiency_fraction": 0.86,
+          "roundtrip_efficiency_fraction": 0.76,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 20.1
         },
         {
           "instance_id": "rfb_10mwh_utility",
@@ -473,7 +673,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "NREL Flow 2023; CellCube/Enerox GmbH"
+          "reference_source": "NREL Flow 2023; CellCube/Enerox GmbH",
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.87,
+          "roundtrip_efficiency_fraction": 0.77,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 20.2
         },
         {
           "instance_id": "rfb_100mwh_grid",
@@ -489,7 +697,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "Rongke Dalian 200 MW 2023; BloombergNEF flow"
+          "reference_source": "Rongke Dalian 200 MW 2023; BloombergNEF flow",
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.88,
+          "roundtrip_efficiency_fraction": 0.78,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 22.5
         },
         {
           "instance_id": "rfb_200mwh_large",
@@ -505,7 +721,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "IRENA Flow 2023; Dalian 200 MW VFB"
+          "reference_source": "IRENA Flow 2023; Dalian 200 MW VFB",
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.88,
+          "roundtrip_efficiency_fraction": 0.78,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10500,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 25.0
         },
         {
           "instance_id": "rfb_zinc_bromine",
@@ -521,7 +745,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 25.0,
-          "reference_source": "Primus Power ZnBr 2023; RedTFlow"
+          "reference_source": "Primus Power ZnBr 2023; RedTFlow",
+          "charge_efficiency_fraction": 0.85,
+          "discharge_efficiency_fraction": 0.82,
+          "roundtrip_efficiency_fraction": 0.7,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 20.0
         },
         {
           "instance_id": "rfb_iron_air",
@@ -537,7 +769,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "Form Energy Fe-air 2023; DOE long-duration"
+          "reference_source": "Form Energy Fe-air 2023; DOE long-duration",
+          "charge_efficiency_fraction": 0.81,
+          "discharge_efficiency_fraction": 0.8,
+          "roundtrip_efficiency_fraction": 0.65,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 11000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 21.0
         },
         {
           "instance_id": "rfb_organic_2026",
@@ -553,7 +793,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "Harvard/MIT quinone 2022; NREL organic flow"
+          "reference_source": "Harvard/MIT quinone 2022; NREL organic flow",
+          "charge_efficiency_fraction": 0.86,
+          "discharge_efficiency_fraction": 0.84,
+          "roundtrip_efficiency_fraction": 0.72,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 11000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 20.2
         },
         {
           "instance_id": "rfb_hydrogen",
@@ -569,7 +817,15 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "EnStorage H-Br 2023; NREL hydrogen-halide flow"
+          "reference_source": "EnStorage H-Br 2023; NREL hydrogen-halide flow",
+          "charge_efficiency_fraction": 0.86,
+          "discharge_efficiency_fraction": 0.85,
+          "roundtrip_efficiency_fraction": 0.73,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 11000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 20.2
         },
         {
           "instance_id": "rfb_50mwh_mining",
@@ -585,7 +841,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "Invinity mining 2022; IRENA off-grid storage"
+          "reference_source": "Invinity mining 2022; IRENA off-grid storage",
+          "charge_efficiency_fraction": 0.88,
+          "discharge_efficiency_fraction": 0.86,
+          "roundtrip_efficiency_fraction": 0.76,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 21.2
         },
         {
           "instance_id": "rfb_2030_vanadium",
@@ -601,7 +865,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "BloombergNEF flow 2030; IRENA forecast"
+          "reference_source": "BloombergNEF flow 2030; IRENA forecast",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.82,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 13000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 22.5
         },
         {
           "instance_id": "rfb_200mwh_island",
@@ -617,7 +889,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "IRENA island storage 2023; CellCube island"
+          "reference_source": "IRENA island storage 2023; CellCube island",
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.87,
+          "roundtrip_efficiency_fraction": 0.77,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10500,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 22.0
         },
         {
           "instance_id": "rfb_iron_chromium",
@@ -633,7 +913,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "EnerVault Fe-Cr 2022; NASA GRC iron-chromium"
+          "reference_source": "EnerVault Fe-Cr 2022; NASA GRC iron-chromium",
+          "charge_efficiency_fraction": 0.86,
+          "discharge_efficiency_fraction": 0.84,
+          "roundtrip_efficiency_fraction": 0.72,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 20.5
         },
         {
           "instance_id": "rfb_cement_solar",
@@ -649,7 +937,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "Holcim/Sumitomo solar+flow 2022; NREL solar"
+          "reference_source": "Holcim/Sumitomo solar+flow 2022; NREL solar",
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.87,
+          "roundtrip_efficiency_fraction": 0.77,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10500,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 21.2
         },
         {
           "instance_id": "rfb_polysulfide",
@@ -665,7 +961,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "Regenesys PSB 2022; EPRI polysulfide data"
+          "reference_source": "Regenesys PSB 2022; EPRI polysulfide data",
+          "charge_efficiency_fraction": 0.85,
+          "discharge_efficiency_fraction": 0.82,
+          "roundtrip_efficiency_fraction": 0.7,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 20.2
         },
         {
           "instance_id": "rfb_1gwh_arpa_e",
@@ -681,7 +985,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 15.0,
-          "reference_source": "DOE ARPA-E DAYS 2030; NREL long-duration"
+          "reference_source": "DOE ARPA-E DAYS 2030; NREL long-duration",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 13000,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 25.0
         },
         {
           "instance_id": "rfb_vanadium_hightemp",
@@ -697,7 +1009,15 @@
           "construction_time_years": 1.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "PNNL VRB 2023; Sumitomo high-temp operation"
+          "reference_source": "PNNL VRB 2023; Sumitomo high-temp operation",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.88,
+          "roundtrip_efficiency_fraction": 0.79,
+          "dod_max_fraction": 1.0,
+          "cycle_lifetime_cycles": 10500,
+          "c_rate_max_charge": 0.25,
+          "c_rate_max_discharge": 0.25,
+          "land_use_m2_per_kwh": 21.2
         }
       ]
     },
@@ -725,7 +1045,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 30.0,
-          "reference_source": "NGK INSULATORS NaS Battery Data Sheet 2022"
+          "reference_source": "NGK INSULATORS NaS Battery Data Sheet 2022",
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.88,
+          "roundtrip_efficiency_fraction": 0.78,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_10mw_7h_utility",
@@ -743,7 +1071,15 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 30.0,
-          "reference_source": "PNNL Grid Storage Cost Review 2022"
+          "reference_source": "PNNL Grid Storage Cost Review 2022",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.88,
+          "roundtrip_efficiency_fraction": 0.79,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_50mw_8h_future_2032",
@@ -761,7 +1097,15 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 35.0,
-          "reference_source": "IRENA Electricity Storage Roadmap 2020"
+          "reference_source": "IRENA Electricity Storage Roadmap 2020",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.82,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_1mwh_ngk_base",
@@ -777,7 +1121,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK Insulators NaS 2023; IEEE TEC"
+          "reference_source": "NGK Insulators NaS 2023; IEEE TEC",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_10mwh_utility",
@@ -793,7 +1145,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK NaS utility 2023; TEPCO Japan"
+          "reference_source": "NGK NaS utility 2023; TEPCO Japan",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.81,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_50mwh_grid",
@@ -809,7 +1169,15 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK 50 MWh 2023; IRENA storage"
+          "reference_source": "NGK 50 MWh 2023; IRENA storage",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.82,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_200mwh_regional",
@@ -825,7 +1193,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK TEPCO 200 MWh 2022; EPRI NaS"
+          "reference_source": "NGK TEPCO 200 MWh 2022; EPRI NaS",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.82,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_abu_dhabi",
@@ -841,7 +1217,15 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK ADWEA 2023; Abu Dhabi project"
+          "reference_source": "NGK ADWEA 2023; Abu Dhabi project",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.81,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_wind_integration",
@@ -857,7 +1241,15 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK wind integration 2022; NEDO Japan"
+          "reference_source": "NGK wind integration 2022; NEDO Japan",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_island_alaska",
@@ -873,7 +1265,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK island 2022; IRENA island storage"
+          "reference_source": "NGK island 2022; IRENA island storage",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.88,
+          "roundtrip_efficiency_fraction": 0.79,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_frequency_reg",
@@ -889,7 +1289,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK frequency 2022; KEPCO Korea"
+          "reference_source": "NGK frequency 2022; KEPCO Korea",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.82,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_2nd_gen_2026",
@@ -905,7 +1313,15 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK roadmap 2025; DOE ESGC"
+          "reference_source": "NGK roadmap 2025; DOE ESGC",
+          "charge_efficiency_fraction": 0.93,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.84,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_substation",
@@ -921,7 +1337,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK PG&E 2022; EPRI substation storage"
+          "reference_source": "NGK PG&E 2022; EPRI substation storage",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_2030_forecast",
@@ -937,7 +1361,15 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "BloombergNEF NaS 2030; IRENA sodium forecast"
+          "reference_source": "BloombergNEF NaS 2030; IRENA sodium forecast",
+          "charge_efficiency_fraction": 0.93,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.85,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_solar_colocated",
@@ -953,7 +1385,15 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "ONEE Morocco solar 2023; NGK project"
+          "reference_source": "ONEE Morocco solar 2023; NGK project",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.81,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_containerized",
@@ -969,7 +1409,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK container NaS 2023; TEPCO"
+          "reference_source": "NGK container NaS 2023; TEPCO",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_cold_climate",
@@ -985,7 +1433,15 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "McGill/NSERC cold storage 2022; Alaska Railbelt"
+          "reference_source": "McGill/NSERC cold storage 2022; Alaska Railbelt",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.88,
+          "roundtrip_efficiency_fraction": 0.79,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_zeolite_variant",
@@ -1001,7 +1457,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "Ceramatec beta-alumina 2023; DOE ESGC"
+          "reference_source": "Ceramatec beta-alumina 2023; DOE ESGC",
+          "charge_efficiency_fraction": 0.92,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.83,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_south_africa",
@@ -1017,7 +1481,15 @@
           "construction_time_years": 0.6,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "Eskom SA 2022; NGK South Africa deployment"
+          "reference_source": "Eskom SA 2022; NGK South Africa deployment",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "nas_peak_shaving",
@@ -1033,7 +1505,15 @@
           "construction_time_years": 0.9,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "NGK petrochemical 2022; JRTT Japan"
+          "reference_source": "NGK petrochemical 2022; JRTT Japan",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.82,
+          "dod_max_fraction": 0.85,
+          "cycle_lifetime_cycles": 4500,
+          "c_rate_max_charge": 0.2,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 15.0
         }
       ]
     },
@@ -1061,7 +1541,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "Lazard LCOS v8.0 (2023)"
+          "reference_source": "Lazard LCOS v8.0 (2023)",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.88,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "lead_acid_1mw_4h_island_grid",
@@ -1079,7 +1567,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 40.0,
-          "reference_source": "IRENA Off-Grid Renewable Energy 2022"
+          "reference_source": "IRENA Off-Grid Renewable Energy 2022",
+          "charge_efficiency_fraction": 0.88,
+          "discharge_efficiency_fraction": 0.85,
+          "roundtrip_efficiency_fraction": 0.75,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "lead_acid_advanced_5mw_4h",
@@ -1097,7 +1593,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 45.0,
-          "reference_source": "PNNL Grid Storage Cost Review 2022"
+          "reference_source": "PNNL Grid Storage Cost Review 2022",
+          "charge_efficiency_fraction": 0.92,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.82,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_5kwh_residential",
@@ -1113,7 +1617,15 @@
           "construction_time_years": 0.05,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 80.0,
-          "reference_source": "NREL lead-acid 2023; EnerSys Gel"
+          "reference_source": "NREL lead-acid 2023; EnerSys Gel",
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.83,
+          "roundtrip_efficiency_fraction": 0.72,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_50kwh_small_ult",
@@ -1129,7 +1641,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 80.0,
-          "reference_source": "IEEE TEC lead-acid; East Penn flooded"
+          "reference_source": "IEEE TEC lead-acid; East Penn flooded",
+          "charge_efficiency_fraction": 0.85,
+          "discharge_efficiency_fraction": 0.82,
+          "roundtrip_efficiency_fraction": 0.7,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_agm_uprb",
@@ -1145,7 +1665,15 @@
           "construction_time_years": 0.05,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "C&D Technologies AGM 2023; EnerSys UPS"
+          "reference_source": "C&D Technologies AGM 2023; EnerSys UPS",
+          "charge_efficiency_fraction": 0.88,
+          "discharge_efficiency_fraction": 0.84,
+          "roundtrip_efficiency_fraction": 0.74,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_100kwh_telecom",
@@ -1161,7 +1689,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 80.0,
-          "reference_source": "EnerSys telecom 2023; GSMA backup power"
+          "reference_source": "EnerSys telecom 2023; GSMA backup power",
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.83,
+          "roundtrip_efficiency_fraction": 0.72,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_1mwh_commercial_ups",
@@ -1177,7 +1713,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Schneider Electric UPS 2023; Vertiv DC"
+          "reference_source": "Schneider Electric UPS 2023; Vertiv DC",
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.84,
+          "roundtrip_efficiency_fraction": 0.73,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_vrla_500kwh",
@@ -1193,7 +1737,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 80.0,
-          "reference_source": "Exide VRLA 2022; NREL energy storage"
+          "reference_source": "Exide VRLA 2022; NREL energy storage",
+          "charge_efficiency_fraction": 0.88,
+          "discharge_efficiency_fraction": 0.85,
+          "roundtrip_efficiency_fraction": 0.75,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_advanced_carbon",
@@ -1209,7 +1761,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Axion Power ultra-battery 2022; CSIRO"
+          "reference_source": "Axion Power ultra-battery 2022; CSIRO",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.88,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_ultrabattery",
@@ -1225,7 +1785,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "CSIRO UltraBattery 2022; NREL hybrid"
+          "reference_source": "CSIRO UltraBattery 2022; NREL hybrid",
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.87,
+          "roundtrip_efficiency_fraction": 0.79,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_rural_solar_africa",
@@ -1241,7 +1809,15 @@
           "construction_time_years": 0.05,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 80.0,
-          "reference_source": "IRENA Africa SHS 2023; SE4All mini-grid"
+          "reference_source": "IRENA Africa SHS 2023; SE4All mini-grid",
+          "charge_efficiency_fraction": 0.85,
+          "discharge_efficiency_fraction": 0.82,
+          "roundtrip_efficiency_fraction": 0.7,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_recycled_2nd_life",
@@ -1257,7 +1833,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 80.0,
-          "reference_source": "BCI recycling report 2022; EBRD 2nd life"
+          "reference_source": "BCI recycling report 2022; EBRD 2nd life",
+          "charge_efficiency_fraction": 0.82,
+          "discharge_efficiency_fraction": 0.79,
+          "roundtrip_efficiency_fraction": 0.65,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_hospital_backup",
@@ -1273,7 +1857,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "C&D Technologies hospital 2022; IEC 62485"
+          "reference_source": "C&D Technologies hospital 2022; IEC 62485",
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.84,
+          "roundtrip_efficiency_fraction": 0.73,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_solar_pump_2kwh",
@@ -1289,7 +1881,15 @@
           "construction_time_years": 0.02,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 80.0,
-          "reference_source": "FAO solar pump 2022; IRENA SHS"
+          "reference_source": "FAO solar pump 2022; IRENA SHS",
+          "charge_efficiency_fraction": 0.84,
+          "discharge_efficiency_fraction": 0.81,
+          "roundtrip_efficiency_fraction": 0.68,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_grid_peak_shave",
@@ -1305,7 +1905,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 80.0,
-          "reference_source": "EnerSys commercial 2022; NREL BESS"
+          "reference_source": "EnerSys commercial 2022; NREL BESS",
+          "charge_efficiency_fraction": 0.88,
+          "discharge_efficiency_fraction": 0.84,
+          "roundtrip_efficiency_fraction": 0.74,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_flooded_large",
@@ -1321,7 +1929,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 80.0,
-          "reference_source": "Exide/GS Yuasa 2022; Sandia natl lab lead"
+          "reference_source": "Exide/GS Yuasa 2022; Sandia natl lab lead",
+          "charge_efficiency_fraction": 0.86,
+          "discharge_efficiency_fraction": 0.83,
+          "roundtrip_efficiency_fraction": 0.71,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_chino_1mwh",
@@ -1337,7 +1953,15 @@
           "construction_time_years": 0.4,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 80.0,
-          "reference_source": "Sandia Chino 1000 kW 2022; EPRI demo"
+          "reference_source": "Sandia Chino 1000 kW 2022; EPRI demo",
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.83,
+          "roundtrip_efficiency_fraction": 0.72,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_military_backup",
@@ -1353,7 +1977,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "US DoD field storage 2022; EnerSys Odyssey"
+          "reference_source": "US DoD field storage 2022; EnerSys Odyssey",
+          "charge_efficiency_fraction": 0.86,
+          "discharge_efficiency_fraction": 0.83,
+          "roundtrip_efficiency_fraction": 0.71,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "la_offshore_platform",
@@ -1369,7 +2001,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "DNV offshore storage 2022; EnerSys marine"
+          "reference_source": "DNV offshore storage 2022; EnerSys marine",
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.83,
+          "roundtrip_efficiency_fraction": 0.72,
+          "dod_max_fraction": 0.6,
+          "cycle_lifetime_cycles": 1200,
+          "c_rate_max_charge": 0.1,
+          "c_rate_max_discharge": 0.2,
+          "land_use_m2_per_kwh": 12.0
         }
       ]
     },
@@ -1397,7 +2037,17 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 15.0,
-          "reference_source": "IEA Electricity Storage 2023"
+          "reference_source": "IEA Electricity Storage 2023",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 73.0,
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.79,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 600.0
         },
         {
           "instance_id": "phs_1000mw_10h_large",
@@ -1415,7 +2065,17 @@
           "construction_time_years": 7.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "IRENA Electricity Storage 2020"
+          "reference_source": "IRENA Electricity Storage 2020",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 89.1,
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.81,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 1000.0
         },
         {
           "instance_id": "phs_500mw_variable_speed",
@@ -1433,7 +2093,17 @@
           "construction_time_years": 7.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 25.0,
-          "reference_source": "ENTSO-E Pumped Hydro Modelling Guidelines 2022"
+          "reference_source": "ENTSO-E Pumped Hydro Modelling Guidelines 2022",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 82.2,
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.83,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 750.0
         },
         {
           "instance_id": "phs_100mw_conv",
@@ -1449,7 +2119,17 @@
           "construction_time_years": 6.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "IRENA PHS 2023; IEA World Energy Outlook"
+          "reference_source": "IRENA PHS 2023; IEA World Energy Outlook",
+          "min_load_fraction": 0.2,
+          "land_use_m2_per_kw": 66.2,
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 550.0
         },
         {
           "instance_id": "phs_500mw_alpine",
@@ -1465,7 +2145,17 @@
           "construction_time_years": 8.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.5,
-          "reference_source": "Nant de Drance 2022; BFE Switzerland"
+          "reference_source": "Nant de Drance 2022; BFE Switzerland",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 82.2,
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.82,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 750.0
         },
         {
           "instance_id": "phs_1000mw_large",
@@ -1481,7 +2171,17 @@
           "construction_time_years": 10.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "IRENA PHS Atlas 2023; Snowy 2.0 Australia"
+          "reference_source": "IRENA PHS Atlas 2023; Snowy 2.0 Australia",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 89.1,
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.82,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 1000.0
         },
         {
           "instance_id": "phs_3gw_snowy",
@@ -1497,7 +2197,17 @@
           "construction_time_years": 12.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "Snowy Hydro 2023; AEMO NEM"
+          "reference_source": "Snowy Hydro 2023; AEMO NEM",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 96.0,
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.81,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 1500.0
         },
         {
           "instance_id": "phs_offshore",
@@ -1513,7 +2223,17 @@
           "construction_time_years": 8.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.5,
-          "reference_source": "Okinawa Yanbaru 2023; NEDO seawater PHS"
+          "reference_source": "Okinawa Yanbaru 2023; NEDO seawater PHS",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 73.0,
+          "charge_efficiency_fraction": 0.88,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.78,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 600.0
         },
         {
           "instance_id": "phs_underground",
@@ -1529,7 +2249,17 @@
           "construction_time_years": 7.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "ARES 2023; US DOE mine pumped hydro"
+          "reference_source": "ARES 2023; US DOE mine pumped hydro",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 79.9,
+          "charge_efficiency_fraction": 0.88,
+          "discharge_efficiency_fraction": 0.88,
+          "roundtrip_efficiency_fraction": 0.77,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 700.0
         },
         {
           "instance_id": "phs_variable_speed",
@@ -1545,7 +2275,17 @@
           "construction_time_years": 9.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Frades II 2015; IEA PHS variable speed"
+          "reference_source": "Frades II 2015; IEA PHS variable speed",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 84.0,
+          "charge_efficiency_fraction": 0.92,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.84,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 800.0
         },
         {
           "instance_id": "phs_retrofit",
@@ -1561,7 +2301,17 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "NREL hydro retrofit 2023; IHA PHS"
+          "reference_source": "NREL hydro retrofit 2023; IHA PHS",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 73.0,
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.83,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 600.0
         },
         {
           "instance_id": "phs_small_25mw",
@@ -1577,7 +2327,17 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "IRENA small PHS 2023; IEA storage"
+          "reference_source": "IRENA small PHS 2023; IEA storage",
+          "min_load_fraction": 0.27,
+          "land_use_m2_per_kw": 52.6,
+          "charge_efficiency_fraction": 0.88,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.78,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 512.5
         },
         {
           "instance_id": "phs_east_africa",
@@ -1593,7 +2353,17 @@
           "construction_time_years": 7.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "AfDB hydro 2022; IRENA Africa storage"
+          "reference_source": "AfDB hydro 2022; IRENA Africa storage",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 70.2,
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 575.0
         },
         {
           "instance_id": "phs_grid_stabilization",
@@ -1609,7 +2379,17 @@
           "construction_time_years": 7.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "Drax Cruachan 2022; National Grid UK"
+          "reference_source": "Drax Cruachan 2022; National Grid UK",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 77.1,
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.81,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 650.0
         },
         {
           "instance_id": "phs_2030_lowcost",
@@ -1625,7 +2405,17 @@
           "construction_time_years": 6.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "IRENA PHS 2030 roadmap; IEA long-duration"
+          "reference_source": "IRENA PHS 2030 roadmap; IEA long-duration",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 82.2,
+          "charge_efficiency_fraction": 0.92,
+          "discharge_efficiency_fraction": 0.92,
+          "roundtrip_efficiency_fraction": 0.85,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 750.0
         },
         {
           "instance_id": "phs_three_gorges",
@@ -1641,7 +2431,17 @@
           "construction_time_years": 12.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "China NEA PHS 2023; IHA Three Gorges"
+          "reference_source": "China NEA PHS 2023; IHA Three Gorges",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 90.9,
+          "charge_efficiency_fraction": 0.91,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.83,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 1100.0
         },
         {
           "instance_id": "phs_ternary",
@@ -1657,7 +2457,17 @@
           "construction_time_years": 9.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 6.0,
-          "reference_source": "Presenzano ternary 2023; Alstom ternary"
+          "reference_source": "Presenzano ternary 2023; Alstom ternary",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 84.0,
+          "charge_efficiency_fraction": 0.92,
+          "discharge_efficiency_fraction": 0.92,
+          "roundtrip_efficiency_fraction": 0.85,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 800.0
         },
         {
           "instance_id": "phs_gravity_hybrid",
@@ -1673,7 +2483,17 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "Energy Vault gravity hybrid 2023; NREL"
+          "reference_source": "Energy Vault gravity hybrid 2023; NREL",
+          "min_load_fraction": 0.25,
+          "land_use_m2_per_kw": 59.3,
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.79,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 525.0
         },
         {
           "instance_id": "phs_distributed_closed",
@@ -1689,7 +2509,17 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "ANU GIS 2023; US DOE closed-loop PHS"
+          "reference_source": "ANU GIS 2023; US DOE closed-loop PHS",
+          "min_load_fraction": 0.2,
+          "land_use_m2_per_kw": 66.2,
+          "charge_efficiency_fraction": 0.89,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 550.0
         },
         {
           "instance_id": "phs_tidal_basin",
@@ -1705,7 +2535,17 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "Tidal Lagoon Power 2022; Swansea Bay study"
+          "reference_source": "Tidal Lagoon Power 2022; Swansea Bay study",
+          "min_load_fraction": 0.24,
+          "land_use_m2_per_kw": 61.1,
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.87,
+          "roundtrip_efficiency_fraction": 0.76,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 50000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 530.0
         },
         {
           "_source": "open_alex",
@@ -1745,7 +2585,15 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 200.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "PNNL Grid Storage Cost Review 2022"
+          "reference_source": "PNNL Grid Storage Cost Review 2022",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.68,
+          "roundtrip_efficiency_fraction": 0.54,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 120.0
         },
         {
           "instance_id": "caes_300mw_diabatic_large",
@@ -1763,7 +2611,15 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 190.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "IEA Long-Duration Energy Storage 2022"
+          "reference_source": "IEA Long-Duration Energy Storage 2022",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.69,
+          "roundtrip_efficiency_fraction": 0.55,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 160.0
         },
         {
           "instance_id": "caes_200mw_adiabatic_future",
@@ -1781,7 +2637,15 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 6.0,
-          "reference_source": "ALACAES A-CAES Pilot Study 2022; SCCER STORAGE Report 2023"
+          "reference_source": "ALACAES A-CAES Pilot Study 2022; SCCER STORAGE Report 2023",
+          "charge_efficiency_fraction": 0.85,
+          "discharge_efficiency_fraction": 0.82,
+          "roundtrip_efficiency_fraction": 0.7,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 140.0
         },
         {
           "instance_id": "caes_mcintosh_290mw",
@@ -1797,7 +2661,15 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 120.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "McIntosh CAES 2022; Sandia CAES review"
+          "reference_source": "McIntosh CAES 2022; Sandia CAES review",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.68,
+          "roundtrip_efficiency_fraction": 0.54,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 158.0
         },
         {
           "instance_id": "caes_underground_salt",
@@ -1813,7 +2685,15 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 100.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Huntorf CAES 2022; EPRI underground storage"
+          "reference_source": "Huntorf CAES 2022; EPRI underground storage",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.7,
+          "roundtrip_efficiency_fraction": 0.56,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 120.0
         },
         {
           "instance_id": "caes_adiabatic_adele",
@@ -1829,7 +2709,15 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "RWE ADELE 2023; IRENA ACAES"
+          "reference_source": "RWE ADELE 2023; IRENA ACAES",
+          "charge_efficiency_fraction": 0.85,
+          "discharge_efficiency_fraction": 0.82,
+          "roundtrip_efficiency_fraction": 0.7,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 118.0
         },
         {
           "instance_id": "caes_isothermal",
@@ -1845,7 +2733,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "SustainX isothermal 2022; LightSail Energy"
+          "reference_source": "SustainX isothermal 2022; LightSail Energy",
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.86,
+          "roundtrip_efficiency_fraction": 0.75,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 100.4
         },
         {
           "instance_id": "caes_aquifer_200mw",
@@ -1861,7 +2757,15 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 100.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "Iowa Stored Energy Park 2022; EPRI aquifer"
+          "reference_source": "Iowa Stored Energy Park 2022; EPRI aquifer",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.69,
+          "roundtrip_efficiency_fraction": 0.55,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 140.0
         },
         {
           "instance_id": "caes_small_modular",
@@ -1877,7 +2781,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 80.0,
           "ramping_rate_percent_per_min": 8.0,
-          "reference_source": "Hydrostor small 2023; NREL CAES"
+          "reference_source": "Hydrostor small 2023; NREL CAES",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.75,
+          "roundtrip_efficiency_fraction": 0.6,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 101.0
         },
         {
           "instance_id": "caes_deep_ocean",
@@ -1893,7 +2805,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "MIT deep-ocean CAES 2022; Hydrostor seabed"
+          "reference_source": "MIT deep-ocean CAES 2022; Hydrostor seabed",
+          "charge_efficiency_fraction": 0.81,
+          "discharge_efficiency_fraction": 0.8,
+          "roundtrip_efficiency_fraction": 0.65,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 100.2
         },
         {
           "instance_id": "caes_abandoned_mine",
@@ -1909,7 +2829,15 @@
           "construction_time_years": 3.5,
           "co2_emission_factor_operational_g_per_kwh": 90.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "US DOE mine storage 2023; Sandia CAES"
+          "reference_source": "US DOE mine storage 2023; Sandia CAES",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.72,
+          "roundtrip_efficiency_fraction": 0.58,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 120.0
         },
         {
           "instance_id": "caes_wind_hybrid",
@@ -1925,7 +2853,15 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 50.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "EPRI wind-CAES 2023; Iowa basin study"
+          "reference_source": "EPRI wind-CAES 2023; Iowa basin study",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.71,
+          "roundtrip_efficiency_fraction": 0.57,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 160.0
         },
         {
           "instance_id": "caes_advanced_recuperated",
@@ -1941,7 +2877,15 @@
           "construction_time_years": 4.5,
           "co2_emission_factor_operational_g_per_kwh": 80.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Dresser-Rand recuperated 2022; EPRI CAES"
+          "reference_source": "Dresser-Rand recuperated 2022; EPRI CAES",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.77,
+          "roundtrip_efficiency_fraction": 0.62,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 130.0
         },
         {
           "instance_id": "caes_hydrostor_1",
@@ -1957,7 +2901,15 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Hydrostor 2023; A-CAES Advanced Compress"
+          "reference_source": "Hydrostor 2023; A-CAES Advanced Compress",
+          "charge_efficiency_fraction": 0.81,
+          "discharge_efficiency_fraction": 0.8,
+          "roundtrip_efficiency_fraction": 0.65,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 140.0
         },
         {
           "instance_id": "caes_grid_2030",
@@ -1973,7 +2925,15 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 30.0,
           "ramping_rate_percent_per_min": 6.0,
-          "reference_source": "BloombergNEF CAES 2030; DOE ESGC"
+          "reference_source": "BloombergNEF CAES 2030; DOE ESGC",
+          "charge_efficiency_fraction": 0.85,
+          "discharge_efficiency_fraction": 0.82,
+          "roundtrip_efficiency_fraction": 0.7,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 180.0
         },
         {
           "instance_id": "caes_cogeneration",
@@ -1989,7 +2949,15 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 90.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "IEA CAES CHP 2022; Dresser-Rand"
+          "reference_source": "IEA CAES CHP 2022; Dresser-Rand",
+          "charge_efficiency_fraction": 0.87,
+          "discharge_efficiency_fraction": 0.86,
+          "roundtrip_efficiency_fraction": 0.75,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 120.0
         },
         {
           "instance_id": "caes_solar_integration",
@@ -2005,7 +2973,15 @@
           "construction_time_years": 4.5,
           "co2_emission_factor_operational_g_per_kwh": 30.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "NREL solar+CAES 2023; DOE long-duration"
+          "reference_source": "NREL solar+CAES 2023; DOE long-duration",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.75,
+          "roundtrip_efficiency_fraction": 0.6,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 150.0
         },
         {
           "instance_id": "caes_liquid_air_hybrid",
@@ -2021,7 +2997,15 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 8.0,
-          "reference_source": "Highview Power LAES-CAES hybrid 2023"
+          "reference_source": "Highview Power LAES-CAES hybrid 2023",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.79,
+          "roundtrip_efficiency_fraction": 0.63,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 110.0
         },
         {
           "instance_id": "caes_rock_cavern",
@@ -2037,7 +3021,15 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "NVE Norway cavern 2023; SINTEF CAES"
+          "reference_source": "NVE Norway cavern 2023; SINTEF CAES",
+          "charge_efficiency_fraction": 0.83,
+          "discharge_efficiency_fraction": 0.82,
+          "roundtrip_efficiency_fraction": 0.68,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 130.0
         },
         {
           "instance_id": "caes_texas_salt",
@@ -2053,7 +3045,15 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 110.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "ERCOT storage 2023; Sandia Texas CAES"
+          "reference_source": "ERCOT storage 2023; Sandia Texas CAES",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.7,
+          "roundtrip_efficiency_fraction": 0.56,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 30000,
+          "c_rate_max_charge": 0.12,
+          "c_rate_max_discharge": 0.12,
+          "land_use_m2_per_kwh": 200.0
         }
       ]
     },
@@ -2081,7 +3081,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 8.0,
-          "reference_source": "Highview Power CRYOBattery Technical Specifications 2023"
+          "reference_source": "Highview Power CRYOBattery Technical Specifications 2023",
+          "charge_efficiency_fraction": 0.77,
+          "discharge_efficiency_fraction": 0.75,
+          "roundtrip_efficiency_fraction": 0.58,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_50mw_commercial",
@@ -2099,7 +3107,15 @@
           "construction_time_years": 2.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "BloombergNEF Long-Duration Storage Outlook 2023"
+          "reference_source": "BloombergNEF Long-Duration Storage Outlook 2023",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.77,
+          "roundtrip_efficiency_fraction": 0.62,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_200mw_future_2035",
@@ -2117,7 +3133,15 @@
           "construction_time_years": 2.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 12.0,
-          "reference_source": "IRENA Innovation Outlook – LAES 2020"
+          "reference_source": "IRENA Innovation Outlook – LAES 2020",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.85,
+          "roundtrip_efficiency_fraction": 0.68,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_5mw_highview",
@@ -2133,7 +3157,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Highview Power 2023; Dearman Lab LAES"
+          "reference_source": "Highview Power 2023; Dearman Lab LAES",
+          "charge_efficiency_fraction": 0.71,
+          "discharge_efficiency_fraction": 0.7,
+          "roundtrip_efficiency_fraction": 0.5,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_50mw_grid",
@@ -2149,7 +3181,15 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Highview 50 MW UK 2023; BEIS LAES"
+          "reference_source": "Highview 50 MW UK 2023; BEIS LAES",
+          "charge_efficiency_fraction": 0.74,
+          "discharge_efficiency_fraction": 0.72,
+          "roundtrip_efficiency_fraction": 0.53,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_200mw_large",
@@ -2165,7 +3205,15 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Highview 200 MW 2027; IRENA LAES"
+          "reference_source": "Highview 200 MW 2027; IRENA LAES",
+          "charge_efficiency_fraction": 0.75,
+          "discharge_efficiency_fraction": 0.73,
+          "roundtrip_efficiency_fraction": 0.55,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_waste_heat",
@@ -2181,7 +3229,15 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "NRRI LAES waste heat 2022; Linde Air"
+          "reference_source": "NRRI LAES waste heat 2022; Linde Air",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.77,
+          "roundtrip_efficiency_fraction": 0.62,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_lng_coloc",
@@ -2197,7 +3253,15 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "IEA LAES-LNG 2023; Siemens Energy"
+          "reference_source": "IEA LAES-LNG 2023; Siemens Energy",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.81,
+          "roundtrip_efficiency_fraction": 0.65,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_industrial_district",
@@ -2213,7 +3277,15 @@
           "construction_time_years": 2.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "EPSRC LAES 2022; University of Birmingham"
+          "reference_source": "EPSRC LAES 2022; University of Birmingham",
+          "charge_efficiency_fraction": 0.73,
+          "discharge_efficiency_fraction": 0.71,
+          "roundtrip_efficiency_fraction": 0.52,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_island_grid",
@@ -2229,7 +3301,15 @@
           "construction_time_years": 2.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "IRENA LAES island 2022; ETH Zurich LAES"
+          "reference_source": "IRENA LAES island 2022; ETH Zurich LAES",
+          "charge_efficiency_fraction": 0.71,
+          "discharge_efficiency_fraction": 0.7,
+          "roundtrip_efficiency_fraction": 0.5,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_2030_forecast",
@@ -2245,7 +3325,15 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 6.0,
-          "reference_source": "BloombergNEF LAES 2030; DOE ESGC"
+          "reference_source": "BloombergNEF LAES 2030; DOE ESGC",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.81,
+          "roundtrip_efficiency_fraction": 0.65,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_seasonal",
@@ -2261,7 +3349,15 @@
           "construction_time_years": 3.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Highview seasonal 2023; IRENA long-duration"
+          "reference_source": "Highview seasonal 2023; IRENA long-duration",
+          "charge_efficiency_fraction": 0.74,
+          "discharge_efficiency_fraction": 0.72,
+          "roundtrip_efficiency_fraction": 0.53,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_offshore_platform",
@@ -2277,7 +3373,15 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Equinor offshore LAES 2022; DNV"
+          "reference_source": "Equinor offshore LAES 2022; DNV",
+          "charge_efficiency_fraction": 0.71,
+          "discharge_efficiency_fraction": 0.7,
+          "roundtrip_efficiency_fraction": 0.5,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_cryogenic_transmission",
@@ -2293,7 +3397,15 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Brookhaven cryogenic grid 2022; DOE"
+          "reference_source": "Brookhaven cryogenic grid 2022; DOE",
+          "charge_efficiency_fraction": 0.76,
+          "discharge_efficiency_fraction": 0.75,
+          "roundtrip_efficiency_fraction": 0.57,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_power_to_gas",
@@ -2309,7 +3421,15 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "ITM Power LAES P2G 2022; Linde–Highview"
+          "reference_source": "ITM Power LAES P2G 2022; Linde–Highview",
+          "charge_efficiency_fraction": 0.74,
+          "discharge_efficiency_fraction": 0.73,
+          "roundtrip_efficiency_fraction": 0.54,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_cold_recovery",
@@ -2325,7 +3445,15 @@
           "construction_time_years": 3.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Tokyo Gas cold recovery 2022; Air Products"
+          "reference_source": "Tokyo Gas cold recovery 2022; Air Products",
+          "charge_efficiency_fraction": 0.8,
+          "discharge_efficiency_fraction": 0.79,
+          "roundtrip_efficiency_fraction": 0.63,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_hybrid_solar",
@@ -2341,7 +3469,15 @@
           "construction_time_years": 3.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Highview+Enel solar-LAES 2023"
+          "reference_source": "Highview+Enel solar-LAES 2023",
+          "charge_efficiency_fraction": 0.73,
+          "discharge_efficiency_fraction": 0.71,
+          "roundtrip_efficiency_fraction": 0.52,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_north_sea",
@@ -2357,7 +3493,15 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "North Sea Energy LAES 2023; TNO"
+          "reference_source": "North Sea Energy LAES 2023; TNO",
+          "charge_efficiency_fraction": 0.76,
+          "discharge_efficiency_fraction": 0.74,
+          "roundtrip_efficiency_fraction": 0.56,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_hospital",
@@ -2373,7 +3517,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "NHS resilience LAES 2022; University Birmingham"
+          "reference_source": "NHS resilience LAES 2022; University Birmingham",
+          "charge_efficiency_fraction": 0.71,
+          "discharge_efficiency_fraction": 0.7,
+          "roundtrip_efficiency_fraction": 0.5,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "laes_data_center",
@@ -2389,7 +3541,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Microsoft/Highview data center 2022; Green DC"
+          "reference_source": "Microsoft/Highview data center 2022; Green DC",
+          "charge_efficiency_fraction": 0.75,
+          "discharge_efficiency_fraction": 0.73,
+          "roundtrip_efficiency_fraction": 0.55,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 20000,
+          "c_rate_max_charge": 0.33,
+          "c_rate_max_discharge": 0.33,
+          "land_use_m2_per_kwh": 30.0
         }
       ]
     },
@@ -2417,7 +3577,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 999.0,
-          "reference_source": "Beacon Power Flywheel Plant Data 2021"
+          "reference_source": "Beacon Power Flywheel Plant Data 2021",
+          "charge_efficiency_fraction": 0.93,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.85,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "flywheel_20mw_regulation_plant",
@@ -2435,7 +3603,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 999.0,
-          "reference_source": "PNNL Grid Storage Cost Review 2022"
+          "reference_source": "PNNL Grid Storage Cost Review 2022",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "flywheel_100mw_future_advanced",
@@ -2453,7 +3629,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 999.0,
-          "reference_source": "IEA Energy Storage Tracking 2023"
+          "reference_source": "IEA Energy Storage Tracking 2023",
+          "charge_efficiency_fraction": 0.97,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_250kw_beacon",
@@ -2469,7 +3653,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Beacon Power Gen4 2022; FERC frequency"
+          "reference_source": "Beacon Power Gen4 2022; FERC frequency",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_1mw_storer",
@@ -2485,7 +3677,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Storer Energy 2023; isentropic flywheel"
+          "reference_source": "Storer Energy 2023; isentropic flywheel",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.91,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_20mw_frequency",
@@ -2501,7 +3701,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Beacon Power Stephentown 20 MW 2022; NYISO"
+          "reference_source": "Beacon Power Stephentown 20 MW 2022; NYISO",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_composite_highspeed",
@@ -2517,7 +3725,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Vycon composite 2023; Amber Kinetics"
+          "reference_source": "Vycon composite 2023; Amber Kinetics",
+          "charge_efficiency_fraction": 0.97,
+          "discharge_efficiency_fraction": 0.96,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_steel_lowspeed",
@@ -2533,7 +3749,15 @@
           "construction_time_years": 0.05,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Active Power CleanSource 2022; EnerTeck"
+          "reference_source": "Active Power CleanSource 2022; EnerTeck",
+          "charge_efficiency_fraction": 0.93,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.85,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_maglev_vacuum",
@@ -2549,7 +3773,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Temporal Power maglev 2023; Ricardo flywheel"
+          "reference_source": "Temporal Power maglev 2023; Ricardo flywheel",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.98,
+          "roundtrip_efficiency_fraction": 0.96,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_transportation_ups",
@@ -2565,7 +3797,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Alstom SITRAS 2022; Bombardier MITRAC"
+          "reference_source": "Alstom SITRAS 2022; Bombardier MITRAC",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_wind_hybrid",
@@ -2581,7 +3821,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "NREL flywheel-wind 2022; Beacon Notrees TX"
+          "reference_source": "NREL flywheel-wind 2022; Beacon Notrees TX",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.89,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_offshore_platform",
@@ -2597,7 +3845,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "DNV offshore flywheel 2022; ABB drives"
+          "reference_source": "DNV offshore flywheel 2022; ABB drives",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_microgrid",
@@ -2613,7 +3869,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "IRENA microgrid storage 2023; Beacon"
+          "reference_source": "IRENA microgrid storage 2023; Beacon",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.89,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_data_center",
@@ -2629,7 +3893,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Vycon DC flywheel 2022; ABB FlyUPS"
+          "reference_source": "Vycon DC flywheel 2022; ABB FlyUPS",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.91,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_hospital",
@@ -2645,7 +3917,15 @@
           "construction_time_years": 0.05,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Hitec Power flywheel 2022; Vycon"
+          "reference_source": "Hitec Power flywheel 2022; Vycon",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_grid_inertia",
@@ -2661,7 +3941,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "NREL synthetic inertia 2023; GE flywheel"
+          "reference_source": "NREL synthetic inertia 2023; GE flywheel",
+          "charge_efficiency_fraction": 0.97,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_volcanic_iron",
@@ -2677,7 +3965,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Amber Kinetics 2023; DOE flywheel"
+          "reference_source": "Amber Kinetics 2023; DOE flywheel",
+          "charge_efficiency_fraction": 0.94,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.86,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_cogeneration",
@@ -2693,7 +3989,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Ricardo flywheel CHP 2022; Punch HRE"
+          "reference_source": "Ricardo flywheel CHP 2022; Punch HRE",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_cfrp_2030",
@@ -2709,7 +4013,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "BloombergNEF flywheel 2030; DOE ESGC"
+          "reference_source": "BloombergNEF flywheel 2030; DOE ESGC",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.99,
+          "roundtrip_efficiency_fraction": 0.97,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         },
         {
           "instance_id": "fw_island_renewable",
@@ -2725,7 +4037,15 @@
           "construction_time_years": 0.4,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "IRENA island flywheel 2022; El Hierro Gorona"
+          "reference_source": "IRENA island flywheel 2022; El Hierro Gorona",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.89,
+          "dod_max_fraction": 0.8,
+          "cycle_lifetime_cycles": 200000,
+          "c_rate_max_charge": 4.0,
+          "c_rate_max_discharge": 4.0,
+          "land_use_m2_per_kwh": 5.0
         }
       ]
     },
@@ -2753,7 +4073,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "IRENA Innovation Outlook – Thermal Storage 2020"
+          "reference_source": "IRENA Innovation Outlook – Thermal Storage 2020",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "sensible_molten_salt_100mwh",
@@ -2771,7 +4099,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "NREL CSP Thermal Storage Systems 2022"
+          "reference_source": "NREL CSP Thermal Storage Systems 2022",
+          "charge_efficiency_fraction": 0.97,
+          "discharge_efficiency_fraction": 0.96,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 44.0
         },
         {
           "instance_id": "sensible_ptes_1000mwh",
@@ -2789,7 +4125,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "DTU / Marstal PTES Project Report 2021"
+          "reference_source": "DTU / Marstal PTES Project Report 2021",
+          "charge_efficiency_fraction": 0.93,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.85,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "sts_water_tank_200m3",
@@ -2805,7 +4149,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "IRENA TES 2023; IEA district heat"
+          "reference_source": "IRENA TES 2023; IEA district heat",
+          "charge_efficiency_fraction": 0.97,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.1
         },
         {
           "instance_id": "sts_pit_storage_district",
@@ -2821,7 +4173,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Marstal Fjernvarme pit TES 2022; SDH IEA"
+          "reference_source": "Marstal Fjernvarme pit TES 2022; SDH IEA",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 20.0
         },
         {
           "instance_id": "sts_aquifer_ates",
@@ -2837,7 +4197,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "IEA ATES 2023; Netherlands district cool"
+          "reference_source": "IEA ATES 2023; Netherlands district cool",
+          "charge_efficiency_fraction": 0.93,
+          "discharge_efficiency_fraction": 0.91,
+          "roundtrip_efficiency_fraction": 0.85,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "sts_borehole_btes",
@@ -2853,7 +4221,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "Drake Landing BTES 2022; IEA solar heat"
+          "reference_source": "Drake Landing BTES 2022; IEA solar heat",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 14.0
         },
         {
           "instance_id": "sts_csp_two_tank",
@@ -2869,7 +4245,15 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "NREL CSP molten salt 2023; Gemasolar Spain"
+          "reference_source": "NREL CSP molten salt 2023; Gemasolar Spain",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.98,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "sts_industrial_high_temp",
@@ -2885,7 +4269,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "IEA Process Heat TES 2023; NREL industrial"
+          "reference_source": "IEA Process Heat TES 2023; NREL industrial",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 20.0
         },
         {
           "instance_id": "sts_electric_thermal",
@@ -2901,7 +4293,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "IEA electrification TES 2023; Vattenfall"
+          "reference_source": "IEA electrification TES 2023; Vattenfall",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.97,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 11.0
         },
         {
           "instance_id": "sts_power_to_heat",
@@ -2917,7 +4317,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "Eneco P2H 2023; NREL district heat"
+          "reference_source": "Eneco P2H 2023; NREL district heat",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.97,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "sts_stratified_large",
@@ -2933,7 +4341,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "IEA district heat TES 2023; Siemens Gamesa"
+          "reference_source": "IEA district heat TES 2023; Siemens Gamesa",
+          "charge_efficiency_fraction": 0.97,
+          "discharge_efficiency_fraction": 0.96,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "sts_hybridcsp_steam",
@@ -2949,7 +4365,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "IEA CSP 2023; Aalborg CSP steam"
+          "reference_source": "IEA CSP 2023; Aalborg CSP steam",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.91,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 70.0
         },
         {
           "instance_id": "sts_district_seasonal",
@@ -2965,7 +4389,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "SDH seasonal pit 2023; IEA solar"
+          "reference_source": "SDH seasonal pit 2023; IEA solar",
+          "charge_efficiency_fraction": 0.92,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.83,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 50.0
         },
         {
           "instance_id": "sts_gravel_water",
@@ -2981,7 +4413,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "GreenField solar heat 2022; Drake Landing"
+          "reference_source": "GreenField solar heat 2022; Drake Landing",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.1
         },
         {
           "instance_id": "sts_sand_basalt",
@@ -2997,7 +4437,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "Siemens Gamesa E-TES 2023; TU Delft"
+          "reference_source": "Siemens Gamesa E-TES 2023; TU Delft",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.91,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 14.0
         },
         {
           "instance_id": "sts_data_center_free_cool",
@@ -3013,7 +4461,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "Green DC thermal 2022; Microsoft datacenter"
+          "reference_source": "Green DC thermal 2022; Microsoft datacenter",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.96,
+          "roundtrip_efficiency_fraction": 0.94,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "sts_cement_process",
@@ -3029,7 +4485,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "HeidelbergCement TES 2022; IEA process heat"
+          "reference_source": "HeidelbergCement TES 2022; IEA process heat",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "sts_rock_bed",
@@ -3045,7 +4509,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Graz Univ rock-bed 2022; NREL thermal"
+          "reference_source": "Graz Univ rock-bed 2022; NREL thermal",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 11.0
         },
         {
           "instance_id": "sts_nuclear_steam",
@@ -3061,7 +4533,15 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "INL nuclear TES 2023; NuScale molten salt"
+          "reference_source": "INL nuclear TES 2023; NuScale molten salt",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.98,
+          "roundtrip_efficiency_fraction": 0.96,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 100
         }
       ]
     },
@@ -3089,7 +4569,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "IEA ECES Annex 22 – PCM Applications 2022"
+          "reference_source": "IEA ECES Annex 22 – PCM Applications 2022",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.2
         },
         {
           "instance_id": "latent_pcm_industrial_5mwh",
@@ -3107,7 +4595,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "IRENA Innovation Outlook – Thermal Storage 2020"
+          "reference_source": "IRENA Innovation Outlook – Thermal Storage 2020",
+          "charge_efficiency_fraction": 0.94,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.87,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 14.0
         },
         {
           "instance_id": "latent_pcm_utility_csp_50mwh",
@@ -3125,7 +4621,15 @@
           "construction_time_years": 1.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "NREL CSP Thermal Storage Systems 2022"
+          "reference_source": "NREL CSP Thermal Storage Systems 2022",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.91,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "lts_ice_storage_comm",
@@ -3141,7 +4645,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "EPRI ice storage 2022; Ice Energy commercial"
+          "reference_source": "EPRI ice storage 2022; Ice Energy commercial",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.4
         },
         {
           "instance_id": "lts_pcm_wall_residential",
@@ -3157,7 +4669,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "BASF Micronal PCM 2022; Fraunhofer TES"
+          "reference_source": "BASF Micronal PCM 2022; Fraunhofer TES",
+          "charge_efficiency_fraction": 0.97,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.0
         },
         {
           "instance_id": "lts_pcm_industrial_100",
@@ -3173,7 +4693,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "IEA industrial PCM 2023; Rubitherm"
+          "reference_source": "IEA industrial PCM 2023; Rubitherm",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 50.0
         },
         {
           "instance_id": "lts_salt_hydrate_5mwh",
@@ -3189,7 +4717,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 8.0,
-          "reference_source": "SaltX salt hydrate 2022; NREL TES"
+          "reference_source": "SaltX salt hydrate 2022; NREL TES",
+          "charge_efficiency_fraction": 0.94,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.87,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "lts_fatty_acid_solar",
@@ -3205,7 +4741,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 8.0,
-          "reference_source": "Fraunhofer ISE fatty acid 2022; IEA solar"
+          "reference_source": "Fraunhofer ISE fatty acid 2022; IEA solar",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.89,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.2
         },
         {
           "instance_id": "lts_paraffin_solar_wall",
@@ -3221,7 +4765,15 @@
           "construction_time_years": 0.05,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "BASF CremaDe PCM 2022; Fraunhofer TES"
+          "reference_source": "BASF CremaDe PCM 2022; Fraunhofer TES",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.91,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.0
         },
         {
           "instance_id": "lts_molten_salt_tes",
@@ -3237,7 +4789,15 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "NREL molten salt 2023; SolarReserve Crescent Dunes"
+          "reference_source": "NREL molten salt 2023; SolarReserve Crescent Dunes",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.98,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "lts_lithium_fluoride",
@@ -3253,7 +4813,15 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "NREL LiF PCM 2022; MIT TES"
+          "reference_source": "NREL LiF PCM 2022; MIT TES",
+          "charge_efficiency_fraction": 0.97,
+          "discharge_efficiency_fraction": 0.96,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 20.0
         },
         {
           "instance_id": "lts_steel_phase_change",
@@ -3269,7 +4837,15 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "Thermal Energy International 2022; Aalborg CSP"
+          "reference_source": "Thermal Energy International 2022; Aalborg CSP",
+          "charge_efficiency_fraction": 0.97,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 20.0
         },
         {
           "instance_id": "lts_wax_cold_chain",
@@ -3285,7 +4861,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "Viking Cold cold chain 2022; EPRI cold"
+          "reference_source": "Viking Cold cold chain 2022; EPRI cold",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.0
         },
         {
           "instance_id": "lts_eutectic_mix",
@@ -3301,7 +4885,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Rubitherm eutectic 2022; IEA TES"
+          "reference_source": "Rubitherm eutectic 2022; IEA TES",
+          "charge_efficiency_fraction": 0.95,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.89,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 11.0
         },
         {
           "instance_id": "lts_micro_encap",
@@ -3317,7 +4909,15 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 15.0,
-          "reference_source": "Microtek Labs micro-encap 2022; NREL TES"
+          "reference_source": "Microtek Labs micro-encap 2022; NREL TES",
+          "charge_efficiency_fraction": 0.94,
+          "discharge_efficiency_fraction": 0.93,
+          "roundtrip_efficiency_fraction": 0.87,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.0
         },
         {
           "instance_id": "lts_district_cooling_pcm",
@@ -3333,7 +4933,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 8.0,
-          "reference_source": "IEA district cooling 2023; CALMAC ice"
+          "reference_source": "IEA district cooling 2023; CALMAC ice",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 12.0
         },
         {
           "instance_id": "lts_thermochemical_sorption",
@@ -3349,7 +4957,15 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Fraunhofer thermo-chem 2022; IEA TESPI"
+          "reference_source": "Fraunhofer thermo-chem 2022; IEA TESPI",
+          "charge_efficiency_fraction": 0.9,
+          "discharge_efficiency_fraction": 0.89,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.4
         },
         {
           "instance_id": "lts_solar_heat_urban",
@@ -3365,7 +4981,15 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 15.0,
-          "reference_source": "EPFL solar PCM 2022; ZEB PCM building"
+          "reference_source": "EPFL solar PCM 2022; ZEB PCM building",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.95,
+          "roundtrip_efficiency_fraction": 0.91,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.0
         },
         {
           "instance_id": "lts_nacl_hightemp_2026",
@@ -3381,7 +5005,15 @@
           "construction_time_years": 2.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "Aalborg CSP 2023; NREL molten NaCl"
+          "reference_source": "Aalborg CSP 2023; NREL molten NaCl",
+          "charge_efficiency_fraction": 0.98,
+          "discharge_efficiency_fraction": 0.96,
+          "roundtrip_efficiency_fraction": 0.94,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "lts_erythritol_solar",
@@ -3397,7 +5029,15 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 8.0,
-          "reference_source": "NREL erythritol PCM 2022; IEA renewable heat"
+          "reference_source": "NREL erythritol PCM 2022; IEA renewable heat",
+          "charge_efficiency_fraction": 0.96,
+          "discharge_efficiency_fraction": 0.94,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.95,
+          "cycle_lifetime_cycles": 10000,
+          "c_rate_max_charge": 1.0,
+          "c_rate_max_discharge": 1.0,
+          "land_use_m2_per_kwh": 10.2
         }
       ]
     },
@@ -3425,7 +5065,17 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "IEA The Future of Hydrogen 2019"
+          "reference_source": "IEA The Future of Hydrogen 2019",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 24.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "h2_tank_compressed_700bar_hrs",
@@ -3443,7 +5093,17 @@
           "construction_time_years": 0.3,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "IRENA Green Hydrogen Cost Reduction 2020"
+          "reference_source": "IRENA Green Hydrogen Cost Reduction 2020",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 21.8,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "h2_tank_liquid_lh2_utility",
@@ -3461,7 +5121,17 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "Kawasaki / Suiso Frontier LH2 Project Report 2022"
+          "reference_source": "Kawasaki / Suiso Frontier LH2 Project Report 2022",
+          "min_load_fraction": 0.29,
+          "land_use_m2_per_kw": 37.9,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 0.92,
+          "roundtrip_efficiency_fraction": 0.72,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.2
         },
         {
           "instance_id": "h2tank_350bar_mobile",
@@ -3477,7 +5147,17 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Toyota FCV 700 bar 2023; NREL H2 storage"
+          "reference_source": "Toyota FCV 700 bar 2023; NREL H2 storage",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 20.0,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "h2tank_700bar_fcev",
@@ -3493,7 +5173,17 @@
           "construction_time_years": 0.05,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "Hexagon Composites 700 bar 2023; IEA H2"
+          "reference_source": "Hexagon Composites 700 bar 2023; IEA H2",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 20.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.94,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "h2tank_cgstation_200",
@@ -3509,7 +5199,17 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 50.0,
-          "reference_source": "Nel Hydrogen station 2023; IRENA H2 refuel"
+          "reference_source": "Nel Hydrogen station 2023; IRENA H2 refuel",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 22.6,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "h2tank_liquid_lh2",
@@ -3525,7 +5225,17 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "Linde LH2 2023; Air Liquide liquid H2"
+          "reference_source": "Linde LH2 2023; Air Liquide liquid H2",
+          "min_load_fraction": 0.29,
+          "land_use_m2_per_kw": 37.9,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 0.9,
+          "roundtrip_efficiency_fraction": 0.7,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.2
         },
         {
           "instance_id": "h2tank_50t_terminal",
@@ -3541,7 +5251,17 @@
           "construction_time_years": 1.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 15.0,
-          "reference_source": "Air Products LH2 terminal 2023; IEA H2"
+          "reference_source": "Air Products LH2 terminal 2023; IEA H2",
+          "min_load_fraction": 0.25,
+          "land_use_m2_per_kw": 59.3,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 0.92,
+          "roundtrip_efficiency_fraction": 0.72,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 17.5
         },
         {
           "instance_id": "h2tank_cryo_compressed",
@@ -3557,7 +5277,17 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 30.0,
-          "reference_source": "BMW CcH2 2022; Lawrence Livermore"
+          "reference_source": "BMW CcH2 2022; Lawrence Livermore",
+          "min_load_fraction": 0.29,
+          "land_use_m2_per_kw": 44.0,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.82,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.5
         },
         {
           "instance_id": "h2tank_metal_hydride",
@@ -3573,7 +5303,17 @@
           "construction_time_years": 0.1,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "McPhy metal hydride 2023; Hydrostik Pro"
+          "reference_source": "McPhy metal hydride 2023; Hydrostik Pro",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 20.5,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "h2tank_ammonia_decomp",
@@ -3589,7 +5329,17 @@
           "construction_time_years": 0.7,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "ThyssenKrupp NH3 cracker 2023; CSIRO"
+          "reference_source": "ThyssenKrupp NH3 cracker 2023; CSIRO",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 29.2,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.8,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.1
         },
         {
           "instance_id": "h2tank_lohc_storage",
@@ -3605,7 +5355,17 @@
           "construction_time_years": 0.8,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Hydrogenious LOHC 2023; Framatome DBT"
+          "reference_source": "Hydrogenious LOHC 2023; Framatome DBT",
+          "min_load_fraction": 0.29,
+          "land_use_m2_per_kw": 44.0,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 0.83,
+          "roundtrip_efficiency_fraction": 0.65,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.5
         },
         {
           "instance_id": "h2tank_200t_port",
@@ -3621,7 +5381,17 @@
           "construction_time_years": 2.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "Port of Rotterdam H2 strategy 2023; IEA"
+          "reference_source": "Port of Rotterdam H2 strategy 2023; IEA",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 73.0,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.96,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 25.0
         },
         {
           "instance_id": "h2tank_soc_solid",
@@ -3637,7 +5407,17 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "Bloom Energy SOEC+tank 2023; NREL"
+          "reference_source": "Bloom Energy SOEC+tank 2023; NREL",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 20.5,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.88,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "h2tank_type5_2030",
@@ -3653,7 +5433,17 @@
           "construction_time_years": 0.05,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 100.0,
-          "reference_source": "DOE H2 2030 targets; Hexagon Type V"
+          "reference_source": "DOE H2 2030 targets; Hexagon Type V",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 20.2,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.97,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "h2tank_ship_bundle",
@@ -3669,7 +5459,17 @@
           "construction_time_years": 0.2,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 30.0,
-          "reference_source": "GTT LH2 shipping 2023; ClassNK H2 ship"
+          "reference_source": "GTT LH2 shipping 2023; ClassNK H2 ship",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 21.0,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.0
         },
         {
           "instance_id": "h2tank_green_h2_hub",
@@ -3685,7 +5485,17 @@
           "construction_time_years": 2.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "Hydrogen Europe H2 hub 2023; IEA H2"
+          "reference_source": "Hydrogen Europe H2 hub 2023; IEA H2",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 82.2,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.96,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 40.0
         },
         {
           "instance_id": "h2tank_airport",
@@ -3701,7 +5511,17 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 30.0,
-          "reference_source": "ACV airport H2 2023; NREL hydrogen airport"
+          "reference_source": "ACV airport H2 2023; NREL hydrogen airport",
+          "min_load_fraction": 0.3,
+          "land_use_m2_per_kw": 31.0,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.94,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.1
         },
         {
           "instance_id": "h2tank_mining_offgrid",
@@ -3717,7 +5537,17 @@
           "construction_time_years": 0.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 20.0,
-          "reference_source": "IRENA mining H2 2022; Hummingbird Energy"
+          "reference_source": "IRENA mining H2 2022; Hummingbird Energy",
+          "min_load_fraction": 0.29,
+          "land_use_m2_per_kw": 37.9,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 15.2
         },
         {
           "instance_id": "h2tank_steel_industry",
@@ -3733,7 +5563,17 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 10.0,
-          "reference_source": "Thyssenkrupp Steel DRI 2023; SSAB HYBRIT"
+          "reference_source": "Thyssenkrupp Steel DRI 2023; SSAB HYBRIT",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 89.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.97,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 65.0
         }
       ]
     },
@@ -3761,7 +5601,17 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 0.5,
-          "reference_source": "HyUnder Project – Underground H2 Storage 2014; IEA Hydrogen 2023"
+          "reference_source": "HyUnder Project – Underground H2 Storage 2014; IEA Hydrogen 2023",
+          "min_load_fraction": 0.25,
+          "land_use_m2_per_kw": 59.3,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.98,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 17.5
         },
         {
           "instance_id": "h2_underground_depleted_gas_field",
@@ -3779,7 +5629,17 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 0.2,
-          "reference_source": "EU FCH JU Hydrogen Underground Storage Study 2021"
+          "reference_source": "EU FCH JU Hydrogen Underground Storage Study 2021",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 73.0,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.96,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 25.0
         },
         {
           "instance_id": "h2_underground_salt_cavern_future_cluster",
@@ -3797,7 +5657,17 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 0.5,
-          "reference_source": "IRENA Green Hydrogen Geopolitics 2022; Hydrogen Europe 2023"
+          "reference_source": "IRENA Green Hydrogen Geopolitics 2022; Hydrogen Europe 2023",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 82.2,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.98,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 40.0
         },
         {
           "instance_id": "h2ug_salt_cavern_small",
@@ -3813,7 +5683,17 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "Intertek salt cavern study 2022; Element Energy"
+          "reference_source": "Intertek salt cavern study 2022; Element Energy",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 82.2,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 40.0
         },
         {
           "instance_id": "h2ug_salt_cavern_large",
@@ -3829,7 +5709,17 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "DLR H2 underground 2023; EWE Compressed H2"
+          "reference_source": "DLR H2 underground 2023; EWE Compressed H2",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 96.0,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "h2ug_depleted_gas_field",
@@ -3845,7 +5735,17 @@
           "construction_time_years": 7.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "IEAGHG depleted field H2 2023; Uniper Ruhr"
+          "reference_source": "IEAGHG depleted field H2 2023; Uniper Ruhr",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 105.2,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "h2ug_aquifer_storage",
@@ -3861,7 +5761,17 @@
           "construction_time_years": 6.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "BEIS H2 aquifer 2022; BGS UK aquifer"
+          "reference_source": "BEIS H2 aquifer 2022; BGS UK aquifer",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 89.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.87,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 65.0
         },
         {
           "instance_id": "h2ug_lined_rock_cavern",
@@ -3877,7 +5787,17 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "Fortum LRC Sweden 2023; IEA H2 underground"
+          "reference_source": "Fortum LRC Sweden 2023; IEA H2 underground",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 89.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 65.0
         },
         {
           "instance_id": "h2ug_salt_texas",
@@ -3893,7 +5813,17 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "Air Products Gulf H2 2023; DOE H2@Scale"
+          "reference_source": "Air Products Gulf H2 2023; DOE H2@Scale",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 89.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 65.0
         },
         {
           "instance_id": "h2ug_yorkshire",
@@ -3909,7 +5839,17 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "H2NG Yorkshire 2022; Highview H2 seam"
+          "reference_source": "H2NG Yorkshire 2022; Highview H2 seam",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 89.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.94,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 65.0
         },
         {
           "instance_id": "h2ug_seasonal_nordic",
@@ -3925,7 +5865,17 @@
           "construction_time_years": 6.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "IEA Nordic H2 2023; Equinor Norway storage"
+          "reference_source": "IEA Nordic H2 2023; Equinor Norway storage",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 100.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.91,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "h2ug_repurposed_gas",
@@ -3941,7 +5891,17 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "Gas for Climate 2023; IEA H2 repurpose"
+          "reference_source": "Gas for Climate 2023; IEA H2 repurpose",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 82.2,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.93,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 40.0
         },
         {
           "instance_id": "h2ug_micro_salt",
@@ -3957,7 +5917,17 @@
           "construction_time_years": 3.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 5.0,
-          "reference_source": "EWE micro cavern 2023; NREL H2"
+          "reference_source": "EWE micro cavern 2023; NREL H2",
+          "min_load_fraction": 0.25,
+          "land_use_m2_per_kw": 59.3,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 17.5
         },
         {
           "instance_id": "h2ug_h2global",
@@ -3973,7 +5943,17 @@
           "construction_time_years": 8.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "H2Global 2023; North Sea H2 backbone"
+          "reference_source": "H2Global 2023; North Sea H2 backbone",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 112.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "h2ug_australia_pilbara",
@@ -3989,7 +5969,17 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "CSIRO Pilbara H2 2023; Australian H2 Strategy"
+          "reference_source": "CSIRO Pilbara H2 2023; Australian H2 Strategy",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 105.2,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.95,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "h2ug_chile_atacama",
@@ -4005,7 +5995,17 @@
           "construction_time_years": 5.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "HIF Chile H2 2023; CORFO H2 strategy"
+          "reference_source": "HIF Chile H2 2023; CORFO H2 strategy",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 89.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.94,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 65.0
         },
         {
           "instance_id": "h2ug_mine_conversion",
@@ -4021,7 +6021,17 @@
           "construction_time_years": 3.5,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "Hy4Heat abandoned mine 2022; DOE H2"
+          "reference_source": "Hy4Heat abandoned mine 2022; DOE H2",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 77.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.9,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 30.0
         },
         {
           "instance_id": "h2ug_co2_depleted_ns",
@@ -4037,7 +6047,17 @@
           "construction_time_years": 6.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 2.0,
-          "reference_source": "TNO North Sea H2 2023; Equinor depleted"
+          "reference_source": "TNO North Sea H2 2023; Equinor depleted",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 100.1,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.89,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "h2ug_2030forecast",
@@ -4053,7 +6073,17 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 4.0,
-          "reference_source": "BloombergNEF H2 storage 2030; DOE H2@Scale"
+          "reference_source": "BloombergNEF H2 storage 2030; DOE H2@Scale",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 96.0,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.96,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 100
         },
         {
           "instance_id": "h2ug_scotland_rock",
@@ -4069,7 +6099,17 @@
           "construction_time_years": 4.0,
           "co2_emission_factor_operational_g_per_kwh": 0.0,
           "ramping_rate_percent_per_min": 3.0,
-          "reference_source": "Scottish H2 assessment 2022; BGS hard rock"
+          "reference_source": "Scottish H2 assessment 2022; BGS hard rock",
+          "min_load_fraction": 0.15,
+          "land_use_m2_per_kw": 73.0,
+          "charge_efficiency_fraction": 0.78,
+          "discharge_efficiency_fraction": 1.0,
+          "roundtrip_efficiency_fraction": 0.92,
+          "dod_max_fraction": 0.9,
+          "cycle_lifetime_cycles": 5000,
+          "c_rate_max_charge": 0.06,
+          "c_rate_max_discharge": 0.06,
+          "land_use_m2_per_kwh": 25.0
         }
       ]
     }

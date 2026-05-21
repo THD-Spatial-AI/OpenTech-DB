@@ -184,6 +184,30 @@ class Normalizer:
                 "co2_emission_factor_g_per_kwh": ("co2_emission_factor_g_per_kwh","g/kWh"),
                 "typical_capacity_mw":           ("typical_capacity_mw",     "MW"),
                 "degradation_rate_percent_per_yr":("degradation_rate_percent_per_yr","%/yr"),
+                # Tech-specific extras
+                "rotor_diameter_m":              ("rotor_diameter_m",         "m"),
+                "hub_height_m":                  ("hub_height_m",             "m"),
+                "wind_rated_speed_ms":           ("wind_rated_speed_ms",      "m/s"),
+                "module_efficiency_fraction":    ("module_efficiency_fraction","fraction"),
+                "performance_ratio":             ("performance_ratio",         "fraction"),
+                "solar_multiple":                ("solar_multiple",            ""),
+                "thermal_storage_h":             ("thermal_storage_h",         "h"),
+                "optical_efficiency_fraction":   ("optical_efficiency_fraction","fraction"),
+                "heat_rate_mj_per_mwh":          ("heat_rate_mj_per_mwh",     "MJ/MWh"),
+                "min_load_fraction":             ("min_load_fraction",         "fraction"),
+                "start_up_time_h":               ("start_up_time_h",           "h"),
+                "cold_start_time_h":             ("cold_start_time_h",         "h"),
+                "water_withdrawal_m3_per_mwh":   ("water_withdrawal_m3_per_mwh","m³/MWh"),
+                "land_use_m2_per_kw":            ("land_use_m2_per_kw",        "m²/kW"),
+                "roundtrip_efficiency_fraction": ("roundtrip_efficiency_fraction","fraction"),
+                "charge_efficiency_fraction":    ("charge_efficiency_fraction", "fraction"),
+                "discharge_efficiency_fraction": ("discharge_efficiency_fraction","fraction"),
+                "dod_max_fraction":              ("dod_max_fraction",           "fraction"),
+                "cycle_lifetime_cycles":         ("cycle_lifetime_cycles",      "cycles"),
+                "loss_rate_pct_per_km":          ("loss_rate_pct_per_km",       "%/km"),
+                "voltage_kv":                    ("voltage_kv",                 "kV"),
+                "stack_lifetime_h":              ("stack_lifetime_h",           "h"),
+                "cop_heating_at_a7_w35":         ("cop_heating_at_a7_w35",      ""),
             }
             for attr, (param, unit) in _llm_field_map.items():
                 val = getattr(llm, attr, None)
@@ -261,7 +285,9 @@ class Normalizer:
         }
 
         # Map extracted params → catalogue field names
+        # Includes both core fields and tech-specific extra params
         _param_to_field = {
+            # Core fields
             "capex_usd_per_kw":               "capex_usd_per_kw",
             "opex_fixed_usd_per_kw_yr":       "opex_fixed_usd_per_kw_yr",
             "opex_var_usd_per_mwh":           "opex_var_usd_per_mwh",
@@ -270,6 +296,65 @@ class Normalizer:
             "co2_emission_factor_g_per_kwh":   "co2_emission_factor_operational_g_per_kwh",
             "typical_capacity_mw":             "typical_capacity_mw",
             "degradation_rate_percent_per_yr": "degradation_rate_percent_per_yr",
+            # Wind extras
+            "rotor_diameter_m":               "rotor_diameter_m",
+            "hub_height_m":                   "hub_height_m",
+            "wind_rated_speed_ms":            "wind_rated_speed_ms",
+            "specific_power_w_per_m2":        "specific_power_w_per_m2",
+            # Solar PV extras
+            "module_efficiency_fraction":     "module_efficiency_fraction",
+            "performance_ratio":              "performance_ratio",
+            "tilt_angle_deg":                 "tilt_angle_deg",
+            "temperature_coefficient_pct_per_c": "temperature_coefficient_pct_per_c",
+            "ground_coverage_ratio":          "ground_coverage_ratio",
+            "land_use_m2_per_kwp":            "land_use_m2_per_kwp",
+            # CSP extras
+            "solar_multiple":                 "solar_multiple",
+            "thermal_storage_h":              "thermal_storage_h",
+            "optical_efficiency_fraction":    "optical_efficiency_fraction",
+            # Hydro extras
+            "turbine_type":                   "turbine_type",
+            "typical_head_m":                 "typical_head_m",
+            "hydraulic_efficiency_fraction":  "hydraulic_efficiency_fraction",
+            # Marine extras
+            "tidal_current_speed_ms":         "tidal_current_speed_ms",
+            "turbine_diameter_m":             "turbine_diameter_m",
+            # Thermal extras (shared across CCGT, OCGT, Coal, Nuclear, Biomass, etc.)
+            "heat_rate_mj_per_mwh":           "heat_rate_mj_per_mwh",
+            "min_load_fraction":              "min_load_fraction",
+            "start_up_time_h":                "start_up_time_h",
+            "cold_start_time_h":              "cold_start_time_h",
+            "water_withdrawal_m3_per_mwh":    "water_withdrawal_m3_per_mwh",
+            "land_use_m2_per_kw":             "land_use_m2_per_kw",
+            # Nuclear extras
+            "enrichment_percent":             "enrichment_percent",
+            "burnup_gwd_per_t":               "burnup_gwd_per_t",
+            # Storage extras
+            "charge_efficiency_fraction":     "charge_efficiency_fraction",
+            "discharge_efficiency_fraction":  "discharge_efficiency_fraction",
+            "roundtrip_efficiency_fraction":  "roundtrip_efficiency_fraction",
+            "dod_max_fraction":               "dod_max_fraction",
+            "cycle_lifetime_cycles":          "cycle_lifetime_cycles",
+            "c_rate_max_charge":              "c_rate_max_charge",
+            "c_rate_max_discharge":           "c_rate_max_discharge",
+            "land_use_m2_per_kwh":            "land_use_m2_per_kwh",
+            # Conversion / electrolyzer extras
+            "warm_start_time_min":            "warm_start_time_min",
+            "stack_lifetime_h":               "stack_lifetime_h",
+            "water_consumption_l_per_kg_h2":  "water_consumption_l_per_kg_h2",
+            "cell_voltage_v":                 "cell_voltage_v",
+            "current_density_ma_per_cm2":     "current_density_ma_per_cm2",
+            # Conversion / heat pump extras
+            "cop_heating_at_a7_w35":          "cop_heating_at_a7_w35",
+            "electrical_efficiency_fraction": "electrical_efficiency_fraction",
+            "thermal_efficiency_fraction":    "thermal_efficiency_fraction",
+            "cold_start_time_min":            "cold_start_time_min",
+            # Transmission extras
+            "loss_rate_pct_per_km":           "loss_rate_pct_per_km",
+            "voltage_kv":                     "voltage_kv",
+            "max_utilization_fraction":       "max_utilization_fraction",
+            "availability_fraction":          "availability_fraction",
+            "corridor_length_km":             "corridor_length_km",
         }
 
         for param, field_name in _param_to_field.items():

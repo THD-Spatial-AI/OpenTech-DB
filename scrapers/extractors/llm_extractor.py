@@ -39,11 +39,35 @@ the following fields if found in the text, otherwise omit the field:
   "co2_emission_factor_g_per_kwh": <number>,
   "typical_capacity_mw": <number>,
   "degradation_rate_percent_per_yr": <number>,
+  "rotor_diameter_m": <number>,
+  "hub_height_m": <number>,
+  "wind_rated_speed_ms": <number>,
+  "module_efficiency_fraction": <number between 0 and 1>,
+  "performance_ratio": <number between 0 and 1>,
+  "solar_multiple": <number>,
+  "thermal_storage_h": <number>,
+  "optical_efficiency_fraction": <number between 0 and 1>,
+  "heat_rate_mj_per_mwh": <number>,
+  "min_load_fraction": <number between 0 and 1>,
+  "start_up_time_h": <number>,
+  "cold_start_time_h": <number>,
+  "water_withdrawal_m3_per_mwh": <number>,
+  "land_use_m2_per_kw": <number>,
+  "roundtrip_efficiency_fraction": <number between 0 and 1>,
+  "charge_efficiency_fraction": <number between 0 and 1>,
+  "discharge_efficiency_fraction": <number between 0 and 1>,
+  "dod_max_fraction": <number between 0 and 1>,
+  "cycle_lifetime_cycles": <integer>,
+  "loss_rate_pct_per_km": <number>,
+  "voltage_kv": <number>,
+  "stack_lifetime_h": <number>,
+  "cop_heating_at_a7_w35": <number>,
   "notes": "<brief explanation of extracted values>"
 }
 All monetary values must be in USD. Convert EUR values using 1 EUR = 1.10 USD.
-All efficiencies must be in % (e.g. 58.5, not 0.585).
-COP values must be multiplied by 100 (COP 3.5 → 350).
+All plain efficiencies must be in % (e.g. 58.5, not 0.585).
+module_efficiency_fraction, performance_ratio, charge/discharge/roundtrip efficiencies,
+dod_max_fraction, min_load_fraction must be fractions between 0 and 1.
 Return ONLY the JSON object, no other text.
 """.strip()
 
@@ -59,6 +83,30 @@ class LLMExtractedParams:
     co2_emission_factor_g_per_kwh: float | None = None
     typical_capacity_mw: float | None = None
     degradation_rate_percent_per_yr: float | None = None
+    # Tech-specific extras
+    rotor_diameter_m: float | None = None
+    hub_height_m: float | None = None
+    wind_rated_speed_ms: float | None = None
+    module_efficiency_fraction: float | None = None
+    performance_ratio: float | None = None
+    solar_multiple: float | None = None
+    thermal_storage_h: float | None = None
+    optical_efficiency_fraction: float | None = None
+    heat_rate_mj_per_mwh: float | None = None
+    min_load_fraction: float | None = None
+    start_up_time_h: float | None = None
+    cold_start_time_h: float | None = None
+    water_withdrawal_m3_per_mwh: float | None = None
+    land_use_m2_per_kw: float | None = None
+    roundtrip_efficiency_fraction: float | None = None
+    charge_efficiency_fraction: float | None = None
+    discharge_efficiency_fraction: float | None = None
+    dod_max_fraction: float | None = None
+    cycle_lifetime_cycles: float | None = None
+    loss_rate_pct_per_km: float | None = None
+    voltage_kv: float | None = None
+    stack_lifetime_h: float | None = None
+    cop_heating_at_a7_w35: float | None = None
     notes: str = ""
     confidence: float = 0.70   # LLM extractions get a flat confidence score
     raw_response: str = ""

@@ -6,7 +6,8 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.0-646CFF)](https://vite.dev/)
-[![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Data: CC BY 4.0](https://img.shields.io/badge/Data-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 [![OEO](https://img.shields.io/badge/ontology-OEO-green)](https://openenergy-platform.org/ontology/oeo/)
 
 **55+ technologies** · generation · storage · transmission · conversion · time-series profiles · contributor workflow
@@ -20,7 +21,7 @@
 ### Backend
 
 ```bash
-git clone https://mygit.th-deg.de/thd-spatial-ai/opentech-db.git
+git clone https://github.com/THD-Spatial-AI/OpenTech-DB.git
 cd opentech-db
 python -m venv .venv && .venv\Scripts\activate   # Windows
 # source .venv/bin/activate                       # Linux/macOS
@@ -64,9 +65,11 @@ docker compose up --build
 | Time-series catalogue | [docs/timeseries.md](docs/timeseries.md) |
 | Authentication | [docs/authentication.md](docs/authentication.md) |
 | Web frontend | [docs/frontend.md](docs/frontend.md) |
+| Contributing data (researchers) | [docs/contributing-data.md](docs/contributing-data.md) |
 
 ---
 
 ## License
 
-Data and documentation are released under `LICENSE` in the repository root.
+Code is released under the [MIT License](LICENSE).  
+Catalogue data (`data/`) and documentation are released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — you are free to use, share, and adapt with attribution.

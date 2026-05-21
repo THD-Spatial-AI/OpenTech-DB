@@ -17,6 +17,7 @@ venv/
 env/
 .env
 .env.*
+!.env.example
 pip-selfcheck.json
 
 # Pytest / coverage
@@ -63,6 +64,15 @@ frontend/dist-ssr/
 
 # Pending submissions uploaded by contributors
 data/pending_submissions/*.json
+
+# Backup files created during data editing
+data/**/*.bak
+
+# Local utility scripts — not part of the project
+scripts/
+
+# Local data files not part of the catalogue
+data/wind_turbine_library.csv
 
 # ──────────────────────────────────────────────────────────────────
 # Scraper runtime data — candidates, raw API dumps, scheduler state.

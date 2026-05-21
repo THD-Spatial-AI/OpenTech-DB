@@ -81,33 +81,42 @@ docker run -p 8000:8000 -v ./data:/app/data opentech-db
 
 ## Backend environment variables
 
-### Authentication (required for protected endpoints)
+The server **will not start** without the three variables marked required below. Generate them locally — no external accounts needed.
+
+### Required (server crashes without these)
+
+```env
+# 1. Random secret for signing JWTs — generate once, keep it stable
+JWT_SECRET_KEY=<random-32-byte-string>
+
+# 2. Built-in admin credentials
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD_HASH=<bcrypt hash>
+```
+
+Generate the values:
+
+```bash
+# JWT secret
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# bcrypt hash of your chosen password
+python -c "import bcrypt; print(bcrypt.hashpw(b'your-password', bcrypt.gensalt(12)).decode())"
+```
+
+### Optional — ORCID login (researcher authentication)
 
 ```env
 ORCID_CLIENT_ID=<your-orcid-client-id>
 ORCID_CLIENT_SECRET=<your-orcid-client-secret>
 ORCID_REDIRECT_URI=http://localhost:8000/api/v1/auth/orcid/callback
-JWT_SECRET_KEY=<random-long-secret>
+ORCID_ENV=sandbox          # "sandbox" for local dev, "production" for deployment
 FRONTEND_URL=http://localhost:5173
 ```
 
-Register your application at <https://orcid.org/developer-tools> to obtain ORCID credentials.
+Register your application at <https://orcid.org/developer-tools> to obtain ORCID credentials. Without these, the ORCID login button will be disabled but everything else works.
 
-### Admin account (built-in)
-
-```env
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD_HASH=<bcrypt hash>
-```
-
-Generate a bcrypt hash with:
-
-```python
-import bcrypt
-print(bcrypt.hashpw(b"your-password", bcrypt.gensalt()).decode())
-```
-
-### Supabase (optional — enables scraper candidate storage and Supabase auth)
+### Optional — Supabase (enables scraper candidate storage and Supabase auth)
 
 ```env
 SUPABASE_URL=https://<your-project>.supabase.co
@@ -150,6 +159,12 @@ curl "http://localhost:8000/api/v1/adapt/pypsa/ccgt?discount_rate=0.07"
 # Reload data from disk (after editing JSON files)
 curl -X POST http://localhost:8000/api/v1/debug/reload
 ```
+
+---
+
+## Contributing data
+
+Energy researchers can contribute new parameter data (technology instances, CAPEX/efficiency figures, etc.) through the contributor UI — no code changes required. See [Contributing Data](contributing-data.md) for the full workflow.
 
 ---
 

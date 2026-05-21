@@ -167,6 +167,14 @@ function CapexSparkline({ instances }: { instances: EquipmentInstance[] }) {
   );
 }
 
+// ── Keys excluded from the extra-params columns ─────────────────────────────
+
+const TECH_META_KEYS = new Set([
+  "instance_id", "country", "country_iso2", "location", "country_code",
+  "reference_source", "_source", "_paper_doi", "_paper_title", "_paper_year",
+  "_scraped_at", "_paper_countries",
+]);
+
 // ── Instance table row ────────────────────────────────────────────────────────
 
 function InstanceRow({
@@ -175,12 +183,14 @@ function InstanceRow({
   techName,
   techId,
   originalIndex,
+  extraParamKeys,
 }: {
   inst: EquipmentInstance;
   index: number;
   techName: string;
   techId: string;
   originalIndex: number;
+  extraParamKeys: string[];
 }) {
   const bg = index % 2 !== 0 ? "bg-surface-container-low/20" : "";
 
@@ -191,17 +201,6 @@ function InstanceRow({
     (typeof inst.extra?.reference_source === "string" ? inst.extra.reference_source : null) ??
     (typeof inst.extra?._source === "string" ? inst.extra._source : null) ??
     inst.manufacturer;
-
-  const extraEntries = Object.entries(inst.extra ?? {})
-    .filter(([k, v]) => {
-      if (v === null || v === "") return false;
-      return ![
-        "instance_id", "scale", "country", "country_iso2", "location", "country_code",
-        "reference_source", "_source", "_paper_doi", "_paper_title", "_paper_year", "_scraped_at",
-        "_paper_countries",
-      ].includes(k);
-    })
-    .slice(0, 3);
 
   return (
     <tr
@@ -219,20 +218,6 @@ function InstanceRow({
             originalIndex={originalIndex}
           />
         </div>
-        {extraEntries.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {extraEntries.map(([k, v]) => (
-              <span
-                key={k}
-                className="inline-flex items-center gap-1 rounded-full border border-outline-variant/40 bg-surface-container px-1.5 py-0.5 text-[9px] text-on-surface-variant"
-                title={`${k}: ${String(v)}`}
-              >
-                <span className="font-semibold">{k.replace(/^_+/, "").replace(/_/g, " ")}</span>
-                <span className="font-mono">{typeof v === "number" ? fmt(v, 3) : String(v)}</span>
-              </span>
-            ))}
-          </div>
-        )}
       </td>
       {/* Capacity */}
       <td className="px-5 py-5 font-medium text-center">
@@ -270,6 +255,27 @@ function InstanceRow({
       </td>
       {/* Source */}
       <td className="px-5 py-5 text-right">{sourceBadge(mainSource)}</td>
+      {/* Tech-specific extra params – dynamic columns */}
+      {extraParamKeys.map((key) => {
+        const val = inst.extra?.[key];
+        const display =
+          val === null || val === undefined
+            ? "—"
+            : typeof val === "number"
+            ? fmt(val, 3)
+            : String(val);
+        return (
+          <td
+            key={key}
+            className={`px-4 py-5 text-center font-mono text-xs whitespace-nowrap ${
+              val === null || val === undefined ? "text-on-surface-variant/30" : "text-on-surface"
+            }`}
+            title={`${key}: ${display}`}
+          >
+            {display}
+          </td>
+        );
+      })}
     </tr>
   );
 }
@@ -464,9 +470,22 @@ function InstanceDownloadMenu({
 // ── Export CSV helper ─────────────────────────────────────────────────────────
 
 function exportToCSV(tech: Technology): void {
+  // Collect all extra param keys across instances (excluding meta keys)
+  const extraKeys = Array.from(
+    new Set(
+      tech.instances.flatMap((inst) =>
+        Object.keys(inst.extra ?? {}).filter(
+          (k) => !TECH_META_KEYS.has(k) && !k.startsWith("_"),
+        ),
+      ),
+    ),
+  ).sort();
+
   const headers = [
-    "Label", "CAPEX ($/kW)", "Fixed OPEX ($/kW-yr)",
-    "Efficiency (%)", "Lifetime (yrs)", "WACC (%)", "CO2 (g/kWh)", "Source",
+    "Label", "Capacity (kW)", "CAPEX ($/kW)", "Fixed OPEX ($/kW-yr)",
+    "Efficiency (%)", "Lifetime (yrs)", "WACC (%)", "CO2 (g/kWh)",
+    ...extraKeys,
+    "Source",
   ];
   const rows = tech.instances.map((inst) => {
     const eff = inst.electrical_efficiency?.value ?? inst.thermal_efficiency?.value;
@@ -478,12 +497,17 @@ function exportToCSV(tech: Technology): void {
       inst.manufacturer ?? "";
     return [
       inst.label,
+      inst.capacity_kw?.value ?? "",
       inst.capex_per_kw?.value ?? "",
       inst.opex_fixed_per_kw_yr?.value ?? "",
       eff != null ? (eff * 100).toFixed(1) : "",
       inst.economic_lifetime_yr?.value ?? "",
       inst.discount_rate ? (inst.discount_rate.value * 100).toFixed(1) : "",
       inst.co2_emission_factor ? (inst.co2_emission_factor.value * 1000).toFixed(0) : "",
+      ...extraKeys.map((k) => {
+        const v = inst.extra?.[k];
+        return v === null || v === undefined ? "" : String(v);
+      }),
       source,
     ];
   });
@@ -564,6 +588,17 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
       ? (av as number) - (bv as number)
       : (bv as number) - (av as number);
   });
+
+  // Extra tech-specific param keys → dynamic columns appended after Source
+  const extraParamKeys = Array.from(
+    new Set(
+      tech.instances.flatMap((inst) =>
+        Object.keys(inst.extra ?? {}).filter(
+          (k) => !TECH_META_KEYS.has(k) && !k.startsWith("_"),
+        ),
+      ),
+    ),
+  ).sort();
 
   // Helper to render a sort indicator arrow
   function SortIcon({ field }: { field: SortField }) {
@@ -972,6 +1007,17 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                         </span>
                       </th>
                     ))}
+                    {extraParamKeys.map((key) => (
+                      <th
+                        key={key}
+                        scope="col"
+                        className="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.05em]
+                                   text-on-surface-variant border-b border-outline-variant/15
+                                   text-center whitespace-nowrap"
+                      >
+                        {key.replace(/_/g, " ")}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
@@ -984,12 +1030,13 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                         techName={tech.name}
                         techId={String(tech.id)}
                         originalIndex={tech.instances.indexOf(inst)}
+                        extraParamKeys={extraParamKeys}
                       />
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={9 + extraParamKeys.length}
                         className="px-5 py-10 text-center text-on-surface-variant italic"
                       >
                         No instances recorded for this technology.

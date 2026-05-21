@@ -7,7 +7,7 @@ site_url: https://thd-spatial-ai.github.io/opentech-db
 
 # Repository
 repo_name: thd-spatial-ai/opentech-db
-repo_url: https://mygit.th-deg.de/thd-spatial-ai/opentech-db
+repo_url: https://github.com/THD-Spatial-AI/OpenTech-DB
 edit_uri: edit/main/docs/
 
 # Theme configuration
@@ -124,6 +124,10 @@ nav:
   - Time-Series Catalogue: timeseries.md
   - Authentication: authentication.md
   - Web Frontend: frontend.md
+  - Contributing Data: contributing-data.md
+  - Architecture Decisions:
+    - adr/0001-oeo-fields-optional-for-contributors.md
+    - adr/0002-hard-crash-on-missing-required-env-vars.md
 
 # Copyright
 copyright: |

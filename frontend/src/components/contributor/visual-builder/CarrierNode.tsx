@@ -64,7 +64,7 @@ function CarrierNode({ id, data, selected }: NodeProps<Node<CarrierNodeData>>) {
       tabIndex={0}
       aria-label={`Carrier node: ${data.carrier} (${data.direction})`}
       onClick={handleClick}
-      onKeyDown={(e) => e.key === "Enter" && handleClick()}
+      onKeyDown={(e) => { if (e.key === "Enter") handleClick(); }}
       className={`
         relative min-w-[150px] max-w-[190px] rounded-xl shadow-md cursor-pointer select-none
         border-2 transition-all bg-white

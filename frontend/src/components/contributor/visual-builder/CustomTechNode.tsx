@@ -71,7 +71,7 @@ function CustomTechNode({ id, data, selected }: NodeProps<Node<TechNodeData>>) {
       tabIndex={0}
       aria-label={`Technology node: ${data.label}`}
       onClick={handleClick}
-      onKeyDown={(e) => e.key === "Enter" && handleClick()}
+      onKeyDown={(e) => { if (e.key === "Enter") handleClick(); }}
       className={`
         relative min-w-[200px] max-w-[240px] rounded-xl shadow-lg
         border-2 transition-all cursor-pointer select-none

@@ -529,7 +529,7 @@ function exportToCSV(tech: Technology): void {
 
 // ── Sort types (module-level so SortIcon stays stable across renders) ─────────
 
-type SortField = "label" | "capacity_kw" | "capex_per_kw" | "opex_fixed_per_kw_yr" | "efficiency" | "economic_lifetime_yr";
+type SortField = string; // any column key, including extra params
 type SortDir   = "asc" | "desc";
 
 function getInstColVal(inst: EquipmentInstance, key: string): number | string | null | undefined {
@@ -544,18 +544,9 @@ function getInstColVal(inst: EquipmentInstance, key: string): number | string | 
 }
 
 function matchesFilter(val: number | string | null | undefined, raw: string): boolean {
-  if (!raw.trim()) return true;
+  if (!raw) return true;
   if (val === null || val === undefined) return false;
-  const m = raw.trim().match(/^([<>]=?|=)\s*(-?\d*\.?\d+)$/);
-  if (m && typeof val === "number") {
-    const n = parseFloat(m[2]);
-    if (m[1] === ">" ) return val >  n;
-    if (m[1] === ">=") return val >= n;
-    if (m[1] === "<" ) return val <  n;
-    if (m[1] === "<=") return val <= n;
-    if (m[1] === "=" ) return val === n;
-  }
-  return String(val).toLowerCase().includes(raw.toLowerCase());
+  return String(val) === raw;
 }
 
 function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: SortField; sortDir: SortDir }) {
@@ -621,6 +612,8 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
       case "efficiency":          av = (a.electrical_efficiency?.value ?? a.thermal_efficiency?.value) ?? null;
                                   bv = (b.electrical_efficiency?.value ?? b.thermal_efficiency?.value) ?? null; break;
       case "economic_lifetime_yr":av = a.economic_lifetime_yr?.value  ?? null;         bv = b.economic_lifetime_yr?.value  ?? null;        break;
+      default:                     av = (a.extra?.[sortField] as number | string) ?? null;
+                                   bv = (b.extra?.[sortField] as number | string) ?? null;  break;
     }
     // Nulls always last
     if (av == null && bv == null) return 0;
@@ -648,6 +641,32 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
       ).sort(),
     [tech.instances],
   );
+
+  // Unique sorted option values per column — drives filter dropdowns
+  const colOptions = useMemo(() => {
+    const opts: Record<string, string[]> = {};
+    const getters: Record<string, (i: EquipmentInstance) => number | string | null | undefined> = {
+      label:                (i) => i.label,
+      capacity_kw:          (i) => i.capacity_kw?.value,
+      capex_per_kw:         (i) => i.capex_per_kw?.value,
+      opex_fixed_per_kw_yr: (i) => i.opex_fixed_per_kw_yr?.value,
+      efficiency:           (i) => i.electrical_efficiency?.value ?? i.thermal_efficiency?.value,
+      economic_lifetime_yr: (i) => i.economic_lifetime_yr?.value,
+    };
+    for (const key of Object.keys(getters)) {
+      const vals = tech.instances.map(getters[key]).filter((v): v is number | string => v != null);
+      const isNum = vals.every((v) => typeof v === "number");
+      const strs = [...new Set(vals.map(String))];
+      opts[key] = isNum ? strs.sort((a, b) => parseFloat(a) - parseFloat(b)) : strs.sort();
+    }
+    for (const key of extraParamKeys) {
+      const vals = tech.instances.map((i) => i.extra?.[key] as number | string | null | undefined).filter((v): v is number | string => v != null);
+      const isNum = vals.every((v) => typeof v === "number");
+      const strs = [...new Set(vals.map(String))];
+      opts[key] = isNum ? strs.sort((a, b) => parseFloat(a) - parseFloat(b)) : strs.sort();
+    }
+    return opts;
+  }, [tech.instances, extraParamKeys]);
 
   // Pre-computed index map: O(1) lookup replaces O(n) indexOf per row
   const instanceIndexMap = useMemo(
@@ -1084,35 +1103,38 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
               </span>
             </div>
 
-            {/* ── Filter panel (collapsible) ────────────────────────────── */}
+                        {/* ── Filter panel (collapsible) ────────────────────────────── */}
             {showFilters && (
               <div className="px-5 py-4 border-b border-outline-variant/10 bg-surface-container-lowest/50">
                 {/* Standard columns grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {([
-                    { key: "label",                label: "Variant",         numeric: false },
-                    { key: "capacity_kw",          label: "Capacity (kW)",   numeric: true  },
-                    { key: "capex_per_kw",         label: "CAPEX ($/kW)",    numeric: true  },
-                    { key: "opex_fixed_per_kw_yr", label: "Fixed OPEX",      numeric: true  },
-                    { key: "efficiency",           label: "Efficiency (%)",  numeric: true  },
-                    { key: "economic_lifetime_yr", label: "Lifetime (yrs)",  numeric: true  },
-                  ] as { key: string; label: string; numeric: boolean }[]).map(({ key, label, numeric }) => (
+                    { key: "label",                label: "Variant"        },
+                    { key: "capacity_kw",          label: "Capacity (kW)"  },
+                    { key: "capex_per_kw",         label: "CAPEX ($/kW)"   },
+                    { key: "opex_fixed_per_kw_yr", label: "Fixed OPEX"     },
+                    { key: "efficiency",           label: "Efficiency (%)" },
+                    { key: "economic_lifetime_yr", label: "Lifetime (yrs)" },
+                  ] as { key: string; label: string }[]).map(({ key, label }) => (
                     <div key={key} className="flex flex-col gap-1">
                       <label className="text-[9px] font-bold uppercase tracking-[0.07em] text-on-surface-variant/60">
                         {label}
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={colFilters[key] ?? ""}
                         onChange={(e) => setFilter(key, e.target.value)}
-                        placeholder={numeric ? ">100" : "search…"}
                         className={[
-                          "w-full px-2.5 py-1.5 rounded border text-[11px] font-mono",
-                          "bg-surface-container text-on-surface placeholder:text-on-surface-variant/30",
-                          "outline-none transition-colors focus:ring-1 focus:ring-primary/40",
+                          "w-full px-2 py-1.5 rounded border text-[11px] font-mono appearance-none cursor-pointer",
+                          "bg-surface-container text-on-surface outline-none",
+                          "transition-colors focus:ring-1 focus:ring-primary/40",
                           colFilters[key] ? "border-primary/60 bg-primary/5" : "border-outline-variant/30",
                         ].join(" ")}
-                      />
+                      >
+                        <option value="">— Any —</option>
+                        {(colOptions[key] ?? []).map((v) => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
                     </div>
                   ))}
                 </div>
@@ -1124,34 +1146,43 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                       {tech.name.split(" ").slice(0, 2).join(" ")} — specific parameters
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                      {extraParamKeys.map((key) => {
-                        const sample = tech.instances.find(
-                          (i) => i.extra?.[key] !== null && i.extra?.[key] !== undefined,
-                        )?.extra?.[key];
-                        const isNumeric = typeof sample === "number";
-                        return (
-                          <div key={key} className="flex flex-col gap-1">
-                            <label
-                              className="text-[9px] font-bold uppercase tracking-[0.07em] text-on-surface-variant/60 truncate"
-                              title={key}
+                      {extraParamKeys.map((key) => (
+                        <div key={key} className="flex flex-col gap-1">
+                          <button
+                            onClick={() => handleSort(key)}
+                            className={[
+                              "flex items-center gap-0.5 px-2 py-0.5 rounded text-[9px] font-bold border transition-colors self-start max-w-full",
+                              sortField === key
+                                ? "bg-primary text-on-primary border-primary"
+                                : "text-on-surface-variant/70 border-outline-variant/40 hover:bg-surface-container-high",
+                            ].join(" ")}
+                            title={key}
+                          >
+                            <span className="truncate" style={{ maxWidth: "9rem" }}>{key.replace(/_/g, " ")}</span>
+                            <span
+                              className={`material-symbols-outlined flex-shrink-0 ${sortField === key ? "text-on-primary" : "opacity-40"}`}
+                              style={{ fontSize: "10px" }}
                             >
-                              {key.replace(/_/g, " ")}
-                            </label>
-                            <input
-                              type="text"
-                              value={colFilters[key] ?? ""}
-                              onChange={(e) => setFilter(key, e.target.value)}
-                              placeholder={isNumeric ? ">0" : "search…"}
-                              className={[
-                                "w-full px-2.5 py-1.5 rounded border text-[11px] font-mono",
-                                "bg-surface-container text-on-surface placeholder:text-on-surface-variant/30",
-                                "outline-none transition-colors focus:ring-1 focus:ring-primary/40",
-                                colFilters[key] ? "border-primary/60 bg-primary/5" : "border-outline-variant/30",
-                              ].join(" ")}
-                            />
-                          </div>
-                        );
-                      })}
+                              {sortField === key ? (sortDir === "asc" ? "arrow_upward" : "arrow_downward") : "unfold_more"}
+                            </span>
+                          </button>
+                          <select
+                            value={colFilters[key] ?? ""}
+                            onChange={(e) => setFilter(key, e.target.value)}
+                            className={[
+                              "w-full px-2 py-1.5 rounded border text-[11px] font-mono appearance-none cursor-pointer",
+                              "bg-surface-container text-on-surface outline-none",
+                              "transition-colors focus:ring-1 focus:ring-primary/40",
+                              colFilters[key] ? "border-primary/60 bg-primary/5" : "border-outline-variant/30",
+                            ].join(" ")}
+                          >
+                            <option value="">— Any —</option>
+                            {(colOptions[key] ?? []).map((v) => (
+                              <option key={v} value={v}>{v}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -1200,11 +1231,18 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                       <th
                         key={key}
                         scope="col"
-                        className="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.05em]
-                                   text-on-surface-variant border-b border-outline-variant/15
-                                   text-center whitespace-nowrap"
+                        onClick={() => handleSort(key)}
+                        className={[
+                          "px-4 py-4 text-[10px] font-bold uppercase tracking-[0.05em]",
+                          "border-b border-outline-variant/15",
+                          "text-center whitespace-nowrap cursor-pointer hover:text-on-surface select-none",
+                          sortField === key ? "text-primary" : "text-on-surface-variant",
+                        ].join(" ")}
                       >
-                        {key.replace(/_/g, " ")}
+                        <span className="inline-flex items-center gap-0.5">
+                          {key.replace(/_/g, " ")}
+                          <SortIcon field={key} sortField={sortField} sortDir={sortDir} />
+                        </span>
                       </th>
                     ))}
                   </tr>

@@ -31,7 +31,7 @@
  * - Document metadata placed directly in the component (React 19 feature).
  */
 
-import { startTransition, Suspense, use, useDeferredValue, useState } from "react";
+import { lazy, startTransition, Suspense, use, useDeferredValue, useState } from "react";
 import type { TechnologyCategory, TechnologySummary } from "./types/api";
 import { fetchCategoryTechnologies, invalidateCategory } from "./services/api";
 import logoWithTitle from "./assets/icon_title.png";
@@ -42,13 +42,14 @@ import TechGrid from "./components/TechGrid";
 import MetadataTable from "./components/MetadataTable";
 import DetailsModal from "./components/DetailsModal";
 import ErrorBoundary from "./components/ErrorBoundary";
-import ContributorWorkspace from "./components/contributor/ContributorWorkspace";
 import ProfilePage from "./components/profile/ProfilePage";
 import AuthPage from "./components/auth/AuthPage";
 import OAuthCallback from "./components/auth/OAuthCallback";
-import AdminPanel from "./components/admin/AdminPanel";
-import TimeSeriesCatalogue from "./components/timeseries/TimeSeriesCatalogue";
-import WorldMapView from "./components/worldmap/WorldMapView";
+
+const ContributorWorkspace = lazy(() => import("./components/contributor/ContributorWorkspace"));
+const AdminPanel           = lazy(() => import("./components/admin/AdminPanel"));
+const TimeSeriesCatalogue  = lazy(() => import("./components/timeseries/TimeSeriesCatalogue"));
+const WorldMapView         = lazy(() => import("./components/worldmap/WorldMapView"));
 import { useAuth } from "./context/AuthContext";
 
 // ── Grid loading skeleton ─────────────────────────────────────────────────────
@@ -201,6 +202,8 @@ export default function App() {
           />
 
           {/* ── Page content ─────────────────────────────────────────── */}
+          <ErrorBoundary>
+          <Suspense fallback={<div className="flex-1" />}>
           {activeView === "contributor" ? (
             <ContributorWorkspace key={user?.id ?? "anon"} />
           ) : activeView === "profile" ? (
@@ -246,7 +249,11 @@ export default function App() {
               </section>
 
               {/* Data grid — ErrorBoundary catches API failures gracefully */}
-              <ErrorBoundary context={activeCategory}>
+              <ErrorBoundary
+                key={activeCategory}
+                context={activeCategory}
+                onRetry={() => invalidateCategory(activeCategory)}
+              >
                 <Suspense fallback={<GridSkeleton />}>
                   <CategoryContent
                     category={activeCategory}
@@ -258,6 +265,8 @@ export default function App() {
               </ErrorBoundary>
             </main>
           )}
+          </Suspense>
+          </ErrorBoundary>
 
           {/* ── Footer ───────────────────────────────────────────────── */}
           <footer className="bg-surface-container-low border-t border-outline-variant/15 px-8 py-12">

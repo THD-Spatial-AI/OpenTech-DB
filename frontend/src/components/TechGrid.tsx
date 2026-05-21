@@ -9,7 +9,7 @@
  * summaries.  Full instance data is fetched only when a modal is opened.
  */
 
-import { use } from "react";
+import { use, useMemo } from "react";
 import type { TechnologySummary, TechnologyCategory } from "../types/api";
 import type { FilterState } from "./SideNavBar";
 import { fetchCategoryTechnologies } from "../services/api";
@@ -71,7 +71,10 @@ export default function TechGrid({
   // React 19: `use()` suspends here until the Promise resolves.
   const { technologies, total } = use(fetchCategoryTechnologies(category));
 
-  const filtered = applyFilters(technologies, searchQuery, filters);
+  const filtered = useMemo(
+    () => applyFilters(technologies, searchQuery, filters),
+    [technologies, searchQuery, filters],
+  );
 
   return (
     <section>

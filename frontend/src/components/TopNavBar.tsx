@@ -101,7 +101,7 @@ export default function TopNavBar({ onLoginClick, onViewChange, activeView }: To
         {/* GitHub icon + Auth area */}
         <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
           <a
-            href="https://github.com"
+            href="https://github.com/THD-Spatial-AI/OpenTech-DB"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="GitHub repository"

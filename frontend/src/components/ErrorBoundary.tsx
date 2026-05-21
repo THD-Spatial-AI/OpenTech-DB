@@ -14,6 +14,8 @@ interface Props {
   children: ReactNode;
   /** Optional: category label shown in the error message */
   context?: string;
+  /** Called before resetting error state — use to invalidate stale caches */
+  onRetry?: () => void;
 }
 
 interface State {
@@ -55,7 +57,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             </pre>
           </details>
           <button
-            onClick={() => this.setState({ error: null })}
+            onClick={() => { this.props.onRetry?.(); this.setState({ error: null }); }}
             className="technical-gradient text-on-primary px-6 py-2.5 text-sm font-bold rounded
                        shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity"
           >

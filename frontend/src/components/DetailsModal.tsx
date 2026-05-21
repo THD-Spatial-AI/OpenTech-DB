@@ -1,4 +1,4 @@
-/**
+﻿/**
  * components/DetailsModal.tsx
  * ────────────────────────────
  * Full-screen details panel for a single Technology.
@@ -31,9 +31,11 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useOptimistic,
   useRef,
   useState,
+  memo,
   lazy,
   Suspense,
   startTransition,
@@ -177,7 +179,7 @@ const TECH_META_KEYS = new Set([
 
 // ── Instance table row ────────────────────────────────────────────────────────
 
-function InstanceRow({
+const InstanceRow = memo(function InstanceRow({
   inst,
   index,
   techName,
@@ -278,7 +280,7 @@ function InstanceRow({
       })}
     </tr>
   );
-}
+});
 
 // ── Generic blob download helper ───────────────────────────────────────────────────────────
 
@@ -525,6 +527,48 @@ function exportToCSV(tech: Technology): void {
   URL.revokeObjectURL(url);
 }
 
+// ── Sort types (module-level so SortIcon stays stable across renders) ─────────
+
+type SortField = "label" | "capacity_kw" | "capex_per_kw" | "opex_fixed_per_kw_yr" | "efficiency" | "economic_lifetime_yr";
+type SortDir   = "asc" | "desc";
+
+function getInstColVal(inst: EquipmentInstance, key: string): number | string | null | undefined {
+  switch (key) {
+    case "capex_per_kw":         return inst.capex_per_kw?.value;
+    case "opex_fixed_per_kw_yr": return inst.opex_fixed_per_kw_yr?.value;
+    case "efficiency":           return inst.electrical_efficiency?.value ?? inst.thermal_efficiency?.value;
+    case "capacity_kw":          return inst.capacity_kw?.value;
+    case "economic_lifetime_yr": return inst.economic_lifetime_yr?.value;
+    default:                     return inst.extra?.[key] as number | string | null | undefined;
+  }
+}
+
+function matchesFilter(val: number | string | null | undefined, raw: string): boolean {
+  if (!raw.trim()) return true;
+  if (val === null || val === undefined) return false;
+  const m = raw.trim().match(/^([<>]=?|=)\s*(-?\d*\.?\d+)$/);
+  if (m && typeof val === "number") {
+    const n = parseFloat(m[2]);
+    if (m[1] === ">" ) return val >  n;
+    if (m[1] === ">=") return val >= n;
+    if (m[1] === "<" ) return val <  n;
+    if (m[1] === "<=") return val <= n;
+    if (m[1] === "=" ) return val === n;
+  }
+  return String(val).toLowerCase().includes(raw.toLowerCase());
+}
+
+function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: SortField; sortDir: SortDir }) {
+  if (field !== sortField) {
+    return <span className="material-symbols-outlined opacity-20" style={{ fontSize: "12px" }}>unfold_more</span>;
+  }
+  return (
+    <span className="material-symbols-outlined text-primary" style={{ fontSize: "12px" }}>
+      {sortDir === "asc" ? "arrow_upward" : "arrow_downward"}
+    </span>
+  );
+}
+
 // ── Inner panel — uses React 19 `use()` to read the detail promise ────────────
 
 interface InnerPanelProps {
@@ -539,20 +583,21 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
   // The parent Suspense boundary renders the skeleton while loading.
   const tech = use(fetchTechnology(techId));
 
-  const avgEff = avgOrDash(
-    tech.instances,
-    (i) =>
-      (i.electrical_efficiency?.value ?? i.thermal_efficiency?.value ?? null) != null
-        ? ((i.electrical_efficiency?.value ?? i.thermal_efficiency?.value)! * 100)
-        : null
+  const avgEff = useMemo(
+    () => avgOrDash(
+      tech.instances,
+      (i) =>
+        (i.electrical_efficiency?.value ?? i.thermal_efficiency?.value ?? null) != null
+          ? ((i.electrical_efficiency?.value ?? i.thermal_efficiency?.value)! * 100)
+          : null
+    ),
+    [tech.instances],
   );
 
   const isVerified = !tech.tags.some((t) => t.toLowerCase() === "review_required");
   const primaryCarrier = tech.output_carriers[0] ?? tech.input_carriers[0];
 
   // ── Sort state for the instances table ─────────────────────────────────────
-  type SortField = "label" | "capacity_kw" | "capex_per_kw" | "opex_fixed_per_kw_yr" | "efficiency" | "economic_lifetime_yr";
-  type SortDir   = "asc" | "desc";
   const [sortField, setSortField] = useState<SortField>("label");
   const [sortDir,   setSortDir]   = useState<SortDir>("asc");
 
@@ -565,7 +610,7 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
     }
   }
 
-  const sortedInstances = [...tech.instances].sort((a, b) => {
+  const sortedInstances = useMemo(() => [...tech.instances].sort((a, b) => {
     let av: number | string | null = null;
     let bv: number | string | null = null;
     switch (sortField) {
@@ -587,22 +632,32 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
     return sortDir === "asc"
       ? (av as number) - (bv as number)
       : (bv as number) - (av as number);
-  });
+  }), [tech.instances, sortField, sortDir]);
 
   // Extra tech-specific param keys → dynamic columns appended after Source
-  const extraParamKeys = Array.from(
-    new Set(
-      tech.instances.flatMap((inst) =>
-        Object.keys(inst.extra ?? {}).filter(
-          (k) => !TECH_META_KEYS.has(k) && !k.startsWith("_"),
+  const extraParamKeys = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          tech.instances.flatMap((inst) =>
+            Object.keys(inst.extra ?? {}).filter(
+              (k) => !TECH_META_KEYS.has(k) && !k.startsWith("_"),
+            ),
+          ),
         ),
-      ),
-    ),
-  ).sort();
+      ).sort(),
+    [tech.instances],
+  );
+
+  // Pre-computed index map: O(1) lookup replaces O(n) indexOf per row
+  const instanceIndexMap = useMemo(
+    () => new Map(tech.instances.map((inst, i) => [inst, i])),
+    [tech.instances],
+  );
 
   // ── Column filter state ───────────────────────────────────────
   const [showFilters, setShowFilters] = useState(false);
-  const [colFilters,  setColFilters]  = useState<Record<string, string>>({});
+  const [colFilters, setColFilters] = useState<Record<string, string>>({});
 
   const activeFilterCount = Object.values(colFilters).filter(Boolean).length;
 
@@ -610,55 +665,16 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
     setColFilters((prev) => ({ ...prev, [key]: val }));
   }
 
-  /** Resolve the rendered value for a column key from an instance. */
-  function getInstColVal(inst: EquipmentInstance, key: string): number | string | null | undefined {
-    switch (key) {
-      case "capex_per_kw":         return inst.capex_per_kw?.value;
-      case "opex_fixed_per_kw_yr": return inst.opex_fixed_per_kw_yr?.value;
-      case "efficiency":           return inst.electrical_efficiency?.value ?? inst.thermal_efficiency?.value;
-      case "capacity_kw":          return inst.capacity_kw?.value;
-      case "economic_lifetime_yr": return inst.economic_lifetime_yr?.value;
-      default:                     return inst.extra?.[key] as number | string | null | undefined;
-    }
-  }
-
-  /** Match a value against a filter string.
-   *  Supports numeric operators: >N  >=N  <N  <=N  =N
-   *  Otherwise: case-insensitive substring match.
-   */
-  function matchesFilter(val: number | string | null | undefined, raw: string): boolean {
-    if (!raw.trim()) return true;
-    if (val === null || val === undefined) return false;
-    const m = raw.trim().match(/^([<>]=?|=)\s*(-?\d*\.?\d+)$/);
-    if (m && typeof val === "number") {
-      const n = parseFloat(m[2]);
-      if (m[1] === ">" ) return val >  n;
-      if (m[1] === ">=") return val >= n;
-      if (m[1] === "<" ) return val <  n;
-      if (m[1] === "<=") return val <= n;
-      if (m[1] === "=" ) return val === n;
-    }
-    return String(val).toLowerCase().includes(raw.toLowerCase());
-  }
-
   // Apply column filters on top of sorted instances
-  const displayInstances = sortedInstances.filter((inst) =>
-    Object.entries(colFilters).every(([key, raw]) =>
-      matchesFilter(getInstColVal(inst, key), raw),
-    ),
+  const displayInstances = useMemo(
+    () =>
+      sortedInstances.filter((inst) =>
+        Object.entries(colFilters).every(([key, raw]) =>
+          matchesFilter(getInstColVal(inst, key), raw),
+        ),
+      ),
+    [sortedInstances, colFilters],
   );
-
-  // Helper to render a sort indicator arrow
-  function SortIcon({ field }: { field: SortField }) {
-    if (field !== sortField) {
-      return <span className="material-symbols-outlined opacity-20" style={{ fontSize: "12px" }}>unfold_more</span>;
-    }
-    return (
-      <span className="material-symbols-outlined text-primary" style={{ fontSize: "12px" }}>
-        {sortDir === "asc" ? "arrow_upward" : "arrow_downward"}
-      </span>
-    );
-  }
 
   // ── Full-catalog model export ──────────────────────────────────────────────────
   const [bulkDownloading, setBulkDownloading] = useState<ModelFormat | null>(null);
@@ -982,10 +998,10 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
 
           {/* Instances Table */}
           <div className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border border-outline-variant/10">
-            {/* Sort toolbar */}
             {/* Sort + filter toolbar */}
-            <div className="flex items-center gap-3 px-5 py-3 border-b border-outline-variant/10 bg-surface-container/30 flex-wrap">
-              <span className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">
+            {/* ── Sort bar ─────────────────────────────────────────────── */}
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-outline-variant/10 bg-surface-container/30 flex-wrap">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant flex-shrink-0">
                 Sort by
               </span>
               {(
@@ -1009,11 +1025,19 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                   ].join(" ")}
                 >
                   {label}
-                  <span className={`material-symbols-outlined ${sortField === field ? "text-on-primary" : "opacity-40"}`} style={{ fontSize: "11px" }}>
-                    {sortField === field ? (sortDir === "asc" ? "arrow_upward" : "arrow_downward") : "unfold_more"}
+                  <span
+                    className={`material-symbols-outlined ${sortField === field ? "text-on-primary" : "opacity-40"}`}
+                    style={{ fontSize: "11px" }}
+                  >
+                    {sortField === field
+                      ? sortDir === "asc"
+                        ? "arrow_upward"
+                        : "arrow_downward"
+                      : "unfold_more"}
                   </span>
                 </button>
               ))}
+
               <span className="ml-auto flex items-center gap-2">
                 {activeFilterCount > 0 && (
                   <button
@@ -1022,7 +1046,9 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                                bg-error/10 text-error border border-error/30 hover:bg-error/20 transition-colors"
                     title="Clear all filters"
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: "11px" }}>filter_alt_off</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: "11px" }}>
+                      filter_alt_off
+                    </span>
                     Clear {activeFilterCount}
                   </button>
                 )}
@@ -1035,91 +1061,103 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                       : "text-on-surface-variant border-outline-variant/50 hover:bg-surface-container-high",
                   ].join(" ")}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: "11px" }}>filter_alt</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: "11px" }}>
+                    filter_alt
+                  </span>
                   Filters
                   {activeFilterCount > 0 && (
-                    <span className="ml-0.5 bg-on-secondary/20 text-on-secondary rounded-full w-3.5 h-3.5
-                                     flex items-center justify-center text-[9px] font-bold">
+                    <span
+                      className="ml-0.5 bg-on-secondary/20 text-on-secondary rounded-full w-3.5 h-3.5
+                                 flex items-center justify-center text-[9px] font-bold"
+                    >
                       {activeFilterCount}
                     </span>
                   )}
                 </button>
                 <span className="text-[10px] text-on-surface-variant/50">
-                  {displayInstances.length}{displayInstances.length !== sortedInstances.length ? `/${sortedInstances.length}` : ""} variant{sortedInstances.length !== 1 ? "s" : ""}
+                  {displayInstances.length}
+                  {displayInstances.length !== sortedInstances.length
+                    ? `/${sortedInstances.length}`
+                    : ""}{" "}
+                  variant{sortedInstances.length !== 1 ? "s" : ""}
                 </span>
               </span>
             </div>
 
-            {/* Filter row — shown when toggled, adapts to this technology’s columns */}
+            {/* ── Filter panel (collapsible) ────────────────────────────── */}
             {showFilters && (
-              <div className="px-5 py-3 border-b border-outline-variant/10 bg-surface-container-lowest/60
-                              flex flex-wrap gap-x-4 gap-y-2 items-end">
-                {/* Fixed standard columns */}
-                {([
-                  { key: "capacity_kw",          label: "Capacity (kW)",     numeric: true  },
-                  { key: "capex_per_kw",         label: "CAPEX ($/kW)",      numeric: true  },
-                  { key: "opex_fixed_per_kw_yr", label: "Fixed OPEX",        numeric: true  },
-                  { key: "efficiency",           label: "Efficiency (%)",    numeric: true  },
-                  { key: "economic_lifetime_yr", label: "Lifetime (yrs)",    numeric: true  },
-                ] as { key: string; label: string; numeric: boolean }[]).map(({ key, label, numeric }) => (
-                  <div key={key} className="flex flex-col gap-0.5">
-                    <label className="text-[9px] font-bold uppercase tracking-[0.06em] text-on-surface-variant/60">
-                      {label}
-                    </label>
-                    <input
-                      type="text"
-                      value={colFilters[key] ?? ""}
-                      onChange={(e) => setFilter(key, e.target.value)}
-                      placeholder={numeric ? "> 0" : "search"}
-                      className={[
-                        "w-28 px-2 py-1 rounded border text-[11px] font-mono bg-surface-container-lowest",
-                        "text-on-surface placeholder:text-on-surface-variant/30 outline-none",
-                        "transition-colors focus:ring-1 focus:ring-primary/40",
-                        colFilters[key] ? "border-primary/50" : "border-outline-variant/30",
-                      ].join(" ")}
-                    />
-                  </div>
-                ))}
+              <div className="px-5 py-4 border-b border-outline-variant/10 bg-surface-container-lowest/50">
+                {/* Standard columns grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {([
+                    { key: "label",                label: "Variant",         numeric: false },
+                    { key: "capacity_kw",          label: "Capacity (kW)",   numeric: true  },
+                    { key: "capex_per_kw",         label: "CAPEX ($/kW)",    numeric: true  },
+                    { key: "opex_fixed_per_kw_yr", label: "Fixed OPEX",      numeric: true  },
+                    { key: "efficiency",           label: "Efficiency (%)",  numeric: true  },
+                    { key: "economic_lifetime_yr", label: "Lifetime (yrs)",  numeric: true  },
+                  ] as { key: string; label: string; numeric: boolean }[]).map(({ key, label, numeric }) => (
+                    <div key={key} className="flex flex-col gap-1">
+                      <label className="text-[9px] font-bold uppercase tracking-[0.07em] text-on-surface-variant/60">
+                        {label}
+                      </label>
+                      <input
+                        type="text"
+                        value={colFilters[key] ?? ""}
+                        onChange={(e) => setFilter(key, e.target.value)}
+                        placeholder={numeric ? ">100" : "search…"}
+                        className={[
+                          "w-full px-2.5 py-1.5 rounded border text-[11px] font-mono",
+                          "bg-surface-container text-on-surface placeholder:text-on-surface-variant/30",
+                          "outline-none transition-colors focus:ring-1 focus:ring-primary/40",
+                          colFilters[key] ? "border-primary/60 bg-primary/5" : "border-outline-variant/30",
+                        ].join(" ")}
+                      />
+                    </div>
+                  ))}
+                </div>
 
-                {/* Tech-specific extra param columns */}
+                {/* Tech-specific extra param filters */}
                 {extraParamKeys.length > 0 && (
-                  <>
-                    <div className="w-px self-stretch bg-outline-variant/20 mx-1" />
-                    <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-primary/60 self-end pb-1">
-                      {tech.name.split(" ")[0]} params
-                    </span>
-                    {extraParamKeys.map((key) => {
-                      const sample = tech.instances.find(
-                        (i) => i.extra?.[key] !== null && i.extra?.[key] !== undefined,
-                      )?.extra?.[key];
-                      const isNumeric = typeof sample === "number";
-                      return (
-                        <div key={key} className="flex flex-col gap-0.5">
-                          <label
-                            className="text-[9px] font-bold uppercase tracking-[0.06em] text-on-surface-variant/60"
-                            title={key}
-                          >
-                            {key.replace(/_/g, " ").slice(0, 20)}
-                          </label>
-                          <input
-                            type="text"
-                            value={colFilters[key] ?? ""}
-                            onChange={(e) => setFilter(key, e.target.value)}
-                            placeholder={isNumeric ? "> 0" : "search"}
-                            className={[
-                              "w-28 px-2 py-1 rounded border text-[11px] font-mono bg-surface-container-lowest",
-                              "text-on-surface placeholder:text-on-surface-variant/30 outline-none",
-                              "transition-colors focus:ring-1 focus:ring-primary/40",
-                              colFilters[key] ? "border-primary/50" : "border-outline-variant/30",
-                            ].join(" ")}
-                          />
-                        </div>
-                      );
-                    })}
-                  </>
+                  <div className="mt-3 pt-3 border-t border-outline-variant/10">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.07em] text-primary/60 mb-2">
+                      {tech.name.split(" ").slice(0, 2).join(" ")} — specific parameters
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {extraParamKeys.map((key) => {
+                        const sample = tech.instances.find(
+                          (i) => i.extra?.[key] !== null && i.extra?.[key] !== undefined,
+                        )?.extra?.[key];
+                        const isNumeric = typeof sample === "number";
+                        return (
+                          <div key={key} className="flex flex-col gap-1">
+                            <label
+                              className="text-[9px] font-bold uppercase tracking-[0.07em] text-on-surface-variant/60 truncate"
+                              title={key}
+                            >
+                              {key.replace(/_/g, " ")}
+                            </label>
+                            <input
+                              type="text"
+                              value={colFilters[key] ?? ""}
+                              onChange={(e) => setFilter(key, e.target.value)}
+                              placeholder={isNumeric ? ">0" : "search…"}
+                              className={[
+                                "w-full px-2.5 py-1.5 rounded border text-[11px] font-mono",
+                                "bg-surface-container text-on-surface placeholder:text-on-surface-variant/30",
+                                "outline-none transition-colors focus:ring-1 focus:ring-primary/40",
+                                colFilters[key] ? "border-primary/60 bg-primary/5" : "border-outline-variant/30",
+                              ].join(" ")}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
+
             <div className="overflow-x-auto">
               <table
                 className="w-full text-left border-collapse"
@@ -1154,7 +1192,7 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                       >
                         <span className="inline-flex items-center gap-0.5">
                           {col}
-                          {field && <SortIcon field={field} />}
+                          {field && <SortIcon field={field} sortField={sortField} sortDir={sortDir} />}
                         </span>
                       </th>
                     ))}
@@ -1180,7 +1218,7 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                         index={idx}
                         techName={tech.name}
                         techId={String(tech.id)}
-                        originalIndex={tech.instances.indexOf(inst)}
+                        originalIndex={instanceIndexMap.get(inst) ?? 0}
                         extraParamKeys={extraParamKeys}
                       />
                     ))

@@ -57,7 +57,8 @@ export default function OAuthCallback({ onAuthError }: { onAuthError?: (msg: str
         (params.toString() ? `?${params.toString()}` : "");
       window.history.replaceState(null, "", clean);
     }
-  }, [signIn, onAuthError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // mount-only: URL params exist only on the initial redirect
 
   return null;
 }

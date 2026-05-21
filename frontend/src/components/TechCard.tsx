@@ -11,6 +11,7 @@
  * on hover, tonal depth (no border lines), Space Grotesk numbers.
  */
 
+import { memo } from "react";
 import type { TechnologyCategory, TechnologySummary } from "../types/api";
 
 // ── Category → human-readable carrier chip colour ────────────────────────────
@@ -132,7 +133,7 @@ interface TechCardProps {
   onOpen: (tech: TechnologySummary) => void;
 }
 
-export default function TechCard({ tech, onOpen }: TechCardProps) {
+const TechCard = memo(function TechCard({ tech, onOpen }: TechCardProps) {
   const chip = CATEGORY_CHIP[tech.category] ?? CATEGORY_CHIP.generation;
 
   return (
@@ -229,5 +230,6 @@ export default function TechCard({ tech, onOpen }: TechCardProps) {
       </div>
     </article>
   );
-}
+});
+export default TechCard;
 

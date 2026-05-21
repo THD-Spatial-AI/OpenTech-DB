@@ -172,6 +172,9 @@ class SubmissionRecord(BaseModel):
     description:      str | None = None
     submitter_email:  str | None = None
     rejection_reason: str | None = None
+    reviewed_at:      str | None = None
+    reviewed_by:      str | None = None
+    pr_url:           str | None = None
     filename:         str        = ""
     payload:          dict | None = None
 
@@ -191,6 +194,9 @@ def _row_to_record(row: dict, filename: str = "") -> SubmissionRecord:
         description=row.get("description"),
         submitter_email=row.get("submitter_email"),
         rejection_reason=row.get("rejection_reason"),
+        reviewed_at=str(row["reviewed_at"]) if row.get("reviewed_at") else None,
+        reviewed_by=row.get("reviewed_by"),
+        pr_url=row.get("pr_url"),
         filename=filename,
         payload=payload if payload else None,
     )

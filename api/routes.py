@@ -1209,7 +1209,8 @@ def list_submissions(
         try:
             q = sb.table(_SUBMISSIONS_TABLE) \
                   .select("id,technology_name,domain,carrier,oeo_class,description,status,"
-                          "submitted_at,submitter_email,rejection_reason,payload") \
+                          "submitted_at,submitter_email,rejection_reason,"
+                          "reviewed_at,reviewed_by,pr_url,payload") \
                   .order("submitted_at", desc=True)
             if status_filter:
                 q = q.eq("status", status_filter)
@@ -1308,6 +1309,8 @@ def act_on_submission(
                 "reviewed_by":      admin_email,
                 "rejection_reason": feedback,
             }
+            if pr_url:
+                update_data["pr_url"] = pr_url
             if body.edited_payload:
                 update_data["payload"] = body.edited_payload
             sb.table(_SUBMISSIONS_TABLE).update(update_data).eq("id", submission_id).execute()

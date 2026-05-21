@@ -38,8 +38,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Header, HTTPException, Query, Request, UploadFile, File, Form
 from fastapi.responses import ORJSONResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+_limiter = Limiter(key_func=get_remote_address)
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -231,7 +235,9 @@ def get_profile_data(profile_id: str) -> TimeSeriesDataResponse:
     summary="Submit a new time-series profile for admin review",
     response_description="Confirmation with assigned submission_id — profile is pending review.",
 )
+@_limiter.limit("10/minute")
 async def upload_profile(
+    request: Request,
     name:        Annotated[str, Form(description="Human-readable profile name")],
     type:        Annotated[str, Form(description="Profile type")],  # noqa: A002
     resolution:  Annotated[str, Form(description="Temporal resolution")],

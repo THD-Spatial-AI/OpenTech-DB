@@ -125,15 +125,12 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    # In development: allow the Vite dev server (port 5173 or 5174).
-    # In production: replace with your actual deployed frontend origin.
     allow_origins=[
+        "https://otdb.th-deg.de",   # production
         "http://localhost:5173",    # Vite default
         "http://localhost:5174",    # Vite fallback
         "http://localhost:5175",    # Vite fallback (further)
         "http://localhost:4173",    # Vite `npm run preview`
-        # Add your deployed frontend URL here when going to production:
-        # "https://your-frontend.example.com",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],

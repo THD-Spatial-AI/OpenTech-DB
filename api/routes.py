@@ -57,8 +57,12 @@ from typing import Annotated, Any
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, Body, HTTPException, Query, Path as FPath, Header
+from fastapi import APIRouter, Body, HTTPException, Query, Path as FPath, Header, Request
 from fastapi.responses import ORJSONResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+_limiter = Limiter(key_func=get_remote_address)
 from pydantic import BaseModel, Field
 
 from adapters.calliope_adapter  import to_calliope
@@ -112,12 +116,13 @@ admin_router    = APIRouter(prefix="/admin",          tags=["Admin"])
 # ---------------------------------------------------------------------------
 
 @debug_router.get("/data", summary="Diagnose data loading")
-def debug_data():
+def debug_data(authorization: str | None = Header(default=None)):
     """
     Shows DATA_DIR path, every JSON file found, and whether it loaded
     successfully (with full error message on failure).
     Handles both catalogue and legacy individual JSON formats.
     """
+    _require_admin(authorization)
     from pydantic import ValidationError
 
     result = {
@@ -172,8 +177,9 @@ def debug_data():
 
 
 @debug_router.post("/reload", summary="Clear the technology cache and reload from disk")
-def reload_cache():
+def reload_cache(authorization: str | None = Header(default=None)):
     """Force a full reload of all JSON files without restarting the server."""
+    _require_admin(authorization)
     _load_all_technologies.cache_clear()
     _build_ontology_schema.cache_clear()
     techs = _get_all()
@@ -1076,7 +1082,9 @@ class SubmissionResponse(BaseModel):
     response_model=SubmissionResponse,
     summary="Submit a new technology for review",
 )
+@_limiter.limit("10/minute")
 def submit_technology(
+    request: Request,
     payload: dict = Body(...),
     authorization: Annotated[str | None, Header()] = None,
 ) -> SubmissionResponse:

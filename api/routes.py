@@ -263,31 +263,85 @@ class WorldMapCountryValuesResponse(BaseModel):
 
 
 _ISO2_TO_ISO3 = {
+    # Europe
     "DE": "DEU", "FR": "FRA", "ES": "ESP", "IT": "ITA", "GR": "GRC", "DK": "DNK",
     "GB": "GBR", "UK": "GBR", "NO": "NOR", "NL": "NLD", "PT": "PRT", "PL": "POL",
     "BE": "BEL", "IE": "IRL", "SE": "SWE", "FI": "FIN", "CH": "CHE", "AT": "AUT",
+    "CZ": "CZE", "HU": "HUN", "RO": "ROU", "BG": "BGR", "HR": "HRV", "SK": "SVK",
+    "SI": "SVN", "EE": "EST", "LV": "LVA", "LT": "LTU", "LU": "LUX", "CY": "CYP",
+    "MT": "MLT", "UA": "UKR", "RS": "SRB", "TR": "TUR", "IS": "ISL",
+    # Americas
     "US": "USA", "CA": "CAN", "MX": "MEX", "BR": "BRA", "CL": "CHL", "AR": "ARG",
+    "CO": "COL", "PE": "PER", "UY": "URY",
+    # Asia-Pacific
     "AU": "AUS", "NZ": "NZL", "CN": "CHN", "IN": "IND", "JP": "JPN", "KR": "KOR",
-    "ZA": "ZAF", "EG": "EGY", "MA": "MAR", "SA": "SAU", "AE": "ARE",
+    "TW": "TWN", "ID": "IDN", "VN": "VNM", "TH": "THA", "MY": "MYS", "SG": "SGP",
+    "PK": "PAK", "BD": "BGD", "PH": "PHL", "MN": "MNG",
+    # Middle East
+    "SA": "SAU", "AE": "ARE", "QA": "QAT", "IR": "IRN", "IQ": "IRQ",
+    "IL": "ISR", "JO": "JOR", "OM": "OMN", "KW": "KWT", "BH": "BHR", "YE": "YEM",
+    # Africa
+    "ZA": "ZAF", "EG": "EGY", "MA": "MAR", "NG": "NGA", "KE": "KEN",
+    "ET": "ETH", "TZ": "TZA", "GH": "GHA", "SN": "SEN", "MZ": "MOZ",
+    "NA": "NAM", "BW": "BWA", "ZM": "ZMB", "ZW": "ZWE",
+    # Russia / Central Asia
+    "RU": "RUS", "KZ": "KAZ", "UZ": "UZB",
 }
 
 _ISO2_NAME = {
+    # Europe
     "DE": "Germany", "FR": "France", "ES": "Spain", "IT": "Italy", "GR": "Greece", "DK": "Denmark",
     "GB": "United Kingdom", "NO": "Norway", "NL": "Netherlands", "PT": "Portugal", "PL": "Poland",
     "BE": "Belgium", "IE": "Ireland", "SE": "Sweden", "FI": "Finland", "CH": "Switzerland", "AT": "Austria",
-    "US": "United States", "CA": "Canada", "MX": "Mexico", "BR": "Brazil", "CL": "Chile", "AR": "Argentina",
-    "AU": "Australia", "NZ": "New Zealand", "CN": "China", "IN": "India", "JP": "Japan", "KR": "South Korea",
-    "ZA": "South Africa", "EG": "Egypt", "MA": "Morocco", "SA": "Saudi Arabia", "AE": "United Arab Emirates",
+    "CZ": "Czech Republic", "HU": "Hungary", "RO": "Romania", "BG": "Bulgaria", "HR": "Croatia",
+    "SK": "Slovakia", "SI": "Slovenia", "EE": "Estonia", "LV": "Latvia", "LT": "Lithuania",
+    "LU": "Luxembourg", "CY": "Cyprus", "MT": "Malta", "UA": "Ukraine", "RS": "Serbia",
+    "TR": "Turkey", "IS": "Iceland",
+    # Americas
+    "US": "United States", "CA": "Canada", "MX": "Mexico", "BR": "Brazil", "CL": "Chile",
+    "AR": "Argentina", "CO": "Colombia", "PE": "Peru", "UY": "Uruguay",
+    # Asia-Pacific
+    "AU": "Australia", "NZ": "New Zealand", "CN": "China", "IN": "India", "JP": "Japan",
+    "KR": "South Korea", "TW": "Taiwan", "ID": "Indonesia", "VN": "Vietnam", "TH": "Thailand",
+    "MY": "Malaysia", "SG": "Singapore", "PK": "Pakistan", "BD": "Bangladesh",
+    "PH": "Philippines", "MN": "Mongolia",
+    # Middle East
+    "SA": "Saudi Arabia", "AE": "United Arab Emirates", "QA": "Qatar", "IR": "Iran", "IQ": "Iraq",
+    "IL": "Israel", "JO": "Jordan", "OM": "Oman", "KW": "Kuwait", "BH": "Bahrain", "YE": "Yemen",
+    # Africa
+    "ZA": "South Africa", "EG": "Egypt", "MA": "Morocco", "NG": "Nigeria", "KE": "Kenya",
+    "ET": "Ethiopia", "TZ": "Tanzania", "GH": "Ghana", "SN": "Senegal", "MZ": "Mozambique",
+    "NA": "Namibia", "BW": "Botswana", "ZM": "Zambia", "ZW": "Zimbabwe",
+    # Russia / Central Asia
+    "RU": "Russia", "KZ": "Kazakhstan", "UZ": "Uzbekistan",
 }
 
 _COUNTRY_NAME_TO_ISO2 = {
+    # Europe
     "germany": "DE", "france": "FR", "spain": "ES", "italy": "IT", "greece": "GR", "denmark": "DK",
-    "united kingdom": "GB", "uk": "GB", "england": "GB", "norway": "NO", "netherlands": "NL", "portugal": "PT",
-    "poland": "PL", "belgium": "BE", "ireland": "IE", "sweden": "SE", "finland": "FI", "switzerland": "CH",
-    "austria": "AT", "united states": "US", "usa": "US", "canada": "CA", "mexico": "MX", "brazil": "BR",
-    "chile": "CL", "argentina": "AR", "australia": "AU", "new zealand": "NZ", "china": "CN", "india": "IN",
-    "japan": "JP", "south korea": "KR", "korea": "KR", "south africa": "ZA", "egypt": "EG", "morocco": "MA",
-    "saudi arabia": "SA", "united arab emirates": "AE", "uae": "AE",
+    "united kingdom": "GB", "uk": "GB", "england": "GB", "norway": "NO", "netherlands": "NL",
+    "portugal": "PT", "poland": "PL", "belgium": "BE", "ireland": "IE", "sweden": "SE",
+    "finland": "FI", "switzerland": "CH", "austria": "AT", "czech republic": "CZ", "czechia": "CZ",
+    "hungary": "HU", "romania": "RO", "bulgaria": "BG", "croatia": "HR", "slovakia": "SK",
+    "ukraine": "UA", "serbia": "RS", "turkey": "TR", "turkiye": "TR", "iceland": "IS",
+    # Americas
+    "united states": "US", "usa": "US", "canada": "CA", "mexico": "MX", "brazil": "BR",
+    "chile": "CL", "argentina": "AR", "colombia": "CO", "peru": "PE", "uruguay": "UY",
+    # Asia-Pacific
+    "australia": "AU", "new zealand": "NZ", "china": "CN", "india": "IN", "japan": "JP",
+    "south korea": "KR", "korea": "KR", "taiwan": "TW", "indonesia": "ID", "vietnam": "VN",
+    "thailand": "TH", "malaysia": "MY", "singapore": "SG", "pakistan": "PK",
+    "bangladesh": "BD", "philippines": "PH",
+    # Middle East
+    "saudi arabia": "SA", "united arab emirates": "AE", "uae": "AE", "qatar": "QA",
+    "iran": "IR", "iraq": "IQ", "israel": "IL", "jordan": "JO", "oman": "OM",
+    "kuwait": "KW", "bahrain": "BH",
+    # Africa
+    "south africa": "ZA", "egypt": "EG", "morocco": "MA", "nigeria": "NG", "kenya": "KE",
+    "ethiopia": "ET", "tanzania": "TZ", "ghana": "GH", "senegal": "SN", "mozambique": "MZ",
+    "namibia": "NA",
+    # Russia / Central Asia
+    "russia": "RU", "kazakhstan": "KZ", "uzbekistan": "UZ",
 }
 
 _MAP_YEARS = [2020, 2022, 2024, 2026, 2030, 2035]
@@ -1213,19 +1267,31 @@ def list_submissions(
     # ── Supabase path ──────────────────────────────────────────────────────────
     sb = _get_sb()
     if sb is not None:
-        try:
-            q = sb.table(_SUBMISSIONS_TABLE) \
-                  .select("id,technology_name,domain,carrier,oeo_class,description,status,"
-                          "submitted_at,submitter_email,rejection_reason,"
-                          "reviewed_at,reviewed_by,pr_url,payload") \
-                  .order("submitted_at", desc=True)
-            if status_filter:
-                q = q.eq("status", status_filter)
-            result = q.execute()
-            return [_row_to_record(row) for row in result.data]
-        except Exception as exc:
-            logger.error("Supabase list failed: %s", exc)
-            raise HTTPException(status_code=500, detail=f"Failed to fetch submissions: {exc}")
+        # Try with pr_url first; if the column doesn't exist yet (migration 006
+        # not applied), fall back to the same query without it.
+        _FULL_COLS  = ("id,technology_name,domain,carrier,oeo_class,description,status,"
+                       "submitted_at,submitter_email,rejection_reason,"
+                       "reviewed_at,reviewed_by,pr_url,payload")
+        _SHORT_COLS = ("id,technology_name,domain,carrier,oeo_class,description,status,"
+                       "submitted_at,submitter_email,rejection_reason,"
+                       "reviewed_at,reviewed_by,payload")
+        for cols in (_FULL_COLS, _SHORT_COLS):
+            try:
+                q = sb.table(_SUBMISSIONS_TABLE).select(cols).order("submitted_at", desc=True)
+                if status_filter:
+                    q = q.eq("status", status_filter)
+                result = q.execute()
+                return [_row_to_record(row) for row in result.data]
+            except Exception as exc:
+                err = str(exc)
+                if "42703" in err and "pr_url" in err and cols == _FULL_COLS:
+                    logger.warning(
+                        "pr_url column missing from technology_submissions — "
+                        "run migration 006_submissions_add_pr_url.sql. Retrying without it."
+                    )
+                    continue
+                logger.error("Supabase list failed: %s", exc)
+                raise HTTPException(status_code=500, detail=f"Failed to fetch submissions: {exc}")
 
     # ── File fallback ──────────────────────────────────────────────────────────
     _PENDING_DIR.mkdir(parents=True, exist_ok=True)

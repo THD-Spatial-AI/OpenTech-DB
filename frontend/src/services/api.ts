@@ -72,7 +72,7 @@ export function fetchCategoryTechnologies(
 ): Promise<TechnologyCatalogueResponse> {
   return cached(`category:${category}`, () =>
     apiFetch<TechnologyCatalogueResponse>(
-      `/technologies/category/${category}?limit=200`
+      `/technologies/category/${category}?limit=100`
     )
   );
 }

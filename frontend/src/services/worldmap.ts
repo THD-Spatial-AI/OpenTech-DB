@@ -60,23 +60,58 @@ interface WorldMapApiResponse {
 }
 
 const ISO2_TO_ISO3: Record<string, string> = {
+  // Europe
   DE: "DEU", FR: "FRA", ES: "ESP", IT: "ITA", GR: "GRC", DK: "DNK",
   GB: "GBR", UK: "GBR", NO: "NOR", NL: "NLD", PT: "PRT", PL: "POL",
   BE: "BEL", IE: "IRL", SE: "SWE", FI: "FIN", CH: "CHE", AT: "AUT",
+  CZ: "CZE", HU: "HUN", RO: "ROU", BG: "BGR", HR: "HRV", SK: "SVK",
+  SI: "SVN", EE: "EST", LV: "LVA", LT: "LTU", LU: "LUX", CY: "CYP",
+  MT: "MLT", UA: "UKR", RS: "SRB", TR: "TUR", IS: "ISL",
+  // Americas
   US: "USA", CA: "CAN", MX: "MEX", BR: "BRA", CL: "CHL", AR: "ARG",
+  CO: "COL", PE: "PER", UY: "URY",
+  // Asia-Pacific
   AU: "AUS", NZ: "NZL", CN: "CHN", IN: "IND", JP: "JPN", KR: "KOR",
-  ZA: "ZAF", EG: "EGY", MA: "MAR", SA: "SAU", AE: "ARE",
+  TW: "TWN", ID: "IDN", VN: "VNM", TH: "THA", MY: "MYS", SG: "SGP",
+  PK: "PAK", BD: "BGD", PH: "PHL", MN: "MNG",
+  // Middle East
+  SA: "SAU", AE: "ARE", QA: "QAT", IR: "IRN", IQ: "IRQ",
+  IL: "ISR", JO: "JOR", OM: "OMN", KW: "KWT", BH: "BHR", YE: "YEM",
+  // Africa
+  ZA: "ZAF", EG: "EGY", MA: "MAR", NG: "NGA", KE: "KEN",
+  ET: "ETH", TZ: "TZA", GH: "GHA", SN: "SEN", MZ: "MOZ",
+  NA: "NAM", BW: "BWA", ZM: "ZMB", ZW: "ZWE",
+  // Russia / Central Asia
+  RU: "RUS", KZ: "KAZ", UZ: "UZB",
 };
 
 const COUNTRY_NAME_TO_ISO2: Record<string, string> = {
+  // Europe
   germany: "DE", france: "FR", spain: "ES", italy: "IT", greece: "GR", denmark: "DK",
   "united kingdom": "GB", uk: "GB", england: "GB", norway: "NO", netherlands: "NL",
   portugal: "PT", poland: "PL", belgium: "BE", ireland: "IE", sweden: "SE", finland: "FI",
-  switzerland: "CH", austria: "AT", "united states": "US", usa: "US", canada: "CA",
-  mexico: "MX", brazil: "BR", chile: "CL", argentina: "AR", australia: "AU",
-  "new zealand": "NZ", china: "CN", india: "IN", japan: "JP", "south korea": "KR",
-  korea: "KR", "south africa": "ZA", egypt: "EG", morocco: "MA", "saudi arabia": "SA",
-  "united arab emirates": "AE", uae: "AE", europe: "", mena: "", global: "",
+  switzerland: "CH", austria: "AT", "czech republic": "CZ", czechia: "CZ",
+  hungary: "HU", romania: "RO", bulgaria: "BG", croatia: "HR", slovakia: "SK",
+  ukraine: "UA", serbia: "RS", turkey: "TR", turkiye: "TR", iceland: "IS",
+  // Americas
+  "united states": "US", usa: "US", canada: "CA", mexico: "MX", brazil: "BR",
+  chile: "CL", argentina: "AR", colombia: "CO", peru: "PE", uruguay: "UY",
+  // Asia-Pacific
+  australia: "AU", "new zealand": "NZ", china: "CN", india: "IN", japan: "JP",
+  "south korea": "KR", korea: "KR", taiwan: "TW", indonesia: "ID", vietnam: "VN",
+  thailand: "TH", malaysia: "MY", singapore: "SG", pakistan: "PK",
+  bangladesh: "BD", philippines: "PH",
+  // Middle East
+  "saudi arabia": "SA", "united arab emirates": "AE", uae: "AE", qatar: "QA",
+  iran: "IR", iraq: "IQ", israel: "IL", jordan: "JO", oman: "OM", kuwait: "KW",
+  // Africa
+  "south africa": "ZA", egypt: "EG", morocco: "MA", nigeria: "NG", kenya: "KE",
+  ethiopia: "ET", tanzania: "TZ", ghana: "GH", senegal: "SN", mozambique: "MZ",
+  namibia: "NA",
+  // Russia / Central Asia
+  russia: "RU", kazakhstan: "KZ", uzbekistan: "UZ",
+  // skip-regions (no ISO2 assigned)
+  europe: "", mena: "", global: "",
 };
 
 const EXCLUDED_COUNTRIES = new Set<string>([

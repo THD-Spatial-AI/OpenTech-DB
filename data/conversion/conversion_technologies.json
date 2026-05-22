@@ -255,7 +255,10 @@
           "stack_lifetime_h": 65000,
           "water_consumption_l_per_kg_h2": 8.7,
           "cell_voltage_v": 2.0,
-          "current_density_ma_per_cm2": 300
+          "current_density_ma_per_cm2": 300,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "awe_50mw_large_plant",
@@ -343,7 +346,10 @@
           "stack_lifetime_h": 69000,
           "water_consumption_l_per_kg_h2": 8.6,
           "cell_voltage_v": 2.0,
-          "current_density_ma_per_cm2": 300
+          "current_density_ma_per_cm2": 300,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "awe_600mw_nearterm_2028",
@@ -409,7 +415,10 @@
           "stack_lifetime_h": 68000,
           "water_consumption_l_per_kg_h2": 8.6,
           "cell_voltage_v": 1.94,
-          "current_density_ma_per_cm2": 360
+          "current_density_ma_per_cm2": 360,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "awe_1gw_future_2035",
@@ -453,7 +462,10 @@
           "stack_lifetime_h": 50000,
           "water_consumption_l_per_kg_h2": 8.6,
           "cell_voltage_v": 2.0,
-          "current_density_ma_per_cm2": 300
+          "current_density_ma_per_cm2": 300,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "awe_2gw_gigafarm_2040",
@@ -706,7 +718,10 @@
           "stack_lifetime_h": 65000,
           "water_consumption_l_per_kg_h2": 8.6,
           "cell_voltage_v": 1.8,
-          "current_density_ma_per_cm2": 2000
+          "current_density_ma_per_cm2": 2000,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "pem_electrolyzer_50mw",
@@ -1003,7 +1018,10 @@
           "stack_lifetime_h": 30000,
           "water_consumption_l_per_kg_h2": 8.2,
           "cell_voltage_v": 1.3,
-          "current_density_ma_per_cm2": 500.0
+          "current_density_ma_per_cm2": 500.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "soec_0_1mw_lab",
@@ -1135,7 +1153,10 @@
           "stack_lifetime_h": 30000,
           "water_consumption_l_per_kg_h2": 8.3,
           "cell_voltage_v": 1.3,
-          "current_density_ma_per_cm2": 500.0
+          "current_density_ma_per_cm2": 500.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "soec_50mw_commercial_2028",
@@ -1245,7 +1266,10 @@
           "stack_lifetime_h": 30000,
           "water_consumption_l_per_kg_h2": 8.2,
           "cell_voltage_v": 1.3,
-          "current_density_ma_per_cm2": 500.0
+          "current_density_ma_per_cm2": 500.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "soec_reversible_rsoec_10mw",
@@ -1267,7 +1291,10 @@
           "stack_lifetime_h": 30000,
           "water_consumption_l_per_kg_h2": 8.3,
           "cell_voltage_v": 1.3,
-          "current_density_ma_per_cm2": 500.0
+          "current_density_ma_per_cm2": 500.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "soec_1gw_future_2040",
@@ -1451,7 +1478,10 @@
           "thermal_efficiency_fraction": 0.55,
           "warm_start_time_min": 5.0,
           "cold_start_time_min": 10.0,
-          "land_use_m2_per_kw": 0.1
+          "land_use_m2_per_kw": 0.1,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "pem_fc_1kw_portable",
@@ -1682,7 +1712,10 @@
           "thermal_efficiency_fraction": 0.55,
           "warm_start_time_min": 5.0,
           "cold_start_time_min": 10.0,
-          "land_use_m2_per_kw": 0.3
+          "land_use_m2_per_kw": 0.3,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "pem_fc_100mw_future_2035",
@@ -1766,7 +1799,10 @@
           "thermal_efficiency_fraction": 0.55,
           "warm_start_time_min": 5.0,
           "cold_start_time_min": 10.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "JP",
+          "country": "Japan",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "pem_fc_hybrid_storage_10mw_2030",
@@ -1882,7 +1918,10 @@
           "thermal_efficiency_fraction": 0.55,
           "warm_start_time_min": 30.0,
           "cold_start_time_min": 120.0,
-          "land_use_m2_per_kw": 0.1
+          "land_use_m2_per_kw": 0.1,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "sofc_100kw_micro_chp",
@@ -2134,7 +2173,10 @@
           "thermal_efficiency_fraction": 0.55,
           "warm_start_time_min": 30.0,
           "cold_start_time_min": 120.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "sofc_biogas_farm_200kw",
@@ -2294,7 +2336,10 @@
           "thermal_efficiency_fraction": 2.66,
           "warm_start_time_min": 3.0,
           "cold_start_time_min": 15.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ashp_large_industrial_10mw",
@@ -2316,7 +2361,10 @@
           "thermal_efficiency_fraction": 2.66,
           "warm_start_time_min": 3.0,
           "cold_start_time_min": 15.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ashp_mini_split_2kw",
@@ -2360,7 +2408,10 @@
           "thermal_efficiency_fraction": 2.66,
           "warm_start_time_min": 3.0,
           "cold_start_time_min": 15.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ashp_monobloc_15kw",
@@ -2404,7 +2455,10 @@
           "thermal_efficiency_fraction": 2.66,
           "warm_start_time_min": 3.0,
           "cold_start_time_min": 15.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ashp_hotel_200kw",
@@ -2745,7 +2799,10 @@
           "thermal_efficiency_fraction": 3.32,
           "warm_start_time_min": 3.0,
           "cold_start_time_min": 15.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gshp_district_10mw",
@@ -2767,7 +2824,10 @@
           "thermal_efficiency_fraction": 3.32,
           "warm_start_time_min": 3.0,
           "cold_start_time_min": 15.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gshp_residential_vertical_6kw",
@@ -2833,7 +2893,10 @@
           "thermal_efficiency_fraction": 3.32,
           "warm_start_time_min": 3.0,
           "cold_start_time_min": 15.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "CH",
+          "country": "Switzerland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gshp_commercial_500kw",
@@ -2899,7 +2962,10 @@
           "thermal_efficiency_fraction": 3.32,
           "warm_start_time_min": 3.0,
           "cold_start_time_min": 15.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gshp_utes_aquifer_5mw",
@@ -2921,7 +2987,10 @@
           "thermal_efficiency_fraction": 3.32,
           "warm_start_time_min": 3.0,
           "cold_start_time_min": 15.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "NL",
+          "country": "Netherlands",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gshp_river_water_3mw",
@@ -3053,7 +3122,10 @@
           "thermal_efficiency_fraction": 3.37,
           "warm_start_time_min": 2.9,
           "cold_start_time_min": 14.8,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "CH",
+          "country": "Switzerland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gshp_industrial_process_2mw",
@@ -3097,7 +3169,10 @@
           "thermal_efficiency_fraction": 3.32,
           "warm_start_time_min": 3.0,
           "cold_start_time_min": 15.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gshp_shallow_geo_district_15mw",
@@ -3119,7 +3194,10 @@
           "thermal_efficiency_fraction": 3.37,
           "warm_start_time_min": 2.9,
           "cold_start_time_min": 14.8,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "CH",
+          "country": "Switzerland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gshp_large_infrastructure_200mw_2030",
@@ -3173,7 +3251,10 @@
           "thermal_efficiency_fraction": 0.99,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "electric_boiler_10mw_district_heating",
@@ -3215,7 +3296,10 @@
           "thermal_efficiency_fraction": 0.99,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.2
+          "land_use_m2_per_kw": 0.2,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "electric_boiler_100kw_commercial",
@@ -3257,7 +3341,10 @@
           "thermal_efficiency_fraction": 0.99,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "electric_boiler_5mw_district",
@@ -3278,7 +3365,10 @@
           "thermal_efficiency_fraction": 0.99,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "electric_boiler_20mw_district",
@@ -3320,7 +3410,10 @@
           "thermal_efficiency_fraction": 0.99,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.1
+          "land_use_m2_per_kw": 0.1,
+          "country_iso2": "FI",
+          "country": "Finland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "electric_boiler_200mw_grid_balancing",
@@ -3509,7 +3602,10 @@
           "thermal_efficiency_fraction": 0.99,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "electric_boiler_150mw_industrial_2030",
@@ -3551,7 +3647,10 @@
           "thermal_efficiency_fraction": 0.99,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "electric_boiler_1gw_national_flex_2035",
@@ -3572,7 +3671,10 @@
           "thermal_efficiency_fraction": 0.99,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.5
+          "land_use_m2_per_kw": 0.5,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -3625,7 +3727,10 @@
           "thermal_efficiency_fraction": 0.74,
           "warm_start_time_min": 48.0,
           "cold_start_time_min": 150.0,
-          "land_use_m2_per_kw": 0.6
+          "land_use_m2_per_kw": 0.6,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "chp_ccgt_200mw",
@@ -4066,7 +4171,10 @@
           "electrical_efficiency_fraction": 0.5,
           "thermal_efficiency_fraction": 0.74,
           "warm_start_time_min": 36.0,
-          "cold_start_time_min": 132.0
+          "cold_start_time_min": 132.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomass_chp_100mw_large",
@@ -4248,7 +4356,10 @@
           "electrical_efficiency_fraction": 0.5,
           "thermal_efficiency_fraction": 0.71,
           "warm_start_time_min": 30.0,
-          "cold_start_time_min": 120.0
+          "cold_start_time_min": 120.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomass_chp_bagasse_30mw",
@@ -4274,7 +4385,10 @@
           "electrical_efficiency_fraction": 0.5,
           "thermal_efficiency_fraction": 0.75,
           "warm_start_time_min": 42.0,
-          "cold_start_time_min": 138.0
+          "cold_start_time_min": 138.0,
+          "country_iso2": "BR",
+          "country": "Brazil",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomass_chp_beccs_50mw",
@@ -4352,7 +4466,10 @@
           "electrical_efficiency_fraction": 0.5,
           "thermal_efficiency_fraction": 0.69,
           "warm_start_time_min": 36.0,
-          "cold_start_time_min": 126.0
+          "cold_start_time_min": 126.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomass_chp_otherwood_200mw_2030",
@@ -4404,7 +4521,10 @@
           "electrical_efficiency_fraction": 0.5,
           "thermal_efficiency_fraction": 0.72,
           "warm_start_time_min": 30.0,
-          "cold_start_time_min": 120.0
+          "cold_start_time_min": 120.0,
+          "country_iso2": "FI",
+          "country": "Finland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomass_chp_trigen_poultry_500kw",
@@ -4430,7 +4550,10 @@
           "electrical_efficiency_fraction": 0.5,
           "thermal_efficiency_fraction": 0.68,
           "warm_start_time_min": 30.0,
-          "cold_start_time_min": 120.0
+          "cold_start_time_min": 120.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomass_chp_wood_gas_1mw",
@@ -4482,7 +4605,10 @@
           "electrical_efficiency_fraction": 0.5,
           "thermal_efficiency_fraction": 0.75,
           "warm_start_time_min": 30.0,
-          "cold_start_time_min": 120.0
+          "cold_start_time_min": 120.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomass_chp_biogas_upgrade_3mw",
@@ -4608,7 +4734,10 @@
           "thermal_efficiency_fraction": 0.15,
           "warm_start_time_min": 10.0,
           "cold_start_time_min": 60.0,
-          "land_use_m2_per_kw": 2.0
+          "land_use_m2_per_kw": 2.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "methanation_100kw_pilot",
@@ -4755,7 +4884,10 @@
           "thermal_efficiency_fraction": 0.15,
           "warm_start_time_min": 10.0,
           "cold_start_time_min": 60.0,
-          "land_use_m2_per_kw": 2.0
+          "land_use_m2_per_kw": 2.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "methanation_direct_air_co2_30mw_2028",
@@ -4902,7 +5034,10 @@
           "thermal_efficiency_fraction": 0.15,
           "warm_start_time_min": 10.0,
           "cold_start_time_min": 60.0,
-          "land_use_m2_per_kw": 2.0
+          "land_use_m2_per_kw": 2.0,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "methanation_cogeneration_heat_10mw",
@@ -5554,7 +5689,10 @@
           "thermal_efficiency_fraction": 0.32,
           "warm_start_time_min": 20.0,
           "cold_start_time_min": 120.0,
-          "land_use_m2_per_kw": 2.0
+          "land_use_m2_per_kw": 2.0,
+          "country_iso2": "SA",
+          "country": "Saudi Arabia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "haber_bosch_200mw_green_offshore",
@@ -5596,7 +5734,10 @@
           "thermal_efficiency_fraction": 0.27,
           "warm_start_time_min": 20.0,
           "cold_start_time_min": 120.0,
-          "land_use_m2_per_kw": 2.0
+          "land_use_m2_per_kw": 2.0,
+          "country_iso2": "AU",
+          "country": "Australia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "haber_bosch_oscillating_pressure_50mw",
@@ -5722,7 +5863,10 @@
           "thermal_efficiency_fraction": 0.37,
           "warm_start_time_min": 20.0,
           "cold_start_time_min": 120.0,
-          "land_use_m2_per_kw": 2.0
+          "land_use_m2_per_kw": 2.0,
+          "country_iso2": "SA",
+          "country": "Saudi Arabia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "haber_bosch_flexible_100mw_2035",
@@ -6030,7 +6174,10 @@
           "thermal_efficiency_fraction": 0.55,
           "warm_start_time_min": 60.0,
           "cold_start_time_min": 240.0,
-          "land_use_m2_per_kw": 50.0
+          "land_use_m2_per_kw": 50.0,
+          "country_iso2": "IS",
+          "country": "Iceland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "dac_500kt_dac_hub_2032",
@@ -6506,7 +6653,10 @@
           "thermal_efficiency_fraction": 0.15,
           "warm_start_time_min": 4.0,
           "cold_start_time_min": 12.0,
-          "land_use_m2_per_kw": 0.2
+          "land_use_m2_per_kw": 0.2,
+          "country_iso2": "NO",
+          "country": "Norway",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ccs_point_source_modular_10mw_2026",
@@ -6727,7 +6877,10 @@
           "thermal_efficiency_fraction": 0.94,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gas_boiler_industrial_5mw",
@@ -6748,7 +6901,10 @@
           "thermal_efficiency_fraction": 0.92,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gas_boiler_h2ready_future_2030",
@@ -6769,7 +6925,10 @@
           "thermal_efficiency_fraction": 0.95,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gas_boiler_residential_noncondens_24kw",
@@ -6916,7 +7075,10 @@
           "thermal_efficiency_fraction": 0.95,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.1
+          "land_use_m2_per_kw": 0.1,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gas_boiler_condensing_highmod_15kw_new",
@@ -6979,7 +7141,10 @@
           "thermal_efficiency_fraction": 0.96,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gas_boiler_condensing_low_temp_20kw_2024",
@@ -7042,7 +7207,10 @@
           "thermal_efficiency_fraction": 0.92,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gas_boiler_100pct_hydrogen_2035",
@@ -7063,7 +7231,10 @@
           "thermal_efficiency_fraction": 0.95,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "gas_boiler_district_heating_10mw",
@@ -7126,7 +7297,10 @@
           "thermal_efficiency_fraction": 0.93,
           "warm_start_time_min": 0.5,
           "cold_start_time_min": 2.0,
-          "land_use_m2_per_kw": 0.0
+          "land_use_m2_per_kw": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -7215,7 +7389,10 @@
           "electrical_efficiency_fraction": 0.38,
           "thermal_efficiency_fraction": 0.37,
           "warm_start_time_min": 2.0,
-          "cold_start_time_min": 8.0
+          "cold_start_time_min": 8.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomass_gasification_updraft_1mw",
@@ -7319,7 +7496,10 @@
           "electrical_efficiency_fraction": 0.38,
           "thermal_efficiency_fraction": 0.37,
           "warm_start_time_min": 2.0,
-          "cold_start_time_min": 8.0
+          "cold_start_time_min": 8.0,
+          "country_iso2": "AT",
+          "country": "Austria",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomass_gasification_straw_5mw",

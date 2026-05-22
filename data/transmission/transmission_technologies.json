@@ -188,7 +188,10 @@
           "availability_fraction": 0.99,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 500.0
+          "voltage_kv": 500.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvac_765kv_india",
@@ -210,7 +213,10 @@
           "availability_fraction": 0.99,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 765.0
+          "voltage_kv": 765.0,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvac_1000kv_china",
@@ -232,7 +238,10 @@
           "availability_fraction": 0.99,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 1000.0
+          "voltage_kv": 1000.0,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvac_reconductoring",
@@ -276,7 +285,10 @@
           "availability_fraction": 0.99,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 400.0
+          "voltage_kv": 400.0,
+          "country_iso2": "FR",
+          "country": "France",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvac_desert_solar",
@@ -298,7 +310,10 @@
           "availability_fraction": 0.99,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 500.0
+          "voltage_kv": 500.0,
+          "country_iso2": "NA",
+          "country": "Namibia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvac_africa_pan_grid",
@@ -474,7 +489,10 @@
           "availability_fraction": 0.99,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 132.0
+          "voltage_kv": 132.0,
+          "country_iso2": "AU",
+          "country": "Australia",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -557,7 +575,10 @@
           "max_utilization_fraction": 0.95,
           "availability_fraction": 0.98,
           "land_use_m2_per_km": 200.0,
-          "voltage_kv": 800.0
+          "voltage_kv": 800.0,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_500kv_lcc",
@@ -601,7 +622,10 @@
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 800.0
+          "voltage_kv": 800.0,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_1100kv_sgcc",
@@ -689,7 +713,10 @@
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 525.0
+          "voltage_kv": 525.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_multi_terminal",
@@ -777,7 +804,10 @@
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 500.0
+          "voltage_kv": 500.0,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_brazil_1000",
@@ -799,7 +829,10 @@
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 800.0
+          "voltage_kv": 800.0,
+          "country_iso2": "BR",
+          "country": "Brazil",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_hybrid_ac_dc",
@@ -865,7 +898,10 @@
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 800.0
+          "voltage_kv": 800.0,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_modular_300mw",
@@ -909,7 +945,10 @@
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 420.0
+          "voltage_kv": 420.0,
+          "country_iso2": "NO",
+          "country": "Norway",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_vlf_resonant",
@@ -1033,7 +1072,10 @@
           "availability_fraction": 1.0,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 33.0
+          "voltage_kv": 33.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvac_ug_110kv_city",
@@ -1121,7 +1163,10 @@
           "availability_fraction": 1.0,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 400.0
+          "voltage_kv": 400.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvac_ug_hose_cool",
@@ -1341,7 +1386,10 @@
           "availability_fraction": 1.0,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 500.0
+          "voltage_kv": 500.0,
+          "country_iso2": "BE",
+          "country": "Belgium",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvac_ug_trench_less",
@@ -1622,7 +1670,10 @@
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 200.0
+          "voltage_kv": 200.0,
+          "country_iso2": "AU",
+          "country": "Australia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_sub_wester_link",
@@ -1644,7 +1695,10 @@
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 200.0
+          "voltage_kv": 200.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_sub_offshore_windfarm",
@@ -1666,7 +1720,10 @@
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 200.0
+          "voltage_kv": 200.0,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_sub_vsc_multiterminal",
@@ -1710,7 +1767,10 @@
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 200.0
+          "voltage_kv": 200.0,
+          "country_iso2": "IT",
+          "country": "Italy",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_sub_arctic",
@@ -2007,7 +2067,10 @@
           "availability_fraction": 1.0,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 400.0
+          "voltage_kv": 400.0,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "et_1000kv_china",
@@ -2029,7 +2092,10 @@
           "availability_fraction": 1.0,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 1000.0
+          "voltage_kv": 1000.0,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "et_phase_shift",
@@ -2380,7 +2446,10 @@
           "loss_rate_pct_per_km": 0.0,
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ngp_local_distribution",
@@ -2443,7 +2512,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ngp_nordstream",
@@ -2506,7 +2578,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ngp_smart_grid",
@@ -2527,7 +2602,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "ES",
+          "country": "Spain",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ngp_compressed_ng",
@@ -2653,7 +2731,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "MZ",
+          "country": "Mozambique",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ngp_2030_decarbonized",
@@ -2674,7 +2755,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ngp_china_west_east",
@@ -2695,7 +2779,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ngp_peaker_flexible",
@@ -2737,7 +2824,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -2774,7 +2864,10 @@
           "loss_rate_pct_per_km": 0.0,
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2_pipeline_new_build_2000mw_500km",
@@ -2880,7 +2973,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hp_dedicated_low",
@@ -2932,7 +3028,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hp_repurposed_gas",
@@ -3010,7 +3109,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "AU",
+          "country": "Australia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hp_industrial_cluster",
@@ -3270,7 +3372,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -3391,7 +3496,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "co2p_enhanced_oil",
@@ -3454,7 +3562,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "co2p_cement_steel",
@@ -3496,7 +3607,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "IS",
+          "country": "Iceland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "co2p_ship_loading",
@@ -3559,7 +3673,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "NO",
+          "country": "Norway",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "co2p_crossborder_eu",
@@ -3601,7 +3718,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "co2p_basalt_formation",
@@ -3685,7 +3805,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "AU",
+          "country": "Australia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "co2p_2050_global",
@@ -3762,7 +3885,10 @@
           "max_utilization_fraction": 0.75,
           "availability_fraction": 0.97,
           "corridor_length_km": 80.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "dhn_200mw_4th_gen_future",
@@ -3932,7 +4058,10 @@
           "max_utilization_fraction": 0.75,
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "IS",
+          "country": "Iceland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "dhn_solar_seasonal",
@@ -3953,7 +4082,10 @@
           "max_utilization_fraction": 0.75,
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "dhn_hp_large",
@@ -3995,7 +4127,10 @@
           "max_utilization_fraction": 0.75,
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "dhn_denmark_wind",
@@ -4016,7 +4151,10 @@
           "max_utilization_fraction": 0.75,
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "dhn_power_to_heat",
@@ -4198,7 +4336,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 40.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "AE",
+          "country": "United Arab Emirates",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "dc_pipeline_500mw_4thgen_future",
@@ -4452,7 +4593,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "SG",
+          "country": "Singapore",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "dcp_hospital_health",
@@ -4515,7 +4659,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "CA",
+          "country": "Canada",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "dcp_microdistrict",
@@ -4557,7 +4704,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "NA",
+          "country": "Namibia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "dcp_2050_netzero",
@@ -4614,7 +4764,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2_tube_trailer_500bar_current",
@@ -4978,7 +5131,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "htt_fuel_cell_truck",
@@ -5030,7 +5186,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "htt_deep_sea_ship",
@@ -5140,7 +5299,10 @@
           "loss_rate_pct_per_km": 0.0,
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomethane_pipeline_upgraded_100mw_100km",
@@ -5162,7 +5324,10 @@
           "loss_rate_pct_per_km": 0.0,
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomethane_pipeline_national_500mw_future",
@@ -5184,7 +5349,10 @@
           "loss_rate_pct_per_km": 0.0,
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bgp_local_farm",
@@ -5205,7 +5373,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bgp_wastewater",
@@ -5247,7 +5418,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bgp_biomethane_injection",
@@ -5331,7 +5505,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bgp_biomethane_vehicle",
@@ -5436,7 +5613,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bgp_district_heating",
@@ -5593,7 +5773,10 @@
           "loss_rate_pct_per_km": 0.01,
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biomass_truck_electric_future_2035",
@@ -5845,7 +6028,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 200.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "btt_construction_demo",
@@ -6044,7 +6230,10 @@
           "loss_rate_pct_per_km": 0.0,
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "brt_chips_freight",
@@ -6191,7 +6380,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "BR",
+          "country": "Brazil",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "brt_electrified_rail",
@@ -6212,7 +6404,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "AT",
+          "country": "Austria",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "brt_h2_locomotive",
@@ -6254,7 +6449,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "brt_wood_gasification",
@@ -6275,7 +6473,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 200.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "AT",
+          "country": "Austria",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "brt_india_biomass",
@@ -6296,7 +6497,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 500.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "brt_chips_scandinavia",
@@ -6561,7 +6765,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "RU",
+          "country": "Russia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "op_refined_products",
@@ -6582,7 +6789,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "op_offshore_subsea",
@@ -6666,7 +6876,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "SA",
+          "country": "Saudi Arabia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "op_jet_airport",
@@ -6771,7 +6984,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "NG",
+          "country": "Nigeria",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "op_small_community",
@@ -6792,7 +7008,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "CA",
+          "country": "Canada",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "op_2030_transition",
@@ -6970,7 +7189,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ftt_aviation_jet",
@@ -7180,7 +7402,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "FR",
+          "country": "France",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ftt_ev_electric",
@@ -7529,7 +7754,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "SG",
+          "country": "Singapore",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "wp_smart_amr",
@@ -7592,7 +7820,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "CH",
+          "country": "Switzerland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "wp_mena_desal",
@@ -7753,7 +7984,10 @@
           "max_utilization_fraction": 0.75,
           "availability_fraction": 0.97,
           "corridor_length_km": 20.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "steam_network_lowpressure_future_2035",
@@ -7860,7 +8094,10 @@
           "max_utilization_fraction": 0.75,
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "sn_geothermal_steam",
@@ -7881,7 +8118,10 @@
           "max_utilization_fraction": 0.75,
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "IS",
+          "country": "Iceland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "sn_chemical_plant",
@@ -8112,7 +8352,10 @@
           "max_utilization_fraction": 0.75,
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "IT",
+          "country": "Italy",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "sn_2050_green",
@@ -8185,7 +8428,10 @@
           "max_utilization_fraction": 0.85,
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "iphn_paper_mill_200degc",
@@ -8405,7 +8651,10 @@
           "max_utilization_fraction": 0.75,
           "availability_fraction": 0.97,
           "corridor_length_km": 100.0,
-          "land_use_m2_per_km": 0.0
+          "land_use_m2_per_km": 0.0,
+          "country_iso2": "IS",
+          "country": "Iceland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "geo_deep_aquifer_60degc",
@@ -8629,7 +8878,10 @@
           "availability_fraction": 1.0,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 400.0
+          "voltage_kv": 400.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hns_industrial_hx_20mw",
@@ -8751,7 +9003,10 @@
           "max_utilization_fraction": 0.8,
           "availability_fraction": 1.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 11.0
+          "voltage_kv": 11.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "mv_cable_33kv_rural_10km",
@@ -8877,7 +9132,10 @@
           "max_utilization_fraction": 0.8,
           "availability_fraction": 1.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 0.4
+          "voltage_kv": 0.4,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "lv_cable_0p4kv_urban_block_500m",
@@ -9002,7 +9260,10 @@
           "availability_fraction": 1.0,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 11.0
+          "voltage_kv": 11.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "substation_primary_132_33kv_300mva",
@@ -9046,7 +9307,10 @@
           "availability_fraction": 1.0,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 0.0,
-          "voltage_kv": 11.0
+          "voltage_kv": 11.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "substation_gis_compact_220_33kv_150mva",
@@ -9543,7 +9807,10 @@
           "availability_fraction": 0.98,
           "corridor_length_km": 100.0,
           "land_use_m2_per_km": 100.0,
-          "voltage_kv": 800.0
+          "voltage_kv": 800.0,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "hvdc_cs_offshore_vsc_500mw",

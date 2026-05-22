@@ -151,7 +151,10 @@
           "tilt_angle_deg": 28.0,
           "temperature_coefficient_pct_per_c": -0.35,
           "ground_coverage_ratio": 0.4,
-          "land_use_m2_per_kwp": 12.0
+          "land_use_m2_per_kwp": 12.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "spv_utility_50mw_bifacial_tracking",
@@ -261,7 +264,10 @@
           "tilt_angle_deg": 28.0,
           "temperature_coefficient_pct_per_c": -0.35,
           "ground_coverage_ratio": 0.45,
-          "land_use_m2_per_kwp": 11.0
+          "land_use_m2_per_kwp": 11.0,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "spv_utility_floating_10mw",
@@ -370,7 +376,10 @@
           "tilt_angle_deg": 25.0,
           "temperature_coefficient_pct_per_c": -0.34,
           "ground_coverage_ratio": 0.5,
-          "land_use_m2_per_kwp": 10.0
+          "land_use_m2_per_kwp": 10.0,
+          "country_iso2": "CL",
+          "country": "Chile",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "spv_utility_building_bipv_1mw",
@@ -412,7 +421,10 @@
           "tilt_angle_deg": 35.0,
           "temperature_coefficient_pct_per_c": -0.35,
           "ground_coverage_ratio": 0.4,
-          "land_use_m2_per_kwp": 12.0
+          "land_use_m2_per_kwp": 12.0,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "spv_utility_2040_future_low_cost",
@@ -456,7 +468,10 @@
           "tilt_angle_deg": 28.0,
           "temperature_coefficient_pct_per_c": -0.35,
           "ground_coverage_ratio": 0.4,
-          "land_use_m2_per_kwp": 12.0
+          "land_use_m2_per_kwp": 12.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "spv_utility_parking_canopy_500kw",
@@ -490,7 +505,10 @@
           "_paper_title": "Economic Potential of Solar Projects in India: Assessing Levelized Cost of Electricity andPayback Period withVariations in PV Module Efficiency and Solar Irradiation",
           "instance_name": "Solar Pv Utility (scraped 2024, Crossref)",
           "reference_source": "Crossref, 2024, doi:10.9790/1684-2104016274",
-          "opex_var_usd_per_mwh": 49.0
+          "opex_var_usd_per_mwh": 49.0,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "_source": "crossref",
@@ -514,7 +532,10 @@
           "_paper_title": "TOPOGRAPHICAL AND TECHNO-ECONOMIC ASSESSMENT OF UTILITY-SCALE SOLAR PV DEVELOPMENT IN LEDEK MOUNTAIN, CENTRAL JAVA, INDONESIA",
           "instance_name": "Solar Pv Utility (scraped 2025, Crossref)",
           "reference_source": "Crossref, 2025, doi:10.18623/rvd.v22.n3.3436",
-          "typical_capacity_mw": 18.0
+          "typical_capacity_mw": 18.0,
+          "country_iso2": "ID",
+          "country": "Indonesia",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -634,7 +655,10 @@
           "tilt_angle_deg": 35.0,
           "temperature_coefficient_pct_per_c": -0.35,
           "ground_coverage_ratio": 0.4,
-          "land_use_m2_per_kwp": 12.0
+          "land_use_m2_per_kwp": 12.0,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "solar_pv_dist_res_8kw_ev",
@@ -854,7 +878,10 @@
           "tilt_angle_deg": 35.0,
           "temperature_coefficient_pct_per_c": -0.27,
           "ground_coverage_ratio": 0.4,
-          "land_use_m2_per_kwp": 12.0
+          "land_use_m2_per_kwp": 12.0,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "solar_pv_dist_res_6kw_de_2035",
@@ -876,7 +903,10 @@
           "tilt_angle_deg": 35.0,
           "temperature_coefficient_pct_per_c": -0.26,
           "ground_coverage_ratio": 0.4,
-          "land_use_m2_per_kwp": 12.0
+          "land_use_m2_per_kwp": 12.0,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "spv_dist_bifacial_roof_10kw",
@@ -1037,7 +1067,10 @@
           "performance_ratio": 0.78,
           "tilt_angle_deg": 30.0,
           "temperature_coefficient_pct_per_c": -0.35,
-          "ground_coverage_ratio": 0.4
+          "ground_coverage_ratio": 0.4,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "solar_pv_balcony_1200w_three_panel",
@@ -1121,7 +1154,10 @@
           "performance_ratio": 0.78,
           "tilt_angle_deg": 30.0,
           "temperature_coefficient_pct_per_c": -0.35,
-          "ground_coverage_ratio": 0.4
+          "ground_coverage_ratio": 0.4,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "balcony_400w_premium_bifacial",
@@ -1225,7 +1261,10 @@
           "performance_ratio": 0.78,
           "tilt_angle_deg": 30.0,
           "temperature_coefficient_pct_per_c": -0.35,
-          "ground_coverage_ratio": 0.4
+          "ground_coverage_ratio": 0.4,
+          "country_iso2": "NL",
+          "country": "Netherlands",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "balcony_500w_austria",
@@ -1246,7 +1285,10 @@
           "performance_ratio": 0.78,
           "tilt_angle_deg": 30.0,
           "temperature_coefficient_pct_per_c": -0.35,
-          "ground_coverage_ratio": 0.4
+          "ground_coverage_ratio": 0.4,
+          "country_iso2": "AT",
+          "country": "Austria",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "balcony_200w_portable_camping",
@@ -1330,7 +1372,10 @@
           "performance_ratio": 0.78,
           "tilt_angle_deg": 30.0,
           "temperature_coefficient_pct_per_c": -0.35,
-          "ground_coverage_ratio": 0.4
+          "ground_coverage_ratio": 0.4,
+          "country_iso2": "CH",
+          "country": "Switzerland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "balcony_france_800w",
@@ -1351,7 +1396,10 @@
           "performance_ratio": 0.78,
           "tilt_angle_deg": 30.0,
           "temperature_coefficient_pct_per_c": -0.35,
-          "ground_coverage_ratio": 0.4
+          "ground_coverage_ratio": 0.4,
+          "country_iso2": "FR",
+          "country": "France",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "balcony_italy_1kw",
@@ -1372,7 +1420,10 @@
           "performance_ratio": 0.78,
           "tilt_angle_deg": 30.0,
           "temperature_coefficient_pct_per_c": -0.35,
-          "ground_coverage_ratio": 0.4
+          "ground_coverage_ratio": 0.4,
+          "country_iso2": "IT",
+          "country": "Italy",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "balcony_spain_600w",
@@ -1393,7 +1444,10 @@
           "performance_ratio": 0.78,
           "tilt_angle_deg": 30.0,
           "temperature_coefficient_pct_per_c": -0.35,
-          "ground_coverage_ratio": 0.4
+          "ground_coverage_ratio": 0.4,
+          "country_iso2": "ES",
+          "country": "Spain",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -1491,7 +1545,10 @@
           "optical_efficiency_fraction": 0.68,
           "thermal_efficiency_fraction": 0.38,
           "land_use_m2_per_kw": 7.8,
-          "water_withdrawal_m3_per_mwh": 2.3
+          "water_withdrawal_m3_per_mwh": 2.3,
+          "country_iso2": "ES",
+          "country": "Spain",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "csp_tower_200mw_ms",
@@ -1535,7 +1592,10 @@
           "optical_efficiency_fraction": 0.72,
           "thermal_efficiency_fraction": 0.42,
           "land_use_m2_per_kw": 9.8,
-          "water_withdrawal_m3_per_mwh": 2.3
+          "water_withdrawal_m3_per_mwh": 2.3,
+          "country_iso2": "ZA",
+          "country": "South Africa",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "csp_fresnel_30mw",
@@ -1645,7 +1705,10 @@
           "optical_efficiency_fraction": 0.72,
           "thermal_efficiency_fraction": 0.42,
           "land_use_m2_per_kw": 9.8,
-          "water_withdrawal_m3_per_mwh": 2.3
+          "water_withdrawal_m3_per_mwh": 2.3,
+          "country_iso2": "CL",
+          "country": "Chile",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "csp_pt_250mw_morocco",
@@ -1667,7 +1730,10 @@
           "optical_efficiency_fraction": 0.68,
           "thermal_efficiency_fraction": 0.38,
           "land_use_m2_per_kw": 9.8,
-          "water_withdrawal_m3_per_mwh": 2.3
+          "water_withdrawal_m3_per_mwh": 2.3,
+          "country_iso2": "MA",
+          "country": "Morocco",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "csp_tower_400mw_2030",
@@ -1689,7 +1755,10 @@
           "optical_efficiency_fraction": 0.74,
           "thermal_efficiency_fraction": 0.44,
           "land_use_m2_per_kw": 12.2,
-          "water_withdrawal_m3_per_mwh": 2.7
+          "water_withdrawal_m3_per_mwh": 2.7,
+          "country_iso2": "SA",
+          "country": "Saudi Arabia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "csp_industrial_heat_20mw",
@@ -1799,7 +1868,10 @@
           "optical_efficiency_fraction": 0.72,
           "thermal_efficiency_fraction": 0.42,
           "land_use_m2_per_kw": 9.8,
-          "water_withdrawal_m3_per_mwh": 2.3
+          "water_withdrawal_m3_per_mwh": 2.3,
+          "country_iso2": "AU",
+          "country": "Australia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "csp_pt_direct_steam",
@@ -1902,7 +1974,10 @@
           "wind_rated_speed_ms": 12.5,
           "iec_wind_class": "III-S",
           "specific_power_w_per_m2": 338,
-          "land_use_m2_per_kw": 8000
+          "land_use_m2_per_kw": 8000,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "onshore_wind_community_30mw_de",
@@ -1924,7 +1999,10 @@
           "wind_rated_speed_ms": 12.5,
           "iec_wind_class": "III-S",
           "specific_power_w_per_m2": 338,
-          "land_use_m2_per_kw": 8000
+          "land_use_m2_per_kw": 8000,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "onshore_wind_50mw_low_wind",
@@ -1968,7 +2046,10 @@
           "wind_rated_speed_ms": 12.5,
           "iec_wind_class": "III",
           "specific_power_w_per_m2": 338,
-          "land_use_m2_per_kw": 8000
+          "land_use_m2_per_kw": 8000,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "onshore_wind_100mw_repowering",
@@ -2056,7 +2137,10 @@
           "wind_rated_speed_ms": 13.0,
           "iec_wind_class": "I",
           "specific_power_w_per_m2": 338,
-          "land_use_m2_per_kw": 8000
+          "land_use_m2_per_kw": 8000,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "onshore_wind_50mw_low_wind_de_2030",
@@ -2078,7 +2162,10 @@
           "wind_rated_speed_ms": 10.5,
           "iec_wind_class": "III",
           "specific_power_w_per_m2": 320,
-          "land_use_m2_per_kw": 8000
+          "land_use_m2_per_kw": 8000,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "onshore_wind_200mw_future_2030",
@@ -2232,7 +2319,10 @@
           "wind_rated_speed_ms": 12.5,
           "iec_wind_class": "III",
           "specific_power_w_per_m2": 338,
-          "land_use_m2_per_kw": 32000.0
+          "land_use_m2_per_kw": 32000.0,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "onshore_coastal_10mw",
@@ -2254,7 +2344,10 @@
           "wind_rated_speed_ms": 12.5,
           "iec_wind_class": "III",
           "specific_power_w_per_m2": 338,
-          "land_use_m2_per_kw": 8000
+          "land_use_m2_per_kw": 8000,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "onshore_mountain_2mw",
@@ -2434,7 +2527,10 @@
           "hub_height_m": 250.4,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "II",
-          "specific_power_w_per_m2": 264
+          "specific_power_w_per_m2": 264,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "offshore_wind_fixed_1000mw_gigafarm",
@@ -2602,7 +2698,10 @@
           "hub_height_m": 230.3,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "II",
-          "specific_power_w_per_m2": 260
+          "specific_power_w_per_m2": 260,
+          "country_iso2": "KR",
+          "country": "South Korea",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "osw_fixed_taiwan_300mw",
@@ -2623,7 +2722,10 @@
           "hub_height_m": 230.3,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "II",
-          "specific_power_w_per_m2": 260
+          "specific_power_w_per_m2": 260,
+          "country_iso2": "TW",
+          "country": "Taiwan",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "osw_fixed_15mw_iea_ref",
@@ -2665,7 +2767,10 @@
           "hub_height_m": 254.3,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "II",
-          "specific_power_w_per_m2": 256
+          "specific_power_w_per_m2": 256,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "osw_fixed_india_gujarat_400mw",
@@ -2686,7 +2791,10 @@
           "hub_height_m": 234.0,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "II",
-          "specific_power_w_per_m2": 252
+          "specific_power_w_per_m2": 252,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "osw_fixed_20mw_2030",
@@ -2728,7 +2836,10 @@
           "hub_height_m": 289.2,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "II",
-          "specific_power_w_per_m2": 220
+          "specific_power_w_per_m2": 220,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -2759,7 +2870,10 @@
           "hub_height_m": 148.2,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "S",
-          "specific_power_w_per_m2": 264
+          "specific_power_w_per_m2": 264,
+          "country_iso2": "NO",
+          "country": "Norway",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "offshore_wind_floating_30mw_semisub_pilot",
@@ -2843,7 +2957,10 @@
           "hub_height_m": 228.7,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "S",
-          "specific_power_w_per_m2": 264
+          "specific_power_w_per_m2": 264,
+          "country_iso2": "NO",
+          "country": "Norway",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "offshore_wind_floating_300mw_atlantic_portugal",
@@ -2927,7 +3044,10 @@
           "hub_height_m": 148.2,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "S",
-          "specific_power_w_per_m2": 264
+          "specific_power_w_per_m2": 264,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "osw_float_semisub_12mw",
@@ -3011,7 +3131,10 @@
           "hub_height_m": 234.0,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "S",
-          "specific_power_w_per_m2": 252
+          "specific_power_w_per_m2": 252,
+          "country_iso2": "JP",
+          "country": "Japan",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "osw_float_med_500mw",
@@ -3032,7 +3155,10 @@
           "hub_height_m": 258.4,
           "wind_rated_speed_ms": 11.0,
           "iec_wind_class": "S",
-          "specific_power_w_per_m2": 248
+          "specific_power_w_per_m2": 248,
+          "country_iso2": "IT",
+          "country": "Italy",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "osw_float_california_1gw",
@@ -3294,7 +3420,10 @@
           "typical_head_m": 350.0,
           "hydraulic_efficiency_fraction": 0.92,
           "min_load_fraction": 0.29,
-          "land_use_m2_per_kw": 44.0
+          "land_use_m2_per_kw": 44.0,
+          "country_iso2": "AT",
+          "country": "Austria",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ror_50mw_himalayan",
@@ -3336,7 +3465,10 @@
           "typical_head_m": 113.0,
           "hydraulic_efficiency_fraction": 0.93,
           "min_load_fraction": 0.15,
-          "land_use_m2_per_kw": 73.0
+          "land_use_m2_per_kw": 73.0,
+          "country_iso2": "NO",
+          "country": "Norway",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ror_500mw_amazon",
@@ -3357,7 +3489,10 @@
           "typical_head_m": 122.1,
           "hydraulic_efficiency_fraction": 0.93,
           "min_load_fraction": 0.15,
-          "land_use_m2_per_kw": 82.2
+          "land_use_m2_per_kw": 82.2,
+          "country_iso2": "BR",
+          "country": "Brazil",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ror_5mw_diversion",
@@ -3441,7 +3576,10 @@
           "typical_head_m": 40.0,
           "hydraulic_efficiency_fraction": 0.93,
           "min_load_fraction": 0.3,
-          "land_use_m2_per_kw": 26.9
+          "land_use_m2_per_kw": 26.9,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ror_30mw_china",
@@ -3462,7 +3600,10 @@
           "typical_head_m": 106.1,
           "hydraulic_efficiency_fraction": 0.93,
           "min_load_fraction": 0.2,
-          "land_use_m2_per_kw": 66.2
+          "land_use_m2_per_kw": 66.2,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ror_20mw_rehabilitation",
@@ -3504,7 +3645,10 @@
           "typical_head_m": 4.6,
           "hydraulic_efficiency_fraction": 0.91,
           "min_load_fraction": 0.3,
-          "land_use_m2_per_kw": 21.8
+          "land_use_m2_per_kw": 21.8,
+          "country_iso2": "CH",
+          "country": "Switzerland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ror_100mw_greenfield_2030",
@@ -3588,7 +3732,10 @@
           "typical_head_m": 22.0,
           "hydraulic_efficiency_fraction": 0.93,
           "min_load_fraction": 0.29,
-          "land_use_m2_per_kw": 37.9
+          "land_use_m2_per_kw": 37.9,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -3708,7 +3855,10 @@
           "typical_head_m": 113.0,
           "hydraulic_efficiency_fraction": 0.93,
           "min_load_fraction": 0.1,
-          "land_use_m2_per_kw": 1560.7
+          "land_use_m2_per_kw": 1560.7,
+          "country_iso2": "NO",
+          "country": "Norway",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "res_1gw_grid_balancing",
@@ -3792,7 +3942,10 @@
           "typical_head_m": 800.3,
           "hydraulic_efficiency_fraction": 0.89,
           "min_load_fraction": 0.15,
-          "land_use_m2_per_kw": 2101.3
+          "land_use_m2_per_kw": 2101.3,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "res_500mw_andes",
@@ -3813,7 +3966,10 @@
           "typical_head_m": 122.1,
           "hydraulic_efficiency_fraction": 0.93,
           "min_load_fraction": 0.1,
-          "land_use_m2_per_kw": 1743.3
+          "land_use_m2_per_kw": 1743.3,
+          "country_iso2": "CO",
+          "country": "Colombia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "res_1gw_phs",
@@ -3897,7 +4053,10 @@
           "typical_head_m": 99.1,
           "hydraulic_efficiency_fraction": 0.93,
           "min_load_fraction": 0.1,
-          "land_use_m2_per_kw": 1286.4
+          "land_use_m2_per_kw": 1286.4,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "res_2gw_mekong",
@@ -3939,7 +4098,10 @@
           "typical_head_m": 745.4,
           "hydraulic_efficiency_fraction": 0.91,
           "min_load_fraction": 0.15,
-          "land_use_m2_per_kw": 1881.8
+          "land_use_m2_per_kw": 1881.8,
+          "country_iso2": "CL",
+          "country": "Chile",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "res_100mw_africa_peaking",
@@ -4082,7 +4244,10 @@
           "start_up_time_h": 1.5,
           "cold_start_time_h": 6.0,
           "water_withdrawal_m3_per_mwh": 0.5,
-          "land_use_m2_per_kw": 0.1
+          "land_use_m2_per_kw": 0.1,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ccgt_500mw_h2_ready_future",
@@ -4712,7 +4877,10 @@
             "DE"
           ],
           "reference_source": "Open Alex, 2024, doi:10.1016/j.esr.2024.101432",
-          "opex_var_usd_per_mwh": 61.60000000000001
+          "opex_var_usd_per_mwh": 61.60000000000001,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "_source": "open_alex",
@@ -4764,7 +4932,10 @@
           "_paper_title": "Techno-Economic Feasibility Analysis of Post-Combustion Carbon Capture in an NGCC Power Plant in Uzbekistan",
           "instance_name": "Ccgt (scraped 2024, Semantic Scholar)",
           "reference_source": "Semantic Scholar, 2024, doi:10.3390/cleantechnol6040065",
-          "efficiency_percent": 55.8
+          "efficiency_percent": 55.8,
+          "country_iso2": "UZ",
+          "country": "Uzbekistan",
+          "country_inference_source": "instance_text"
         },
         {
           "_source": "semantic_scholar",
@@ -4891,7 +5062,10 @@
           "start_up_time_h": 0.2,
           "cold_start_time_h": 0.8,
           "water_withdrawal_m3_per_mwh": 0.1,
-          "land_use_m2_per_kw": 0.2
+          "land_use_m2_per_kw": 0.2,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ocgt_300mw_frame_large",
@@ -5221,7 +5395,10 @@
           "start_up_time_h": 0.2,
           "cold_start_time_h": 0.8,
           "water_withdrawal_m3_per_mwh": 0.1,
-          "land_use_m2_per_kw": 1.0
+          "land_use_m2_per_kw": 1.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "ocgt_gt_upgrade",
@@ -5827,7 +6004,10 @@
           "start_up_time_h": 5.2,
           "cold_start_time_h": 20.8,
           "water_withdrawal_m3_per_mwh": 1.4,
-          "land_use_m2_per_kw": 0.6
+          "land_use_m2_per_kw": 0.6,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "coal_ultra_supercritical_1000mw",
@@ -5915,7 +6095,10 @@
           "start_up_time_h": 6.0,
           "cold_start_time_h": 24.0,
           "water_withdrawal_m3_per_mwh": 1.3,
-          "land_use_m2_per_kw": 0.5
+          "land_use_m2_per_kw": 0.5,
+          "country_iso2": "KR",
+          "country": "South Korea",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "coal_700mw_a_usc",
@@ -5937,7 +6120,10 @@
           "start_up_time_h": 5.4,
           "cold_start_time_h": 21.6,
           "water_withdrawal_m3_per_mwh": 1.2,
-          "land_use_m2_per_kw": 0.6
+          "land_use_m2_per_kw": 0.6,
+          "country_iso2": "JP",
+          "country": "Japan",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "coal_400mw_igcc",
@@ -6003,7 +6189,10 @@
           "start_up_time_h": 5.0,
           "cold_start_time_h": 20.0,
           "water_withdrawal_m3_per_mwh": 1.5,
-          "land_use_m2_per_kw": 0.7
+          "land_use_m2_per_kw": 0.7,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "coal_150mw_circulating_fb",
@@ -6047,7 +6236,10 @@
           "start_up_time_h": 4.2,
           "cold_start_time_h": 16.8,
           "water_withdrawal_m3_per_mwh": 1.5,
-          "land_use_m2_per_kw": 2.3
+          "land_use_m2_per_kw": 2.3,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "coal_2gw_china_usc",
@@ -6069,7 +6261,10 @@
           "start_up_time_h": 8.0,
           "cold_start_time_h": 32.0,
           "water_withdrawal_m3_per_mwh": 1.3,
-          "land_use_m2_per_kw": 0.4
+          "land_use_m2_per_kw": 0.4,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "coal_400mw_phaseout_eu",
@@ -6135,7 +6330,10 @@
           "start_up_time_h": 4.4,
           "cold_start_time_h": 17.6,
           "water_withdrawal_m3_per_mwh": 1.2,
-          "land_use_m2_per_kw": 1.3
+          "land_use_m2_per_kw": 1.3,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "coal_500mw_south_africa",
@@ -6157,7 +6355,10 @@
           "start_up_time_h": 5.0,
           "cold_start_time_h": 20.0,
           "water_withdrawal_m3_per_mwh": 1.4,
-          "land_use_m2_per_kw": 0.7
+          "land_use_m2_per_kw": 0.7,
+          "country_iso2": "ZA",
+          "country": "South Africa",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "coal_600mw_anthracite",
@@ -6201,7 +6402,10 @@
           "start_up_time_h": 6.0,
           "cold_start_time_h": 24.0,
           "water_withdrawal_m3_per_mwh": 1.4,
-          "land_use_m2_per_kw": 0.5
+          "land_use_m2_per_kw": 0.5,
+          "country_iso2": "AU",
+          "country": "Australia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "coal_300mw_torrefied_biomass",
@@ -6406,7 +6610,10 @@
           "land_use_m2_per_kw": 0.6,
           "enrichment_percent": 4.1,
           "burnup_gwd_per_t": 48.6,
-          "fuel_cycle_length_months": 18
+          "fuel_cycle_length_months": 18,
+          "country_iso2": "RU",
+          "country": "Russia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nuc_1600mw_epr",
@@ -6481,7 +6688,10 @@
           "land_use_m2_per_kw": 0.6,
           "enrichment_percent": 4.1,
           "burnup_gwd_per_t": 48.6,
-          "fuel_cycle_length_months": 18
+          "fuel_cycle_length_months": 18,
+          "country_iso2": "JP",
+          "country": "Japan",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nuc_700mw_candu",
@@ -6555,7 +6765,10 @@
           "land_use_m2_per_kw": 0.6,
           "enrichment_percent": 4.2,
           "burnup_gwd_per_t": 52.2,
-          "fuel_cycle_length_months": 19
+          "fuel_cycle_length_months": 19,
+          "country_iso2": "FR",
+          "country": "France",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nuc_1000mw_flex",
@@ -6605,7 +6818,10 @@
           "land_use_m2_per_kw": 0.6,
           "enrichment_percent": 4.0,
           "burnup_gwd_per_t": 48.3,
-          "fuel_cycle_length_months": 17
+          "fuel_cycle_length_months": 17,
+          "country_iso2": "KR",
+          "country": "South Korea",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nuc_1000mw_india_phwr",
@@ -6629,7 +6845,10 @@
           "water_withdrawal_m3_per_mwh": 1.8,
           "land_use_m2_per_kw": 0.6,
           "burnup_gwd_per_t": 48.0,
-          "fuel_cycle_length_months": 17
+          "fuel_cycle_length_months": 17,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nuc_1000mw_china_hpr1000",
@@ -6654,7 +6873,10 @@
           "land_use_m2_per_kw": 0.6,
           "enrichment_percent": 4.0,
           "burnup_gwd_per_t": 48.0,
-          "fuel_cycle_length_months": 17
+          "fuel_cycle_length_months": 17,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nuc_1000mw_gen4_htgr",
@@ -6728,7 +6950,10 @@
           "water_withdrawal_m3_per_mwh": 1.8,
           "land_use_m2_per_kw": 0.8,
           "burnup_gwd_per_t": 7.5,
-          "fuel_cycle_length_months": 999
+          "fuel_cycle_length_months": 999,
+          "country_iso2": "CA",
+          "country": "Canada",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nuc_1000mw_ner_russia",
@@ -6753,7 +6978,10 @@
           "land_use_m2_per_kw": 0.6,
           "enrichment_percent": 4.0,
           "burnup_gwd_per_t": 48.0,
-          "fuel_cycle_length_months": 17
+          "fuel_cycle_length_months": 17,
+          "country_iso2": "RU",
+          "country": "Russia",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -6888,7 +7116,10 @@
           "land_use_m2_per_kw": 0.7,
           "enrichment_percent": 3.7,
           "burnup_gwd_per_t": 49.4,
-          "fuel_cycle_length_months": 14
+          "fuel_cycle_length_months": 14,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "smr_345mw_ap300",
@@ -7113,7 +7344,10 @@
           "land_use_m2_per_kw": 10.0,
           "enrichment_percent": 3.5,
           "burnup_gwd_per_t": 46.0,
-          "fuel_cycle_length_months": 12
+          "fuel_cycle_length_months": 12,
+          "country_iso2": "CA",
+          "country": "Canada",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "smr_300mw_lastpower",
@@ -7138,7 +7372,10 @@
           "land_use_m2_per_kw": 2.5,
           "enrichment_percent": 3.5,
           "burnup_gwd_per_t": 45.6,
-          "fuel_cycle_length_months": 12
+          "fuel_cycle_length_months": 12,
+          "country_iso2": "PL",
+          "country": "Poland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "smr_marine_propulsion",
@@ -7263,7 +7500,10 @@
           "land_use_m2_per_kw": 1.9,
           "enrichment_percent": 3.5,
           "burnup_gwd_per_t": 45.2,
-          "fuel_cycle_length_months": 12
+          "fuel_cycle_length_months": 12,
+          "country_iso2": "RU",
+          "country": "Russia",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -7383,7 +7623,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 12.5,
-          "land_use_m2_per_kw": 1.4
+          "land_use_m2_per_kw": 1.4,
+          "country_iso2": "MX",
+          "country": "Mexico",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "geo_100mw_double_flash",
@@ -7427,7 +7670,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 13.2,
-          "land_use_m2_per_kw": 1.8
+          "land_use_m2_per_kw": 1.8,
+          "country_iso2": "IT",
+          "country": "Italy",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "geo_5mw_binary_orc",
@@ -7537,7 +7783,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 10.0,
-          "land_use_m2_per_kw": 0.9
+          "land_use_m2_per_kw": 0.9,
+          "country_iso2": "ID",
+          "country": "Indonesia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "geo_50mw_kenya",
@@ -7559,7 +7808,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 12.5,
-          "land_use_m2_per_kw": 1.4
+          "land_use_m2_per_kw": 1.4,
+          "country_iso2": "KE",
+          "country": "Kenya",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "geo_200mw_iceland",
@@ -7581,7 +7833,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 5.0,
-          "land_use_m2_per_kw": 0.7
+          "land_use_m2_per_kw": 0.7,
+          "country_iso2": "IS",
+          "country": "Iceland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "geo_30mw_chp",
@@ -7625,7 +7880,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 14.0,
-          "land_use_m2_per_kw": 2.9
+          "land_use_m2_per_kw": 2.9,
+          "country_iso2": "NL",
+          "country": "Netherlands",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "geo_1gw_supercritical",
@@ -7647,7 +7905,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 1.0,
-          "land_use_m2_per_kw": 0.5
+          "land_use_m2_per_kw": 0.5,
+          "country_iso2": "IS",
+          "country": "Iceland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "geo_5mw_closed_loop",
@@ -7691,7 +7952,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 10.0,
-          "land_use_m2_per_kw": 0.9
+          "land_use_m2_per_kw": 0.9,
+          "country_iso2": "PH",
+          "country": "Philippines",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "geo_15mw_superhot_rock",
@@ -7855,7 +8119,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 1.2,
-          "land_use_m2_per_kw": 1.8
+          "land_use_m2_per_kw": 1.8,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bio_200mw_cofiring",
@@ -7899,7 +8166,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 1.1,
-          "land_use_m2_per_kw": 1.1
+          "land_use_m2_per_kw": 1.1,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bio_500mw_beccs",
@@ -7965,7 +8235,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 1.2,
-          "land_use_m2_per_kw": 8.0
+          "land_use_m2_per_kw": 8.0,
+          "country_iso2": "BR",
+          "country": "Brazil",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bio_1mw_gasification",
@@ -8009,7 +8282,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 0.7,
-          "land_use_m2_per_kw": 8.0
+          "land_use_m2_per_kw": 8.0,
+          "country_iso2": "FI",
+          "country": "Finland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bio_100mw_plantation",
@@ -8031,7 +8307,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 1.2,
-          "land_use_m2_per_kw": 1.8
+          "land_use_m2_per_kw": 1.8,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bio_15mw_palm_efb",
@@ -8053,7 +8332,10 @@
           "start_up_time_h": 2.0,
           "cold_start_time_h": 8.0,
           "water_withdrawal_m3_per_mwh": 1.2,
-          "land_use_m2_per_kw": 7.5
+          "land_use_m2_per_kw": 7.5,
+          "country_iso2": "MY",
+          "country": "Malaysia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bio_200mw_mun_wood",
@@ -8217,7 +8499,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.1,
-          "land_use_m2_per_kw": 4.5
+          "land_use_m2_per_kw": 4.5,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "biogas_20mw_large_landfill",
@@ -8239,7 +8524,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.1,
-          "land_use_m2_per_kw": 1.5
+          "land_use_m2_per_kw": 1.5,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bg_500kw_farm",
@@ -8261,7 +8549,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.1,
-          "land_use_m2_per_kw": 5.0
+          "land_use_m2_per_kw": 5.0,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bg_2mw_mun_ww",
@@ -8349,7 +8640,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.1,
-          "land_use_m2_per_kw": 4.5
+          "land_use_m2_per_kw": 4.5,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bg_10mw_sewage",
@@ -8393,7 +8687,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.1,
-          "land_use_m2_per_kw": 1.5
+          "land_use_m2_per_kw": 1.5,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bg_50mw_biomethane",
@@ -8459,7 +8756,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.1,
-          "land_use_m2_per_kw": 5.0
+          "land_use_m2_per_kw": 5.0,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bg_5mw_india_cattle",
@@ -8481,7 +8781,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.1,
-          "land_use_m2_per_kw": 4.5
+          "land_use_m2_per_kw": 4.5,
+          "country_iso2": "IN",
+          "country": "India",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bg_100mw_biomethane_h2",
@@ -8569,7 +8872,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.0,
-          "land_use_m2_per_kw": 2.5
+          "land_use_m2_per_kw": 2.5,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "bg_20mw_flex_peak",
@@ -8613,7 +8919,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.1,
-          "land_use_m2_per_kw": 0.7
+          "land_use_m2_per_kw": 0.7,
+          "country_iso2": "ES",
+          "country": "Spain",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -8645,7 +8954,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.0,
-          "land_use_m2_per_kw": 1.0
+          "land_use_m2_per_kw": 1.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "wte_30mw_medium",
@@ -8733,7 +9045,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.0,
-          "land_use_m2_per_kw": 1.0
+          "land_use_m2_per_kw": 1.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "wte_50mw_fb",
@@ -8777,7 +9092,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.0,
-          "land_use_m2_per_kw": 1.0
+          "land_use_m2_per_kw": 1.0,
+          "country_iso2": "DK",
+          "country": "Denmark",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "wte_5mw_plasma",
@@ -8843,7 +9161,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.0,
-          "land_use_m2_per_kw": 1.0
+          "land_use_m2_per_kw": 1.0,
+          "country_iso2": "JP",
+          "country": "Japan",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "wte_150mw_china",
@@ -8865,7 +9186,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.0,
-          "land_use_m2_per_kw": 1.0
+          "land_use_m2_per_kw": 1.0,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "wte_5mw_pyrolysis",
@@ -9063,7 +9387,10 @@
           "start_up_time_h": 1.0,
           "cold_start_time_h": 4.0,
           "water_withdrawal_m3_per_mwh": 1.0,
-          "land_use_m2_per_kw": 1.0
+          "land_use_m2_per_kw": 1.0,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "waste_to_energy_waste_to_energy___2024_reference",
@@ -9110,7 +9437,10 @@
           "min_load_fraction": 0.1,
           "land_use_m2_per_kw": 7.1,
           "tidal_current_speed_ms": 2.1,
-          "turbine_diameter_m": 17.9
+          "turbine_diameter_m": 17.9,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "marine_wave_5mw",
@@ -9268,7 +9598,10 @@
           "min_load_fraction": 0.0,
           "land_use_m2_per_kw": 22.3,
           "tidal_current_speed_ms": 2.8,
-          "turbine_diameter_m": 16.0
+          "turbine_diameter_m": 16.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "mar_750kw_wave_att",
@@ -9358,7 +9691,10 @@
           "ramping_rate_percent_per_min": 0.5,
           "reference_source": "NREL OTEC 2022; Xenesys Japan OTEC",
           "min_load_fraction": 0.4,
-          "land_use_m2_per_kw": 12.2
+          "land_use_m2_per_kw": 12.2,
+          "country_iso2": "JP",
+          "country": "Japan",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "mar_100mw_otec",

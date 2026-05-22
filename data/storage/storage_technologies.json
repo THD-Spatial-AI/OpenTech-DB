@@ -657,7 +657,10 @@
           "cycle_lifetime_cycles": 10000,
           "c_rate_max_charge": 0.25,
           "c_rate_max_discharge": 0.25,
-          "land_use_m2_per_kwh": 20.1
+          "land_use_m2_per_kwh": 20.1,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "rfb_10mwh_utility",
@@ -1153,7 +1156,10 @@
           "cycle_lifetime_cycles": 4500,
           "c_rate_max_charge": 0.2,
           "c_rate_max_discharge": 0.2,
-          "land_use_m2_per_kwh": 15.0
+          "land_use_m2_per_kwh": 15.0,
+          "country_iso2": "JP",
+          "country": "Japan",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nas_50mwh_grid",
@@ -1249,7 +1255,10 @@
           "cycle_lifetime_cycles": 4500,
           "c_rate_max_charge": 0.2,
           "c_rate_max_discharge": 0.2,
-          "land_use_m2_per_kwh": 15.0
+          "land_use_m2_per_kwh": 15.0,
+          "country_iso2": "JP",
+          "country": "Japan",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nas_island_alaska",
@@ -1297,7 +1306,10 @@
           "cycle_lifetime_cycles": 4500,
           "c_rate_max_charge": 0.2,
           "c_rate_max_discharge": 0.2,
-          "land_use_m2_per_kwh": 15.0
+          "land_use_m2_per_kwh": 15.0,
+          "country_iso2": "KR",
+          "country": "South Korea",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nas_2nd_gen_2026",
@@ -1393,7 +1405,10 @@
           "cycle_lifetime_cycles": 4500,
           "c_rate_max_charge": 0.2,
           "c_rate_max_discharge": 0.2,
-          "land_use_m2_per_kwh": 15.0
+          "land_use_m2_per_kwh": 15.0,
+          "country_iso2": "MA",
+          "country": "Morocco",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nas_containerized",
@@ -1489,7 +1504,10 @@
           "cycle_lifetime_cycles": 4500,
           "c_rate_max_charge": 0.2,
           "c_rate_max_discharge": 0.2,
-          "land_use_m2_per_kwh": 15.0
+          "land_use_m2_per_kwh": 15.0,
+          "country_iso2": "ZA",
+          "country": "South Africa",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "nas_peak_shaving",
@@ -1513,7 +1531,10 @@
           "cycle_lifetime_cycles": 4500,
           "c_rate_max_charge": 0.2,
           "c_rate_max_discharge": 0.2,
-          "land_use_m2_per_kwh": 15.0
+          "land_use_m2_per_kwh": 15.0,
+          "country_iso2": "JP",
+          "country": "Japan",
+          "country_inference_source": "instance_text"
         }
       ]
     },
@@ -1985,7 +2006,10 @@
           "cycle_lifetime_cycles": 1200,
           "c_rate_max_charge": 0.1,
           "c_rate_max_discharge": 0.2,
-          "land_use_m2_per_kwh": 12.0
+          "land_use_m2_per_kwh": 12.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "la_offshore_platform",
@@ -2155,7 +2179,10 @@
           "cycle_lifetime_cycles": 50000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 750.0
+          "land_use_m2_per_kwh": 750.0,
+          "country_iso2": "CH",
+          "country": "Switzerland",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "phs_1000mw_large",
@@ -2181,7 +2208,10 @@
           "cycle_lifetime_cycles": 50000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 1000.0
+          "land_use_m2_per_kwh": 1000.0,
+          "country_iso2": "AU",
+          "country": "Australia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "phs_3gw_snowy",
@@ -2207,7 +2237,10 @@
           "cycle_lifetime_cycles": 50000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 1500.0
+          "land_use_m2_per_kwh": 1500.0,
+          "country_iso2": "AU",
+          "country": "Australia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "phs_offshore",
@@ -2233,7 +2266,10 @@
           "cycle_lifetime_cycles": 50000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 600.0
+          "land_use_m2_per_kwh": 600.0,
+          "country_iso2": "JP",
+          "country": "Japan",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "phs_underground",
@@ -2259,7 +2295,10 @@
           "cycle_lifetime_cycles": 50000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 700.0
+          "land_use_m2_per_kwh": 700.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "phs_variable_speed",
@@ -2389,7 +2428,10 @@
           "cycle_lifetime_cycles": 50000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 650.0
+          "land_use_m2_per_kwh": 650.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "phs_2030_lowcost",
@@ -2441,7 +2483,10 @@
           "cycle_lifetime_cycles": 50000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 1100.0
+          "land_use_m2_per_kwh": 1100.0,
+          "country_iso2": "CN",
+          "country": "China",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "phs_ternary",
@@ -2519,7 +2564,10 @@
           "cycle_lifetime_cycles": 50000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 550.0
+          "land_use_m2_per_kwh": 550.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "phs_tidal_basin",
@@ -2545,7 +2593,10 @@
           "cycle_lifetime_cycles": 50000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 530.0
+          "land_use_m2_per_kwh": 530.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "_source": "open_alex",
@@ -2837,7 +2888,10 @@
           "cycle_lifetime_cycles": 30000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 120.0
+          "land_use_m2_per_kwh": 120.0,
+          "country_iso2": "US",
+          "country": "United States",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "caes_wind_hybrid",
@@ -3029,7 +3083,10 @@
           "cycle_lifetime_cycles": 30000,
           "c_rate_max_charge": 0.12,
           "c_rate_max_discharge": 0.12,
-          "land_use_m2_per_kwh": 130.0
+          "land_use_m2_per_kwh": 130.0,
+          "country_iso2": "NO",
+          "country": "Norway",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "caes_texas_salt",
@@ -3189,7 +3246,10 @@
           "cycle_lifetime_cycles": 20000,
           "c_rate_max_charge": 0.33,
           "c_rate_max_discharge": 0.33,
-          "land_use_m2_per_kwh": 30.0
+          "land_use_m2_per_kwh": 30.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "laes_200mw_large",
@@ -3501,7 +3561,10 @@
           "cycle_lifetime_cycles": 20000,
           "c_rate_max_charge": 0.33,
           "c_rate_max_discharge": 0.33,
-          "land_use_m2_per_kwh": 30.0
+          "land_use_m2_per_kwh": 30.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "laes_hospital",
@@ -4205,7 +4268,10 @@
           "cycle_lifetime_cycles": 10000,
           "c_rate_max_charge": 1.0,
           "c_rate_max_discharge": 1.0,
-          "land_use_m2_per_kwh": 12.0
+          "land_use_m2_per_kwh": 12.0,
+          "country_iso2": "NL",
+          "country": "Netherlands",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "sts_borehole_btes",
@@ -4253,7 +4319,10 @@
           "cycle_lifetime_cycles": 10000,
           "c_rate_max_charge": 1.0,
           "c_rate_max_discharge": 1.0,
-          "land_use_m2_per_kwh": 100
+          "land_use_m2_per_kwh": 100,
+          "country_iso2": "ES",
+          "country": "Spain",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "sts_industrial_high_temp",
@@ -5495,7 +5564,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 40.0
+          "land_use_m2_per_kwh": 40.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2tank_airport",
@@ -5667,7 +5739,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 40.0
+          "land_use_m2_per_kwh": 40.0,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2ug_salt_cavern_small",
@@ -5693,7 +5768,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 40.0
+          "land_use_m2_per_kwh": 40.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2ug_salt_cavern_large",
@@ -5719,7 +5797,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 100
+          "land_use_m2_per_kwh": 100,
+          "country_iso2": "DE",
+          "country": "Germany",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2ug_depleted_gas_field",
@@ -5771,7 +5852,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 65.0
+          "land_use_m2_per_kwh": 65.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2ug_lined_rock_cavern",
@@ -5797,7 +5881,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 65.0
+          "land_use_m2_per_kwh": 65.0,
+          "country_iso2": "SE",
+          "country": "Sweden",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2ug_salt_texas",
@@ -5875,7 +5962,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 100
+          "land_use_m2_per_kwh": 100,
+          "country_iso2": "NO",
+          "country": "Norway",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2ug_repurposed_gas",
@@ -5953,7 +6043,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 100
+          "land_use_m2_per_kwh": 100,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2ug_australia_pilbara",
@@ -5979,7 +6072,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 100
+          "land_use_m2_per_kwh": 100,
+          "country_iso2": "AU",
+          "country": "Australia",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2ug_chile_atacama",
@@ -6005,7 +6101,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 65.0
+          "land_use_m2_per_kwh": 65.0,
+          "country_iso2": "CL",
+          "country": "Chile",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2ug_mine_conversion",
@@ -6057,7 +6156,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 100
+          "land_use_m2_per_kwh": 100,
+          "country_iso2": "EU",
+          "country": "Europe",
+          "country_inference_source": "instance_text"
         },
         {
           "instance_id": "h2ug_2030forecast",
@@ -6109,7 +6211,10 @@
           "cycle_lifetime_cycles": 5000,
           "c_rate_max_charge": 0.06,
           "c_rate_max_discharge": 0.06,
-          "land_use_m2_per_kwh": 25.0
+          "land_use_m2_per_kwh": 25.0,
+          "country_iso2": "GB",
+          "country": "United Kingdom",
+          "country_inference_source": "instance_text"
         }
       ]
     }

@@ -39,17 +39,32 @@ function formatLegendVal(v: number, param: TechMapParam): string {
 }
 
 const CONTINENT_BY_ISO3: Record<string, string> = {
+  // Europe
   DEU: "Europe", FRA: "Europe", ESP: "Europe", ITA: "Europe", GRC: "Europe", DNK: "Europe",
   GBR: "Europe", NOR: "Europe", NLD: "Europe", PRT: "Europe", POL: "Europe", BEL: "Europe",
   IRL: "Europe", SWE: "Europe", FIN: "Europe", CHE: "Europe", AUT: "Europe",
-
+  CZE: "Europe", HUN: "Europe", ROU: "Europe", BGR: "Europe", HRV: "Europe", SVK: "Europe",
+  SVN: "Europe", EST: "Europe", LVA: "Europe", LTU: "Europe", LUX: "Europe", CYP: "Europe",
+  MLT: "Europe", UKR: "Europe", SRB: "Europe", TUR: "Europe", ISL: "Europe",
+  // North America
   USA: "North America", CAN: "North America", MEX: "North America",
+  // South America
   BRA: "South America", ARG: "South America", CHL: "South America",
-
-  CHN: "Asia", IND: "Asia", JPN: "Asia", KOR: "Asia", SAU: "Asia", ARE: "Asia",
+  COL: "South America", PER: "South America", URY: "South America",
+  // Asia
+  CHN: "Asia", IND: "Asia", JPN: "Asia", KOR: "Asia", TWN: "Asia",
+  IDN: "Asia", VNM: "Asia", THA: "Asia", MYS: "Asia", SGP: "Asia",
+  PAK: "Asia", BGD: "Asia", PHL: "Asia", MNG: "Asia",
+  SAU: "Asia", ARE: "Asia", QAT: "Asia", IRN: "Asia", IRQ: "Asia",
+  ISR: "Asia", JOR: "Asia", OMN: "Asia", KWT: "Asia", BHR: "Asia", YEM: "Asia",
+  // Oceania
   AUS: "Oceania", NZL: "Oceania",
-
-  ZAF: "Africa", EGY: "Africa", MAR: "Africa",
+  // Africa
+  ZAF: "Africa", EGY: "Africa", MAR: "Africa", NGA: "Africa", KEN: "Africa",
+  ETH: "Africa", TZA: "Africa", GHA: "Africa", SEN: "Africa", MOZ: "Africa",
+  NAM: "Africa", BWA: "Africa", ZMB: "Africa", ZWE: "Africa",
+  // Russia / Central Asia
+  RUS: "Asia", KAZ: "Asia", UZB: "Asia",
 };
 
 function getContinent(iso3: string): string {

@@ -29,84 +29,135 @@ logger = logging.getLogger(__name__)
 _DEFAULT_SYSTEM_PROMPT = """
 You are an expert energy systems engineer. Extract cost and performance
 parameters from the provided paper excerpt. Return ONLY valid JSON with
-the following fields if found in the text, otherwise omit the field:
-{
-  "capex_usd_per_kw": <number>,
-  "opex_fixed_usd_per_kw_yr": <number>,
-  "opex_var_usd_per_mwh": <number>,
-  "efficiency_percent": <number>,
-  "lifetime_years": <number>,
-  "co2_emission_factor_g_per_kwh": <number>,
-  "typical_capacity_mw": <number>,
-  "degradation_rate_percent_per_yr": <number>,
-  "rotor_diameter_m": <number>,
-  "hub_height_m": <number>,
-  "wind_rated_speed_ms": <number>,
-  "module_efficiency_fraction": <number between 0 and 1>,
-  "performance_ratio": <number between 0 and 1>,
-  "solar_multiple": <number>,
-  "thermal_storage_h": <number>,
-  "optical_efficiency_fraction": <number between 0 and 1>,
-  "heat_rate_mj_per_mwh": <number>,
-  "min_load_fraction": <number between 0 and 1>,
-  "start_up_time_h": <number>,
-  "cold_start_time_h": <number>,
-  "water_withdrawal_m3_per_mwh": <number>,
-  "land_use_m2_per_kw": <number>,
-  "roundtrip_efficiency_fraction": <number between 0 and 1>,
-  "charge_efficiency_fraction": <number between 0 and 1>,
-  "discharge_efficiency_fraction": <number between 0 and 1>,
-  "dod_max_fraction": <number between 0 and 1>,
-  "cycle_lifetime_cycles": <integer>,
-  "loss_rate_pct_per_km": <number>,
-  "voltage_kv": <number>,
-  "stack_lifetime_h": <number>,
-  "cop_heating_at_a7_w35": <number>,
-  "notes": "<brief explanation of extracted values>"
-}
-All monetary values must be in USD. Convert EUR values using 1 EUR = 1.10 USD.
-All plain efficiencies must be in % (e.g. 58.5, not 0.585).
-module_efficiency_fraction, performance_ratio, charge/discharge/roundtrip efficiencies,
-dod_max_fraction, min_load_fraction must be fractions between 0 and 1.
-Return ONLY the JSON object, no other text.
+the following fields if found in the text (omit absent fields entirely):
+
+Core economic
+  "capex_usd_per_kw"              Capital expenditure (USD/kW)
+  "capex_usd_per_kwh"             Capital expenditure (USD/kWh) - for storage
+  "opex_fixed_usd_per_kw_yr"      Fixed O&M (USD/kW/year)
+  "opex_var_usd_per_mwh"          Variable O&M (USD/MWh)
+  "lcoe_usd_per_mwh"              Levelized cost of electricity (USD/MWh)
+  "lcoh_usd_per_kg"               Levelized cost of hydrogen (USD/kg H₂)
+
+Core performance
+  "efficiency_percent"            Net electrical/thermal efficiency (%)
+  "capacity_factor_percent"       Annual capacity factor (%)
+  "lifetime_years"                Technical/economic lifetime (years)
+  "typical_capacity_mw"           Typical rated capacity (MW)
+  "degradation_rate_percent_per_yr"  Annual degradation rate (%/yr)
+  "ramp_rate_pct_per_min"         Ramp rate (%/min)
+
+Environmental
+  "co2_emission_factor_g_per_kwh" Direct CO₂ emissions (g CO₂/kWh)
+  "co2_capture_rate_percent"      CO₂ capture rate for CCS plants (%)
+
+Wind-specific
+  "rotor_diameter_m"              Rotor diameter (m)
+  "hub_height_m"                  Hub height (m)
+  "wind_rated_speed_ms"           Rated wind speed (m/s)
+
+Solar-specific
+  "module_efficiency_fraction"    Module efficiency (fraction 0–1)
+  "performance_ratio"             System performance ratio (fraction 0–1)
+  "solar_multiple"                CSP solar multiple (dimensionless)
+  "thermal_storage_h"             CSP thermal storage duration (hours)
+  "optical_efficiency_fraction"   CSP optical efficiency (fraction 0–1)
+
+Thermal plant-specific
+  "heat_rate_mj_per_mwh"          Heat rate (MJ/MWh)
+  "min_load_fraction"             Minimum stable load (fraction 0–1)
+  "start_up_time_h"               Warm start-up time (hours)
+  "cold_start_time_h"             Cold start-up time (hours)
+
+Storage-specific
+  "roundtrip_efficiency_fraction" Round-trip efficiency (fraction 0–1)
+  "charge_efficiency_fraction"    Charge efficiency (fraction 0–1)
+  "discharge_efficiency_fraction" Discharge efficiency (fraction 0–1)
+  "dod_max_fraction"              Maximum depth of discharge (fraction 0–1)
+  "cycle_lifetime_cycles"         Cycle lifetime (integer cycles)
+  "energy_density_wh_per_kg"      Gravimetric energy density (Wh/kg)
+  "power_density_w_per_l"         Volumetric power density (W/L)
+  "self_discharge_pct_per_day"    Self-discharge rate (%/day)
+
+Transmission-specific
+  "loss_rate_pct_per_km"          Line losses (%/km)
+  "voltage_kv"                    Operating voltage (kV)
+
+Electrolyzer/H₂
+  "stack_lifetime_h"              Electrolyzer stack lifetime (hours)
+
+Heat pump
+  "cop_heating_at_a7_w35"         COP at A7/W35 condition
+
+Resource use
+  "water_withdrawal_m3_per_mwh"   Water withdrawal (m³/MWh)
+  "land_use_m2_per_kw"            Land use (m²/kW)
+
+  "notes": "<one sentence explaining key findings>"
+
+Conversion rules:
+- All monetary values MUST be in USD. Convert EUR using 1 EUR = 1.10 USD.
+- Efficiencies as plain % numbers (e.g. 58.5 not 0.585) EXCEPT fields named
+  *_fraction which must be 0–1.
+- Never fabricate values not present in the text.
+- Return ONLY the JSON object, no markdown, no other text.
 """.strip()
 
 
 @dataclass
 class LLMExtractedParams:
     """Structured output from the LLM extractor."""
+    # Core economic
     capex_usd_per_kw: float | None = None
+    capex_usd_per_kwh: float | None = None
     opex_fixed_usd_per_kw_yr: float | None = None
     opex_var_usd_per_mwh: float | None = None
+    lcoe_usd_per_mwh: float | None = None
+    lcoh_usd_per_kg: float | None = None
+    # Core performance
     efficiency_percent: float | None = None
+    capacity_factor_percent: float | None = None
     lifetime_years: float | None = None
     co2_emission_factor_g_per_kwh: float | None = None
+    co2_capture_rate_percent: float | None = None
     typical_capacity_mw: float | None = None
     degradation_rate_percent_per_yr: float | None = None
-    # Tech-specific extras
+    ramp_rate_pct_per_min: float | None = None
+    # Wind-specific
     rotor_diameter_m: float | None = None
     hub_height_m: float | None = None
     wind_rated_speed_ms: float | None = None
+    # Solar-specific
     module_efficiency_fraction: float | None = None
     performance_ratio: float | None = None
     solar_multiple: float | None = None
     thermal_storage_h: float | None = None
     optical_efficiency_fraction: float | None = None
+    # Thermal-specific
     heat_rate_mj_per_mwh: float | None = None
     min_load_fraction: float | None = None
     start_up_time_h: float | None = None
     cold_start_time_h: float | None = None
-    water_withdrawal_m3_per_mwh: float | None = None
-    land_use_m2_per_kw: float | None = None
+    # Storage-specific
     roundtrip_efficiency_fraction: float | None = None
     charge_efficiency_fraction: float | None = None
     discharge_efficiency_fraction: float | None = None
     dod_max_fraction: float | None = None
     cycle_lifetime_cycles: float | None = None
+    energy_density_wh_per_kg: float | None = None
+    power_density_w_per_l: float | None = None
+    self_discharge_pct_per_day: float | None = None
+    # Transmission-specific
     loss_rate_pct_per_km: float | None = None
     voltage_kv: float | None = None
+    # H₂/electrolyzer
     stack_lifetime_h: float | None = None
+    # Heat pump
     cop_heating_at_a7_w35: float | None = None
+    # Resource use
+    water_withdrawal_m3_per_mwh: float | None = None
+    land_use_m2_per_kw: float | None = None
+    # Metadata
     notes: str = ""
     confidence: float = 0.70   # LLM extractions get a flat confidence score
     raw_response: str = ""
@@ -131,7 +182,7 @@ class LLMExtractor:
         self._model     = getattr(llm_cfg, "model", "gpt-4o-mini")
         self._max_tokens = getattr(llm_cfg, "max_tokens_per_paper", 3000)
         self._temperature = float(getattr(llm_cfg, "temperature", 0.0))
-        self._system_prompt = getattr(llm_cfg, "system_prompt", _DEFAULT_SYSTEM_PROMPT)
+        self._system_prompt = getattr(llm_cfg, "system_prompt", None) or _DEFAULT_SYSTEM_PROMPT
 
         self._openai_client: Any = None
         self._anthropic_client: Any = None
@@ -258,14 +309,57 @@ class LLMExtractor:
                 return None
 
         return LLMExtractedParams(
+            # Core economic
             capex_usd_per_kw=_float("capex_usd_per_kw"),
+            capex_usd_per_kwh=_float("capex_usd_per_kwh"),
             opex_fixed_usd_per_kw_yr=_float("opex_fixed_usd_per_kw_yr"),
             opex_var_usd_per_mwh=_float("opex_var_usd_per_mwh"),
+            lcoe_usd_per_mwh=_float("lcoe_usd_per_mwh"),
+            lcoh_usd_per_kg=_float("lcoh_usd_per_kg"),
+            # Core performance
             efficiency_percent=_float("efficiency_percent"),
+            capacity_factor_percent=_float("capacity_factor_percent"),
             lifetime_years=_float("lifetime_years"),
             co2_emission_factor_g_per_kwh=_float("co2_emission_factor_g_per_kwh"),
+            co2_capture_rate_percent=_float("co2_capture_rate_percent"),
             typical_capacity_mw=_float("typical_capacity_mw"),
             degradation_rate_percent_per_yr=_float("degradation_rate_percent_per_yr"),
+            ramp_rate_pct_per_min=_float("ramp_rate_pct_per_min"),
+            # Wind-specific
+            rotor_diameter_m=_float("rotor_diameter_m"),
+            hub_height_m=_float("hub_height_m"),
+            wind_rated_speed_ms=_float("wind_rated_speed_ms"),
+            # Solar-specific
+            module_efficiency_fraction=_float("module_efficiency_fraction"),
+            performance_ratio=_float("performance_ratio"),
+            solar_multiple=_float("solar_multiple"),
+            thermal_storage_h=_float("thermal_storage_h"),
+            optical_efficiency_fraction=_float("optical_efficiency_fraction"),
+            # Thermal plant-specific
+            heat_rate_mj_per_mwh=_float("heat_rate_mj_per_mwh"),
+            min_load_fraction=_float("min_load_fraction"),
+            start_up_time_h=_float("start_up_time_h"),
+            cold_start_time_h=_float("cold_start_time_h"),
+            # Storage-specific
+            roundtrip_efficiency_fraction=_float("roundtrip_efficiency_fraction"),
+            charge_efficiency_fraction=_float("charge_efficiency_fraction"),
+            discharge_efficiency_fraction=_float("discharge_efficiency_fraction"),
+            dod_max_fraction=_float("dod_max_fraction"),
+            cycle_lifetime_cycles=_float("cycle_lifetime_cycles"),
+            energy_density_wh_per_kg=_float("energy_density_wh_per_kg"),
+            power_density_w_per_l=_float("power_density_w_per_l"),
+            self_discharge_pct_per_day=_float("self_discharge_pct_per_day"),
+            # Transmission-specific
+            loss_rate_pct_per_km=_float("loss_rate_pct_per_km"),
+            voltage_kv=_float("voltage_kv"),
+            # H₂/electrolyzer
+            stack_lifetime_h=_float("stack_lifetime_h"),
+            # Heat pump
+            cop_heating_at_a7_w35=_float("cop_heating_at_a7_w35"),
+            # Resource use
+            water_withdrawal_m3_per_mwh=_float("water_withdrawal_m3_per_mwh"),
+            land_use_m2_per_kw=_float("land_use_m2_per_kw"),
+            # Metadata
             notes=str(data.get("notes", "")),
             raw_response=raw,
         )

@@ -182,7 +182,8 @@ def _year_tag() -> str:
 
 
 def _tech_title(technology_id: str) -> str:
-    return technology_id.replace("_", " ").title()
+    from scrapers.tech_metadata import get_display_name
+    return get_display_name(technology_id)
 
 
 def _paper_title_snippet(title: str | None, max_len: int = 44) -> str:
@@ -279,13 +280,19 @@ class Normalizer:
         if llm:
             _llm_field_map = {
                 "capex_usd_per_kw":              ("capex_usd_per_kw",        "USD/kW"),
+                "capex_usd_per_kwh":             ("capex_usd_per_kwh",       "USD/kWh"),
                 "opex_fixed_usd_per_kw_yr":      ("opex_fixed_usd_per_kw_yr","USD/kW/yr"),
                 "opex_var_usd_per_mwh":          ("opex_var_usd_per_mwh",    "USD/MWh"),
+                "lcoe_usd_per_mwh":              ("lcoe_usd_per_mwh",        "USD/MWh"),
+                "lcoh_usd_per_kg":               ("lcoh_usd_per_kg",         "USD/kg"),
                 "efficiency_percent":             ("efficiency_percent",       "%"),
+                "capacity_factor_percent":        ("capacity_factor_percent",  "%"),
                 "lifetime_years":                ("lifetime_years",           "years"),
                 "co2_emission_factor_g_per_kwh": ("co2_emission_factor_g_per_kwh","g/kWh"),
+                "co2_capture_rate_percent":       ("co2_capture_rate_percent", "%"),
                 "typical_capacity_mw":           ("typical_capacity_mw",     "MW"),
                 "degradation_rate_percent_per_yr":("degradation_rate_percent_per_yr","%/yr"),
+                "ramp_rate_pct_per_min":          ("ramp_rate_pct_per_min",   "%/min"),
                 # Tech-specific extras
                 "rotor_diameter_m":              ("rotor_diameter_m",         "m"),
                 "hub_height_m":                  ("hub_height_m",             "m"),
@@ -306,10 +313,14 @@ class Normalizer:
                 "discharge_efficiency_fraction": ("discharge_efficiency_fraction","fraction"),
                 "dod_max_fraction":              ("dod_max_fraction",           "fraction"),
                 "cycle_lifetime_cycles":         ("cycle_lifetime_cycles",      "cycles"),
+                "energy_density_wh_per_kg":      ("energy_density_wh_per_kg",  "Wh/kg"),
+                "power_density_w_per_l":         ("power_density_w_per_l",     "W/L"),
+                "self_discharge_pct_per_day":    ("self_discharge_pct_per_day", "%/day"),
                 "loss_rate_pct_per_km":          ("loss_rate_pct_per_km",       "%/km"),
                 "voltage_kv":                    ("voltage_kv",                 "kV"),
                 "stack_lifetime_h":              ("stack_lifetime_h",           "h"),
                 "cop_heating_at_a7_w35":         ("cop_heating_at_a7_w35",      ""),
+                "construction_time_years":       ("construction_time_years",    "years"),
             }
             for attr, (param, unit) in _llm_field_map.items():
                 val = getattr(llm, attr, None)
@@ -391,13 +402,19 @@ class Normalizer:
         _param_to_field = {
             # Core fields
             "capex_usd_per_kw":               "capex_usd_per_kw",
+            "capex_usd_per_kwh":              "capex_usd_per_kwh",
             "opex_fixed_usd_per_kw_yr":       "opex_fixed_usd_per_kw_yr",
             "opex_var_usd_per_mwh":           "opex_var_usd_per_mwh",
+            "lcoe_usd_per_mwh":               "lcoe_usd_per_mwh",
+            "lcoh_usd_per_kg":                "lcoh_usd_per_kg",
             "efficiency_percent":              "efficiency_percent",
+            "capacity_factor_percent":         "capacity_factor_percent",
             "lifetime_years":                  "lifetime_years",
             "co2_emission_factor_g_per_kwh":   "co2_emission_factor_operational_g_per_kwh",
+            "co2_capture_rate_percent":        "co2_capture_rate_percent",
             "typical_capacity_mw":             "typical_capacity_mw",
             "degradation_rate_percent_per_yr": "degradation_rate_percent_per_yr",
+            "ramp_rate_pct_per_min":           "ramp_rate_pct_per_min",
             # Wind extras
             "rotor_diameter_m":               "rotor_diameter_m",
             "hub_height_m":                   "hub_height_m",
@@ -437,6 +454,9 @@ class Normalizer:
             "roundtrip_efficiency_fraction":  "roundtrip_efficiency_fraction",
             "dod_max_fraction":               "dod_max_fraction",
             "cycle_lifetime_cycles":          "cycle_lifetime_cycles",
+            "energy_density_wh_per_kg":       "energy_density_wh_per_kg",
+            "power_density_w_per_l":          "power_density_w_per_l",
+            "self_discharge_pct_per_day":     "self_discharge_pct_per_day",
             "c_rate_max_charge":              "c_rate_max_charge",
             "c_rate_max_discharge":           "c_rate_max_discharge",
             "land_use_m2_per_kwh":            "land_use_m2_per_kwh",
@@ -451,6 +471,8 @@ class Normalizer:
             "electrical_efficiency_fraction": "electrical_efficiency_fraction",
             "thermal_efficiency_fraction":    "thermal_efficiency_fraction",
             "cold_start_time_min":            "cold_start_time_min",
+            # Universal
+            "construction_time_years":         "construction_time_years",
             # Transmission extras
             "loss_rate_pct_per_km":           "loss_rate_pct_per_km",
             "voltage_kv":                     "voltage_kv",

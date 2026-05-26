@@ -51,8 +51,8 @@ sources:
     api_key: null
 
   semantic_scholar:
-    enabled: true
-    description: "Semantic Scholar – free AI-powered paper search"
+    enabled: false
+    description: "Semantic Scholar – free AI-powered paper search (disabled: no API key = heavy rate limits)"
     base_url: "https://api.semanticscholar.org/graph/v1"
     max_results_per_tech: 50
     lookback_months: 36
@@ -75,13 +75,13 @@ sources:
 
   nrel_atb:
     enabled: true
-    description: "NREL Annual Technology Baseline – authoritative US cost data"
+    description: "NREL Annual Technology Baseline 2023 – structured cost data (2024 CSV not available on S3 yet)"
     base_url: "https://atb.nrel.gov"
-    atb_year: 2024
+    atb_year: 2023
 
   irena:
-    enabled: true
-    description: "IRENA Renewable Power Generation Costs – annual PDF reports"
+    enabled: false
+    description: "IRENA Renewable Power Generation Costs – disabled (PDF scraping too slow for batch runs)"
     base_url: "https://www.irena.org"
     report_index_url: "https://www.irena.org/publications/2024/Sep/Renewable-power-generation-costs-in-2023"
 
@@ -113,13 +113,13 @@ sources:
     lookback_months: 36
 
   iea_reports:
-    enabled: true
-    description: "IEA publication index – World Energy Outlook, Technology Reports"
+    enabled: false
+    description: "IEA publication index – disabled (HTML scraping slow)"
     report_index_url: "https://www.iea.org/data-and-statistics/data-product/world-energy-outlook-2023"
 
   fraunhofer_ise:
-    enabled: true
-    description: "Fraunhofer ISE photovoltaics + energy system reports (PDF scrape)"
+    enabled: false
+    description: "Fraunhofer ISE photovoltaics + energy system reports – disabled (PDF scraping slow)"
     reports:
       - "https://www.ise.fraunhofer.de/content/dam/ise/de/documents/publications/studies/Photovoltaics-Report.pdf"
 
@@ -135,6 +135,27 @@ sources:
 extraction:
   # Minimum confidence score (0-1) to create a candidate
   min_confidence: 0.55
+  # Minimum number of distinct parameters that must be extracted before saving a candidate.
+  # Prevents single-hit candidates from polluting the queue.
+  min_params_to_save: 3
+  # Minimum number of "hinted" parameters (from global_hints + per-tech parameter_hints)
+  # that must appear in the extracted set. The per-tech hints narrow relevance;
+  # global_hints ensure core economic data is present.
+  min_hinted_params: 1
+  # These parameter names are automatically merged with every technology's
+  # parameter_hints list. A candidate must hit min_hinted_params of these
+  # (plus any tech-specific hints) to be saved.
+  global_hints:
+    - capex_usd_per_kw
+    - opex_fixed_usd_per_kw_yr
+    - opex_var_usd_per_mwh
+    - efficiency_percent
+    - lifetime_years
+    - typical_capacity_mw
+    - construction_time_years
+    - co2_emission_factor_g_per_kwh
+    - capacity_factor_percent
+    - lcoe_usd_per_mwh
   # If true, discard results without a DOI
   require_doi: false
   # If true, attempt to download and parse open-access PDFs
@@ -148,23 +169,10 @@ extraction:
     model: "gpt-4o-mini"         # cost-effective for bulk extraction
     max_tokens_per_paper: 3000   # truncate paper text before sending to LLM
     temperature: 0.0
-    # Prompt template used to instruct the LLM
-    system_prompt: |
-      You are an expert energy systems engineer. Extract cost and performance
-      parameters from the provided paper excerpt. Return ONLY valid JSON with
-      the following fields if found in the text, otherwise omit the field:
-      {
-        "capex_usd_per_kw": number,
-        "opex_fixed_usd_per_kw_yr": number,
-        "opex_var_usd_per_mwh": number,
-        "efficiency_percent": number,
-        "lifetime_years": number,
-        "co2_emission_factor_g_per_kwh": number,
-        "typical_capacity_mw": number,
-        "notes": "brief explanation of extracted values and their context"
-      }
-      All monetary values must be in USD. Convert from EUR using 1 EUR = 1.10 USD.
-      All efficiencies must be in % (e.g. 60.5 not 0.605).
+    # Prompt template used to instruct the LLM.
+    # When set here, this overrides the default prompt in llm_extractor.py.
+    # Leave as null to use the built-in default prompt (recommended).
+    system_prompt: null
 
 # ---------------------------------------------------------------------------
 # Technology-specific search queries
@@ -177,6 +185,7 @@ technologies:
   # SOLAR
   # ─────────────────────────────────────────────────────────────────────────
   solar_pv_utility:
+    domain: generation
     search_queries:
       - "utility scale solar PV capital cost CAPEX LCOE 2023 2024"
       - "large solar photovoltaic plant investment cost per kW economic analysis"
@@ -188,8 +197,12 @@ technologies:
       - opex_fixed_usd_per_kw_yr
       - efficiency_percent
       - lifetime_years
+      - module_efficiency_fraction
+      - degradation_rate_percent_per_yr
+      - capacity_factor_percent
 
   solar_pv_distributed:
+    domain: generation
     search_queries:
       - "distributed rooftop solar PV system cost residential commercial"
       - "small-scale solar PV installation cost per kW"
@@ -199,8 +212,12 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - module_efficiency_fraction
+      - degradation_rate_percent_per_yr
+      - performance_ratio
 
   solar_pv_bifacial:
+    domain: generation
     search_queries:
       - "bifacial solar PV panel energy yield cost LCOE"
       - "bifacial module efficiency albedo bifaciality factor cost"
@@ -208,8 +225,12 @@ technologies:
     parameter_hints:
       - efficiency_percent
       - capex_usd_per_kw
+      - module_efficiency_fraction
+      - performance_ratio
+      - degradation_rate_percent_per_yr
 
   csp_parabolic_trough:
+    domain: generation
     search_queries:
       - "concentrated solar power parabolic trough CAPEX LCOE 2023"
       - "CSP plant capital cost thermal storage molten salt"
@@ -218,8 +239,13 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - solar_multiple
+      - thermal_storage_h
+      - optical_efficiency_fraction
+      - capacity_factor_percent
 
   csp_tower:
+    domain: generation
     search_queries:
       - "solar tower heliostat field capital cost LCOE 2022 2023"
       - "power tower CSP receiver CAPEX thermal storage"
@@ -227,11 +253,16 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - solar_multiple
+      - thermal_storage_h
+      - optical_efficiency_fraction
+      - capacity_factor_percent
 
   # ─────────────────────────────────────────────────────────────────────────
   # WIND
   # ─────────────────────────────────────────────────────────────────────────
   onshore_wind:
+    domain: generation
     search_queries:
       - "onshore wind turbine capital cost CAPEX O&M levelised cost"
       - "onshore wind power plant investment cost per kW 2023 2024"
@@ -242,8 +273,12 @@ technologies:
       - capex_usd_per_kw
       - opex_fixed_usd_per_kw_yr
       - lifetime_years
+      - rotor_diameter_m
+      - hub_height_m
+      - capacity_factor_percent
 
   offshore_wind_fixed:
+    domain: generation
     search_queries:
       - "fixed bottom offshore wind capital cost CAPEX LCOE"
       - "offshore wind monopile jacket foundation investment cost per MW"
@@ -254,8 +289,12 @@ technologies:
       - capex_usd_per_kw
       - opex_fixed_usd_per_kw_yr
       - lifetime_years
+      - rotor_diameter_m
+      - hub_height_m
+      - capacity_factor_percent
 
   offshore_wind_floating:
+    domain: generation
     search_queries:
       - "floating offshore wind capital cost CAPEX LCOE semi-submersible spar"
       - "floating wind turbine levelised cost energy economic analysis"
@@ -264,19 +303,28 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - opex_fixed_usd_per_kw_yr
+      - rotor_diameter_m
+      - hub_height_m
+      - capacity_factor_percent
 
   wind_repowering:
+    domain: generation
     search_queries:
       - "wind turbine repowering cost benefit analysis"
       - "wind farm life extension repowering economics"
     year_filter_from: 2020
     parameter_hints:
       - capex_usd_per_kw
+      - lifetime_years
+      - rotor_diameter_m
+      - hub_height_m
+      - capacity_factor_percent
 
   # ─────────────────────────────────────────────────────────────────────────
   # THERMAL POWER (FOSSIL)
   # ─────────────────────────────────────────────────────────────────────────
   ccgt:
+    domain: generation
     search_queries:
       - "combined cycle gas turbine CCGT capital cost efficiency 2023 2024"
       - "CCGT power plant CAPEX electrical efficiency natural gas"
@@ -289,6 +337,7 @@ technologies:
       - co2_emission_factor_g_per_kwh
 
   ocgt:
+    domain: generation
     search_queries:
       - "open cycle gas turbine OCGT peaking plant capital cost"
       - "gas turbine peaker plant investment cost CAPEX"
@@ -297,8 +346,11 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - heat_rate_mj_per_mwh
+      - min_load_fraction
 
   coal_supercritical:
+    domain: generation
     search_queries:
       - "supercritical coal power plant capital cost per kW overnight cost"
       - "ultra-supercritical coal plant CAPEX efficiency 2022 2023"
@@ -307,8 +359,11 @@ technologies:
       - capex_usd_per_kw
       - efficiency_percent
       - co2_emission_factor_g_per_kwh
+      - heat_rate_mj_per_mwh
+      - min_load_fraction
 
   coal_with_ccs:
+    domain: generation
     search_queries:
       - "coal power plant carbon capture storage CCS CAPEX cost"
       - "post-combustion coal CCS overnight capital cost per kW"
@@ -319,6 +374,7 @@ technologies:
       - co2_emission_factor_g_per_kwh
 
   ccgt_with_ccs:
+    domain: generation
     search_queries:
       - "natural gas combined cycle carbon capture CCS CAPEX cost"
       - "blue hydrogen gas turbine CCS cost per kW efficiency"
@@ -329,6 +385,7 @@ technologies:
       - co2_emission_factor_g_per_kwh
 
   hydrogen_gas_turbine:
+    domain: generation
     search_queries:
       - "hydrogen gas turbine power plant capital cost efficiency"
       - "hydrogen combustion turbine CAPEX techno-economic analysis"
@@ -339,6 +396,7 @@ technologies:
       - efficiency_percent
 
   diesel_generator:
+    domain: generation
     search_queries:
       - "diesel generator genset capital cost per kW installation"
       - "backup diesel generator investment cost efficiency"
@@ -351,28 +409,42 @@ technologies:
   # NUCLEAR
   # ─────────────────────────────────────────────────────────────────────────
   nuclear_conventional:
+    domain: generation
     search_queries:
-      - "nuclear power plant capital cost overnight cost CAPEX 2022 2023"
-      - "nuclear fission plant construction cost per kW overnight"
-      - "AP1000 EPR nuclear reactor capital cost construction"
+      - "nuclear power plant overnight cost USD per kW CAPEX economic 2022 2023 2024"
+      - "nuclear fission PWR BWR overnight construction cost per kilowatt specific investment"
+      - "AP1000 EPR nuclear reactor overnight capital cost construction billion"
+      - "nuclear plant LCOE levelized cost fixed O&M fuel cost techno-economic"
+      - "nuclear power plant capacity factor load factor lifetime operation years"
+      - "large nuclear LWR capital cost USD/kW billion construction overrun schedule"
     year_filter_from: 2018
     parameter_hints:
       - capex_usd_per_kw
       - lifetime_years
       - opex_fixed_usd_per_kw_yr
+      - efficiency_percent
+      - capacity_factor_percent
+      - lcoe_usd_per_mwh
 
   smr:
+    domain: generation
     search_queries:
-      - "small modular reactor SMR capital cost CAPEX 2023 2024"
-      - "SMR nuclear cost per kW economic analysis"
-      - "NuScale X-energy SMR overnight construction cost"
+      - "small modular reactor SMR capital cost overnight CAPEX USD per kW 2023 2024"
+      - "SMR nuclear cost per kW economic analysis techno-economic"
+      - "NuScale X-energy Rolls-Royce SMR overnight construction cost specific investment"
+      - "SMR small modular reactor LCOE levelized cost analysis"
+      - "small modular reactor capacity factor lifetime years techno-economic assessment"
     year_filter_from: 2020
     parameter_hints:
       - capex_usd_per_kw
       - typical_capacity_mw
       - efficiency_percent
+      - lifetime_years
+      - lcoe_usd_per_mwh
+      - capacity_factor_percent
 
   nuclear_fusion:
+    domain: generation
     search_queries:
       - "nuclear fusion power plant capital cost ITER DEMO LCOE estimate"
       - "fusion energy economic analysis cost projection"
@@ -385,6 +457,7 @@ technologies:
   # HYDRO / GEOTHERMAL / BIOMASS / OCEAN
   # ─────────────────────────────────────────────────────────────────────────
   hydro_reservoir:
+    domain: generation
     search_queries:
       - "hydroelectric reservoir dam capital cost per kW"
       - "large hydro power plant investment cost CAPEX 2022 2023"
@@ -394,6 +467,7 @@ technologies:
       - lifetime_years
 
   hydro_run_of_river:
+    domain: generation
     search_queries:
       - "run-of-river hydro power plant capital cost CAPEX"
       - "small run of river hydropower investment cost economic analysis"
@@ -403,6 +477,7 @@ technologies:
       - efficiency_percent
 
   hydro_pumped_storage:
+    domain: storage
     search_queries:
       - "pumped hydro storage capital cost per kW 2022 2023"
       - "pumped storage hydropower PSH CAPEX investment cost"
@@ -413,6 +488,7 @@ technologies:
       - lifetime_years
 
   geothermal_flash:
+    domain: generation
     search_queries:
       - "geothermal power plant capital cost per kW flash steam"
       - "geothermal flash steam plant CAPEX economic analysis"
@@ -422,6 +498,7 @@ technologies:
       - efficiency_percent
 
   geothermal_enhanced:
+    domain: generation
     search_queries:
       - "enhanced geothermal EGS CAPEX investment cost"
       - "deep geothermal EGS drilling cost techno-economic 2023"
@@ -431,6 +508,7 @@ technologies:
       - efficiency_percent
 
   biomass_plant:
+    domain: generation
     search_queries:
       - "biomass power plant capital cost CAPEX per kW 2022 2023"
       - "biomass fired electricity generation investment cost"
@@ -442,6 +520,7 @@ technologies:
       - co2_emission_factor_g_per_kwh
 
   waste_to_energy:
+    domain: generation
     search_queries:
       - "waste to energy municipal solid waste incineration capital cost"
       - "WtE plant CAPEX cost per kW investment analysis"
@@ -451,6 +530,7 @@ technologies:
       - efficiency_percent
 
   biogas_chp:
+    domain: generation
     search_queries:
       - "biogas CHP combined heat power plant capital cost"
       - "anaerobic digestion biogas plant CAPEX economic analysis"
@@ -460,6 +540,7 @@ technologies:
       - efficiency_percent
 
   ocean_tidal:
+    domain: generation
     search_queries:
       - "tidal stream turbine capital cost LCOE techno-economic"
       - "tidal energy barrage capital cost per kW"
@@ -469,6 +550,7 @@ technologies:
       - efficiency_percent
 
   ocean_wave:
+    domain: generation
     search_queries:
       - "wave energy converter capital cost LCOE 2022 2023"
       - "wave power device investment cost techno-economic analysis"
@@ -480,6 +562,7 @@ technologies:
   # ELECTRICITY STORAGE
   # ─────────────────────────────────────────────────────────────────────────
   lithium_ion_bess:
+    domain: storage
     search_queries:
       - "lithium ion battery storage BESS capital cost USD per kW 2023 2024"
       - "grid-scale battery storage LFP NMC CAPEX cost decline"
@@ -490,8 +573,13 @@ technologies:
       - efficiency_percent
       - lifetime_years
       - degradation_rate_percent_per_yr
+      - roundtrip_efficiency_fraction
+      - cycle_lifetime_cycles
+      - capex_usd_per_kwh
+      - energy_density_wh_per_kg
 
   sodium_ion_bess:
+    domain: storage
     search_queries:
       - "sodium ion battery cost per kWh grid storage 2023 2024"
       - "sodium-ion battery energy storage capital cost economic"
@@ -499,8 +587,12 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - roundtrip_efficiency_fraction
+      - cycle_lifetime_cycles
+      - energy_density_wh_per_kg
 
   redox_flow_batteries:
+    domain: storage
     search_queries:
       - "vanadium redox flow battery capital cost per kW 2023"
       - "flow battery CAPEX cost reduction roadmap"
@@ -509,8 +601,12 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - roundtrip_efficiency_fraction
+      - cycle_lifetime_cycles
+      - capex_usd_per_kwh
 
   compressed_air_storage:
+    domain: storage
     search_queries:
       - "compressed air energy storage CAES capital cost per kW"
       - "CAES adiabatic diabatic plant CAPEX economic analysis"
@@ -520,6 +616,7 @@ technologies:
       - efficiency_percent
 
   gravity_storage:
+    domain: storage
     search_queries:
       - "gravity energy storage capital cost per kW LCOE"
       - "gravitational energy storage system cost analysis 2023"
@@ -529,6 +626,7 @@ technologies:
       - efficiency_percent
 
   flywheel_storage:
+    domain: storage
     search_queries:
       - "flywheel energy storage capital cost per kW grid application"
       - "flywheel CAPEX frequency regulation storage cost"
@@ -538,6 +636,7 @@ technologies:
       - efficiency_percent
 
   supercapacitor:
+    domain: storage
     search_queries:
       - "supercapacitor ultracapacitor energy storage cost per kWh"
       - "supercapacitor grid storage capital cost techno-economic"
@@ -549,6 +648,7 @@ technologies:
   # HYDROGEN PRODUCTION & CONVERSION
   # ─────────────────────────────────────────────────────────────────────────
   alkaline_electrolyzer_awe:
+    domain: conversion
     search_queries:
       - "alkaline electrolyzer AWE capital cost per kW 2023 hydrogen"
       - "AWE electrolysis cost reduction efficiency improvement 2024"
@@ -558,8 +658,11 @@ technologies:
       - capex_usd_per_kw
       - efficiency_percent
       - lifetime_years
+      - stack_lifetime_h
+      - lcoh_usd_per_kg
 
   pem_electrolyzer:
+    domain: conversion
     search_queries:
       - "PEM electrolyzer proton exchange membrane capital cost 2023 2024"
       - "PEM electrolysis CAPEX degradation efficiency"
@@ -568,8 +671,11 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - stack_lifetime_h
+      - lcoh_usd_per_kg
 
   solid_oxide_electrolyzer:
+    domain: conversion
     search_queries:
       - "solid oxide electrolysis cell SOEC capital cost efficiency"
       - "high temperature electrolysis SOEC stack cost techno-economic"
@@ -577,8 +683,11 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - stack_lifetime_h
+      - lcoh_usd_per_kg
 
   hydrogen_fuel_cell_stationary:
+    domain: conversion
     search_queries:
       - "stationary hydrogen fuel cell capital cost per kW CAPEX"
       - "PEMFC SOFC stationary fuel cell power plant cost"
@@ -586,8 +695,10 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - stack_lifetime_h
 
   hydrogen_storage_tank:
+    domain: storage
     search_queries:
       - "compressed hydrogen storage tank capital cost per kg"
       - "hydrogen pressure vessel Type IV cost economics"
@@ -596,6 +707,7 @@ technologies:
       - capex_usd_per_kw
 
   ammonia_synthesis:
+    domain: conversion
     search_queries:
       - "green ammonia synthesis Haber-Bosch capital cost per tonne"
       - "ammonia production from renewable hydrogen CAPEX"
@@ -605,6 +717,7 @@ technologies:
       - efficiency_percent
 
   methanation:
+    domain: conversion
     search_queries:
       - "power to methane methanation Sabatier reactor CAPEX"
       - "synthetic methane production cost techno-economic analysis"
@@ -617,6 +730,7 @@ technologies:
   # HEAT PUMPS & THERMAL
   # ─────────────────────────────────────────────────────────────────────────
   air_source_heat_pump:
+    domain: conversion
     search_queries:
       - "air source heat pump capital cost COP efficiency residential"
       - "ASHP CAPEX installation cost 2023 2024"
@@ -625,8 +739,10 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - cop_heating_at_a7_w35
 
   ground_source_heat_pump:
+    domain: conversion
     search_queries:
       - "ground source geothermal heat pump capital cost COP"
       - "GSHP CAPEX borehole installation cost per kW"
@@ -634,8 +750,10 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - cop_heating_at_a7_w35
 
   industrial_heat_pump:
+    domain: conversion
     search_queries:
       - "industrial high temperature heat pump capital cost CAPEX"
       - "industrial heat pump process heat decarbonisation cost"
@@ -643,8 +761,10 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - cop_heating_at_a7_w35
 
   solar_thermal_collector:
+    domain: conversion
     search_queries:
       - "solar thermal flat plate collector capital cost installation"
       - "solar hot water system CAPEX cost per kW thermal"
@@ -654,6 +774,7 @@ technologies:
       - efficiency_percent
 
   thermal_energy_storage:
+    domain: storage
     search_queries:
       - "thermal energy storage hot water tank capital cost per kWh"
       - "seasonal thermal energy storage CAPEX economics"
@@ -661,8 +782,11 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - roundtrip_efficiency_fraction
+      - capex_usd_per_kwh
 
   district_heating:
+    domain: conversion
     search_queries:
       - "district heating network capital cost per km pipeline"
       - "district heating infrastructure investment cost economics"
@@ -674,6 +798,7 @@ technologies:
   # CARBON CAPTURE & DIRECT AIR CAPTURE
   # ─────────────────────────────────────────────────────────────────────────
   direct_air_capture:
+    domain: conversion
     search_queries:
       - "direct air capture DAC capital cost USD per tonne CO2 2023 2024"
       - "DAC carbon capture cost reduction Climeworks Carbon Engineering"
@@ -682,8 +807,10 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - co2_emission_factor_g_per_kwh
 
   post_combustion_ccs:
+    domain: conversion
     search_queries:
       - "post combustion carbon capture amine scrubbing CAPEX cost"
       - "point source CO2 capture capital cost per tonne"
@@ -691,35 +818,46 @@ technologies:
     parameter_hints:
       - capex_usd_per_kw
       - efficiency_percent
+      - co2_emission_factor_g_per_kwh
 
   biomass_ccs_beccs:
+    domain: conversion
     search_queries:
       - "BECCS bioenergy carbon capture negative emissions capital cost"
       - "biomass CCS BECCS techno-economic cost analysis 2022 2023"
     year_filter_from: 2020
     parameter_hints:
       - capex_usd_per_kw
+      - efficiency_percent
+      - co2_emission_factor_g_per_kwh
 
   # ─────────────────────────────────────────────────────────────────────────
   # TRANSMISSION & DISTRIBUTION
   # ─────────────────────────────────────────────────────────────────────────
   hvdc_transmission:
+    domain: transmission
     search_queries:
       - "HVDC high voltage direct current transmission line capital cost per km"
       - "HVDC line underground cable overhead cost per MW·km"
     year_filter_from: 2019
     parameter_hints:
       - capex_usd_per_kw
+      - loss_rate_pct_per_km
+      - voltage_kv
 
   hvac_transmission:
+    domain: transmission
     search_queries:
       - "HVAC high voltage AC overhead transmission line capital cost"
       - "400 kV 220 kV overhead line investment cost per km"
     year_filter_from: 2019
     parameter_hints:
       - capex_usd_per_kw
+      - loss_rate_pct_per_km
+      - voltage_kv
 
   offshore_hvdc_cable:
+    domain: transmission
     search_queries:
       - "offshore HVDC subsea cable capital cost per km"
       - "submarine power cable HVDC cost techno-economic"
@@ -728,6 +866,7 @@ technologies:
       - capex_usd_per_kw
 
   smart_grid_infrastructure:
+    domain: transmission
     search_queries:
       - "smart grid investment cost per customer benefit analysis"
       - "advanced metering infrastructure AMI smart meter CAPEX"
@@ -739,6 +878,7 @@ technologies:
   # TRANSPORT & MOBILITY
   # ─────────────────────────────────────────────────────────────────────────
   ev_charging_station:
+    domain: conversion
     search_queries:
       - "EV charging station infrastructure capital cost per kW"
       - "fast charger DC charging station CAPEX installation cost"
@@ -748,6 +888,7 @@ technologies:
       - efficiency_percent
 
   vehicle_to_grid:
+    domain: conversion
     search_queries:
       - "vehicle to grid V2G bidirectional charger capital cost"
       - "V2G aggregation electric vehicle grid services economics"
@@ -756,6 +897,7 @@ technologies:
       - capex_usd_per_kw
 
   hydrogen_refueling_station:
+    domain: conversion
     search_queries:
       - "hydrogen refueling station FCEV capital cost investment"
       - "hydrogen filling station CAPEX economics 2023"
@@ -767,6 +909,7 @@ technologies:
   # DEMAND RESPONSE & EFFICIENCY
   # ─────────────────────────────────────────────────────────────────────────
   demand_response:
+    domain: conversion
     search_queries:
       - "demand response demand side management capital cost program cost"
       - "flexible demand aggregation DR economics cost-benefit analysis"
@@ -775,6 +918,7 @@ technologies:
       - capex_usd_per_kw
 
   building_insulation:
+    domain: conversion
     search_queries:
       - "building wall insulation retrofit capital cost energy savings"
       - "building envelope thermal insulation cost benefit per m2"
@@ -783,6 +927,7 @@ technologies:
       - capex_usd_per_kw
 
   led_lighting:
+    domain: conversion
     search_queries:
       - "LED lighting replacement capital cost commercial industrial efficiency"
       - "LED retrofit payback period energy savings cost"
@@ -805,3 +950,5 @@ output:
   json_indent: 2
   # Deduplicate candidates by DOI within a run
   dedup_by_doi: true
+  # Incremental runs: skip tech×source pairs scraped within N days (0 = disabled)
+  incremental_cooldown_days: 7

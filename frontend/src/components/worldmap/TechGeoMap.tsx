@@ -11,7 +11,7 @@
  * - No external tile provider; avoids repeated-world tile fetch noise
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -155,8 +155,10 @@ export default function TechGeoMap({
   }, [onCatalogueReady]);
 
   // ── 3. Re-draw choropleth whenever tech/param/year/selection change ───────
+  // useLayoutEffect guarantees the Leaflet layer is rebuilt before the browser
+  // paints, so the map colours change on the same frame as any React state update.
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const map = mapRef.current;
     const geo = geoDataRef.current;
     if (!map || !geo) return;

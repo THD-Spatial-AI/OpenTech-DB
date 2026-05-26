@@ -25,7 +25,7 @@
       "IEA Heat Pumps Tracking Report 2023",
       "NREL Fuel Cell Technology Basics 2022"
     ],
-    "last_updated": "2026-04-08T13:52:16.539136+00:00"
+    "last_updated": "2026-05-26T10:30:33.320950+00:00"
   },
   "technologies": [
     {
@@ -7840,6 +7840,30 @@
           "cold_start_time_min": 8.0
         }
       ]
+    },
+    {
+      "technology_id": "led_lighting",
+      "technology_name": "LED Lighting System",
+      "domain": "conversion",
+      "description": "LED Lighting System — auto-created from scraped literature evidence. First evidence: \"Naturally Derived Organic Dyes for LED Lightings of High Color Rendering and Fid…\" (Semantic Scholar, 2021, doi:10.1002/adsu.202000300) 1 parameter extracted from first instance. OEO class: OEO_00000009 (auto-assigned — human review recommended).",
+      "_auto_created": true,
+      "_auto_created_at": "2026-05-26T10:30:33.320802+00:00",
+      "instances": [
+        {
+          "_source": "semantic_scholar",
+          "_scraped": true,
+          "_paper_doi": "10.1002/adsu.202000300",
+          "_paper_year": 2021,
+          "_scraped_at": "2026-05-07T08:32:03.677872+00:00",
+          "instance_id": "led_lighting_2021_scraped_10_1002_adsu_2020003",
+          "_paper_title": "Naturally Derived Organic Dyes for LED Lightings of High Color Rendering and Fidelity Index",
+          "instance_name": "Led Lighting (scraped 2021, Semantic Scholar)",
+          "reference_source": "Semantic Scholar, 2021, doi:10.1002/adsu.202000300",
+          "efficiency_percent": 82.0
+        }
+      ],
+      "carrier": "electricity",
+      "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000009"
     }
   ]
 }

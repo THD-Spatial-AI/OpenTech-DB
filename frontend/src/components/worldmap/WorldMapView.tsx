@@ -193,6 +193,16 @@ export default function WorldMapView() {
     setSelectedName(null);
   };
 
+  // Called from CountryPanel pie-chart click — switches tech but keeps country open
+  const handleTechSelectFromPanel = useCallback((next: TechMapType) => {
+    const meta = getTechnologyMeta(next);
+    if (!meta) return;
+    setTech(next);
+    if (!meta.availableParams.includes(param)) {
+      setParam(meta.availableParams.includes("capacity_factor") ? "capacity_factor" : meta.availableParams[0]);
+    }
+  }, [param]);
+
   // Legend range
   const [min, max] = tech ? getGlobalRange(tech, param) : [0, 1];
   const { higherIsBetter } = PARAM_META[activeParam];
@@ -218,51 +228,103 @@ export default function WorldMapView() {
           </div>
         </div>
 
-        {/* Controls row */}
-        <div className="flex flex-wrap gap-4 items-end">
+        {/* Controls ──────────────────────────────────────────────────────── */}
+        <div className="space-y-2">
 
-          {/* ── Technology dropdown ────────────────────────────────────── */}
-          <div className="flex flex-col gap-1 min-w-[320px]">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              Technology
-            </span>
-            <input
-              type="search"
-              value={techFilter}
-              onChange={(e) => setTechFilter(e.target.value)}
-              placeholder="Filter technologies..."
-              className="h-9 px-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest
-                         text-sm text-on-surface placeholder:text-on-surface-variant/50
-                         focus:outline-none focus:ring-2 focus:ring-primary/25"
-            />
-            <select
-              value={tech}
-              onChange={(e) => handleTechChange(e.target.value)}
-              className="h-10 px-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest
-                         text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/25"
-            >
-              {groupedTechOptions.map(({ group, options }) => (
-                <optgroup key={group} label={group}>
-                  {options.map((t) => (
-                    <option key={t.id} value={t.id}>{t.label}</option>
+          {/* Row 1: Technology · Parameter · Year */}
+          <div className="flex flex-wrap gap-3 items-end">
+
+            {/* ── Technology combo ──────────────────────────────────────── */}
+            <div className="flex flex-col gap-1 min-w-[260px] flex-1 max-w-[420px]">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                Technology
+              </span>
+              <div className="flex gap-1">
+                <input
+                  type="search"
+                  value={techFilter}
+                  onChange={(e) => setTechFilter(e.target.value)}
+                  placeholder="Search…"
+                  className="h-9 px-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest
+                             text-sm text-on-surface placeholder:text-on-surface-variant/50
+                             focus:outline-none focus:ring-2 focus:ring-primary/25 w-28 shrink-0"
+                />
+                <select
+                  value={tech}
+                  onChange={(e) => handleTechChange(e.target.value)}
+                  className="h-9 flex-1 px-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest
+                             text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/25"
+                >
+                  {groupedTechOptions.map(({ group, options }) => (
+                    <optgroup key={group} label={group}>
+                      {options.map((t) => (
+                        <option key={t.id} value={t.id}>{t.label}</option>
+                      ))}
+                    </optgroup>
                   ))}
-                </optgroup>
-              ))}
-            </select>
+                </select>
+              </div>
+            </div>
+
+            {/* ── Parameter pills ───────────────────────────────────────── */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                Parameter
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {availableParams.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setParam(p)}
+                    className={`h-9 px-3 rounded-lg text-sm font-medium transition-colors ${
+                      param === p
+                        ? "bg-primary text-on-primary"
+                        : "bg-surface-container-lowest border border-outline-variant/30 text-on-surface-variant hover:border-primary/50 hover:text-on-surface"
+                    }`}
+                  >
+                    {PARAM_META[p].label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Year pills ────────────────────────────────────────────── */}
+            <div className="flex flex-col gap-1 ml-auto">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                Year
+              </span>
+              <div className="flex gap-1">
+                {MAP_YEARS.map((y, i) => (
+                  <button
+                    key={y}
+                    onClick={() => setYearIdx(i)}
+                    className={`h-9 px-3 rounded-lg text-sm font-medium transition-colors ${
+                      yearIdx === i
+                        ? "bg-primary text-on-primary"
+                        : "bg-surface-container-lowest border border-outline-variant/30 text-on-surface-variant hover:border-primary/50 hover:text-on-surface"
+                    }`}
+                  >
+                    {y}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* ── Continent dropdown ─────────────────────────────────────── */}
-          <div className="flex flex-col gap-1 min-w-[180px]">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              Continent
+          {/* Row 2: Continent · Country (secondary filter row) */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">
+              Refine:
             </span>
+
+            {/* ── Continent ─────────────────────────────────────────────── */}
             <select
               value={continentFilter}
               onChange={(e) => {
                 setContinentFilter(e.target.value);
                 setCountryFilterIso3("all");
               }}
-              className="h-10 px-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest
+              className="h-8 px-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest
                          text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/25"
             >
               <option value="all">All continents</option>
@@ -270,78 +332,19 @@ export default function WorldMapView() {
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
-          </div>
 
-          {/* ── Country dropdown ───────────────────────────────────────── */}
-          <div className="flex flex-col gap-1 min-w-[220px]">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              Country
-            </span>
+            {/* ── Country ───────────────────────────────────────────────── */}
             <select
               value={countryFilterIso3}
               onChange={(e) => setCountryFilterIso3(e.target.value)}
-              className="h-10 px-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest
-                         text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/25"
+              className="h-8 px-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest
+                         text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/25 min-w-[200px]"
             >
               <option value="all">All countries with data</option>
               {filteredCountryOptions.map((c) => (
                 <option key={c.iso3} value={c.iso3}>{c.name}</option>
               ))}
             </select>
-          </div>
-
-          {/* ── Parameter dropdown ─────────────────────────────────────── */}
-          <div className="flex flex-col gap-1 min-w-[220px]">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              Parameter
-            </span>
-            <select
-              value={param}
-              onChange={(e) => setParam(e.target.value as TechMapParam)}
-              className="h-10 px-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest
-                         text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/25"
-            >
-              {availableParams.map((p) => (
-                <option key={p} value={p}>{PARAM_META[p].label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* ── Year slider ────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-1 ml-auto">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              Year —{" "}
-              <span className="text-primary font-headline text-sm">{year}</span>
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-on-surface-variant w-10 text-right">
-                {MAP_YEARS[0]}
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={MAP_YEARS.length - 1}
-                step={1}
-                value={yearIdx}
-                onChange={(e) => setYearIdx(Number(e.target.value))}
-                className="w-44 accent-primary cursor-pointer"
-                aria-label="Select year"
-              />
-              <span className="text-xs text-on-surface-variant w-10">
-                {MAP_YEARS[MAP_YEARS.length - 1]}
-              </span>
-            </div>
-            {/* Year ticks */}
-            <div className="flex justify-between text-[9px] text-on-surface-variant/50 px-10">
-              {MAP_YEARS.map((y) => (
-                <span
-                  key={y}
-                  className={y === year ? "text-primary font-bold" : ""}
-                >
-                  {y}
-                </span>
-              ))}
-            </div>
           </div>
         </div>
       </div>
@@ -364,7 +367,7 @@ export default function WorldMapView() {
         {/* Country panel — slide in from right */}
         {selectedIso3 && (
           <div
-            className="w-80 flex-shrink-0 border-l border-outline-variant/15
+            className="w-[440px] flex-shrink-0 border-l border-outline-variant/15
                        bg-surface-container-lowest overflow-hidden
                        animate-slideInRight
                        flex flex-col min-h-0"
@@ -377,6 +380,7 @@ export default function WorldMapView() {
                 param={param}
                 year={year}
                 onClose={handleClosePanel}
+                onTechSelect={handleTechSelectFromPanel}
               />
             )}
           </div>

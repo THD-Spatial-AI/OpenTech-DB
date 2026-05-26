@@ -87,6 +87,7 @@ class RunRequest(BaseModel):
 class ApproveRequest(BaseModel):
     reviewed_by: str | None = None
     notes: str = ""
+    dry_run: bool = False  # if True, return merge preview without writing
 
 
 class RejectRequest(BaseModel):
@@ -308,6 +309,7 @@ def approve_candidate(
         candidate_id,
         reviewed_by=body.reviewed_by,
         notes=body.notes,
+        dry_run=body.dry_run,
     )
     if updated is None:
         raise HTTPException(

@@ -956,6 +956,7 @@ function CandidatesTab({ token }: { token: string }) {
       status: status === "all" ? undefined : status,
       technology_id: (techId && techId !== "all") ? techId : undefined,
       limit: 500,
+      token,
     })
       .then((res) => setCandidates(res.candidates))
       .catch((e) => setLoadError(e instanceof Error ? e.message : "Failed to load candidates."))
@@ -1390,7 +1391,7 @@ export default function ScraperPanel({ token }: { token: string }) {
   const loadRuns = useCallback(() => {
     setRunsLoading(true);
     setRunsError(null);
-    fetchScraperRuns(30)
+    fetchScraperRuns(30, token)
       .then((data) => setRuns(data.runs))
       .catch((e) => setRunsError(e instanceof Error ? e.message : "Failed to load run history."))
       .finally(() => setRunsLoading(false));

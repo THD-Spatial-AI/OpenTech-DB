@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import * as echarts from "echarts/core";
-import { LineChart, BarChart } from "echarts/charts";
+import { LineChart, PieChart } from "echarts/charts";
 import {
   GridComponent,
   TooltipComponent,
@@ -26,7 +26,7 @@ import { getCountryByIso3, getParamValues, getTechnologyMeta, getWorldMapTechnol
 // Register ECharts modules (tree-shakeable)
 echarts.use([
   LineChart,
-  BarChart,
+  PieChart,
   GridComponent,
   TooltipComponent,
   LegendComponent,
@@ -107,6 +107,7 @@ interface CountryPanelProps {
   param: TechMapParam;
   year: number;
   onClose: () => void;
+  onTechSelect?: (tech: TechMapType) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -117,6 +118,7 @@ export default function CountryPanel({
   param,
   year,
   onClose,
+  onTechSelect,
 }: CountryPanelProps) {
   const country = getCountryByIso3(iso3);
 
@@ -203,43 +205,84 @@ export default function CountryPanel({
   }, [country, param, year]);
 
   const crossTechOption = useMemo((): echarts.EChartsCoreOption | null => {
-    const rows = crossTechValues.filter((r) => r.value != null);
+    const rows = crossTechValues
+      .filter((r) => r.value != null)
+      .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
     if (rows.length === 0) return null;
 
+    const pInfo = PARAM_META[param];
     return {
-      grid:    { top: 12, right: 16, bottom: 48, left: 12, containLabel: true },
-      tooltip: { ...BASE_TOOLTIP, trigger: "axis" },
-      xAxis: {
-        type: "category",
-        data: rows.map((r) => getTechnologyMeta(r.tech)?.label ?? r.tech.slice(0, 8)),
-        axisLabel: {
-          fontFamily: FONT, color: LABEL, fontSize: 10,
-          interval: 0, rotate: 14,
+      animation: false,
+      stateAnimation: { duration: 0 },
+      tooltip: {
+        ...BASE_TOOLTIP,
+        trigger: "item",
+        formatter: (p: any) => {
+          const val = pInfo?.format(p.value as number) ?? p.value;
+          const unit = pInfo?.unit ?? "";
+          return `${p.name}<br/><b>${val}</b> ${unit} (${p.percent?.toFixed(1)}%)`;
         },
-        axisLine:  { lineStyle: { color: GRID_LINE } },
-        axisTick:  { show: false },
       },
-      yAxis: {
-        type:        "value",
-        axisLabel:   { fontFamily: FONT, color: LABEL, fontSize: 10 },
-        splitLine:   { lineStyle: { color: GRID_LINE } },
-        axisLine:    { show: false },
-        axisTick:    { show: false },
+      legend: {
+        orient: "vertical",
+        right: 0,
+        top: "middle",
+        type: "scroll",
+        textStyle: { fontFamily: FONT, fontSize: 9, color: LABEL },
+        itemHeight: 8,
+        itemWidth: 8,
+        formatter: (name: string) =>
+          name.length > 22 ? name.slice(0, 20) + "\u2026" : name,
       },
       series: [
         {
-          type:  "bar",
-          data:  rows.map((r) => ({
-            value:     r.value,
-            itemStyle: { color: getTechnologyMeta(r.tech)?.color ?? "#4d4b9e", borderRadius: [4, 4, 0, 0] },
-          })),
-          barMaxWidth: 36,
+          type: "pie",
+          radius: ["36%", "62%"],
+          center: ["36%", "50%"],
+          cursor: "pointer",
+          data: rows.map((r) => {
+            const isActive = r.tech === tech;
+            return {
+              name:      getTechnologyMeta(r.tech)?.label ?? r.tech,
+              value:     r.value,
+              itemStyle: {
+                color:       getTechnologyMeta(r.tech)?.color ?? PRIMARY,
+                borderWidth: isActive ? 2.5 : 0,
+                borderColor: "#fff",
+              },
+            };
+          }),
+          label:     { show: false },
+          labelLine: { show: false },
+          emphasis:  { disabled: true },
         },
       ],
     };
-  }, [crossTechValues]);
+  }, [crossTechValues, param, tech]);
+
+  // Stable ref so the click proxy never needs to be re-attached to ECharts
+  const crossTechClickRef = useRef<((p: any) => void) | null>(null);
+  const crossTechRows = useMemo(
+    () => crossTechValues.filter((r) => r.value != null).sort((a, b) => (b.value ?? 0) - (a.value ?? 0)),
+    [crossTechValues],
+  );
+  crossTechClickRef.current = onTechSelect
+    ? (p: any) => { const row = crossTechRows[p.dataIndex]; if (row) onTechSelect(row.tech); }
+    : null;
 
   const crossTechRef = useEChart(crossTechOption);
+
+  // Attach click once after chart init; the proxy always calls the latest handler
+  useEffect(() => {
+    const el = crossTechRef.current;
+    if (!el) return;
+    const chart = echarts.getInstanceByDom(el);
+    if (!chart) return;
+    const proxy = (p: any) => crossTechClickRef.current?.(p);
+    chart.on("click", proxy);
+    return () => { chart.off("click", proxy); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Global rank for selected param ──────────────────────────────────────
 
@@ -427,7 +470,7 @@ export default function CountryPanel({
           <h3 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
             {paramInfo.label} — all technologies ({year})
           </h3>
-          <div ref={crossTechRef} className="w-full h-40" />
+          <div ref={crossTechRef} className="w-full h-56" />
         </div>
       )}
     </div>

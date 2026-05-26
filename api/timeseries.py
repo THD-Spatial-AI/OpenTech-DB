@@ -229,6 +229,130 @@ def get_profile_data(profile_id: str) -> TimeSeriesDataResponse:
     )
 
 
+# ---------------------------------------------------------------------------
+# Admin: edit profile metadata
+# ---------------------------------------------------------------------------
+
+class ProfileMetadataUpdate(BaseModel):
+    name:        str | None = None
+    type:        str | None = None
+    resolution:  str | None = None
+    location:    str | None = None
+    source:      str | None = None
+    carrier:     str | None = None
+    year:        int | None = None
+    unit:        str | None = None
+    description: str | None = None
+
+
+@router.patch(
+    "/{profile_id}",
+    summary="Update profile metadata (admin only)",
+)
+def update_profile_metadata(
+    profile_id:    str,
+    body:          ProfileMetadataUpdate,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict:
+    from api.routes import _require_admin  # noqa: PLC0415
+    _require_admin(authorization)
+
+    if not re.fullmatch(r"[a-z0-9_\-]+", profile_id):
+        raise HTTPException(status_code=400, detail="Invalid profile_id format.")
+    if body.type is not None and body.type not in _ALLOWED_TYPES:
+        raise HTTPException(status_code=422, detail=f"Invalid type. Allowed: {sorted(_ALLOWED_TYPES)}")
+    if body.resolution is not None and body.resolution not in _ALLOWED_RESOLUTIONS:
+        raise HTTPException(status_code=422, detail=f"Invalid resolution. Allowed: {sorted(_ALLOWED_RESOLUTIONS)}")
+
+    if not _CATALOGUE_FILE.exists():
+        raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
+
+    with _CATALOGUE_FILE.open(encoding="utf-8") as fh:
+        catalogue_doc = json.load(fh)
+
+    profiles = catalogue_doc.get("profiles", [])
+    idx = next((i for i, p in enumerate(profiles) if p.get("profile_id") == profile_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
+
+    update_data = body.model_dump(exclude_none=True)
+    profiles[idx].update(update_data)
+
+    # Sync unit into the data file if it changed
+    if "unit" in update_data:
+        data_path = _DATA_DIR / f"{profile_id}.json"
+        if data_path.exists():
+            with data_path.open(encoding="utf-8") as fh:
+                data_file = json.load(fh)
+            data_file["unit"] = update_data["unit"]
+            with data_path.open("w", encoding="utf-8") as fh:
+                json.dump(data_file, fh)
+
+    with _CATALOGUE_FILE.open("w", encoding="utf-8") as fh:
+        json.dump(catalogue_doc, fh, indent=2)
+
+    _reload_catalogue()
+    return profiles[idx]
+
+
+# ---------------------------------------------------------------------------
+# Admin: replace data points
+# ---------------------------------------------------------------------------
+
+class _DataPointIn(BaseModel):
+    timestamp: str
+    value:     float
+
+
+class ProfileDataReplaceBody(BaseModel):
+    points: list[_DataPointIn]
+
+
+@router.put(
+    "/{profile_id}/data",
+    summary="Replace all data points for a profile (admin only)",
+)
+def replace_profile_data(
+    profile_id:    str,
+    body:          ProfileDataReplaceBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict:
+    from api.routes import _require_admin  # noqa: PLC0415
+    _require_admin(authorization)
+
+    if not re.fullmatch(r"[a-z0-9_\-]+", profile_id):
+        raise HTTPException(status_code=400, detail="Invalid profile_id format.")
+    if len(body.points) < 2:
+        raise HTTPException(status_code=422, detail="Must supply at least 2 data points.")
+
+    data_path = _DATA_DIR / f"{profile_id}.json"
+    if not data_path.exists():
+        raise HTTPException(status_code=404, detail=f"Data file for '{profile_id}' not found.")
+
+    with data_path.open(encoding="utf-8") as fh:
+        existing = json.load(fh)
+
+    new_points = [{"timestamp": p.timestamp, "value": round(p.value, 6)} for p in body.points]
+    existing["points"] = new_points
+
+    with data_path.open("w", encoding="utf-8") as fh:
+        json.dump(existing, fh)
+
+    # Update n_timesteps in catalogue index
+    if _CATALOGUE_FILE.exists():
+        with _CATALOGUE_FILE.open(encoding="utf-8") as fh:
+            catalogue_doc = json.load(fh)
+        profiles = catalogue_doc.get("profiles", [])
+        ci = next((i for i, p in enumerate(profiles) if p.get("profile_id") == profile_id), None)
+        if ci is not None:
+            profiles[ci]["n_timesteps"] = len(new_points)
+            with _CATALOGUE_FILE.open("w", encoding="utf-8") as fh:
+                json.dump(catalogue_doc, fh, indent=2)
+        _reload_catalogue()
+
+    return {"profile_id": profile_id, "n_timesteps": len(new_points)}
+
+
 @router.post(
     "/upload",
     response_model=TimeSeriesUploadResponse,

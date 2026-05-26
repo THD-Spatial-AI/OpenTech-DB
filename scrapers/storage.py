@@ -245,9 +245,14 @@ class CandidateStore:
                     "reviewed_by":  reviewed_by,
                 })
                 .eq("candidate_id", candidate_id)
+                .select()  # required — PostgREST returns [] without this
                 .execute()
             )
-            return resp.data[0] if resp.data else None
+            if resp.data:
+                return resp.data[0]
+            # Update succeeded but no row returned (e.g. RLS hides it).
+            # Fetch the row explicitly so the caller always gets a dict back.
+            return self._sb_get(candidate_id)
         except Exception as exc:
             logger.error("Supabase update_status failed: %s", exc)
             return None

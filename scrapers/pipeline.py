@@ -18,7 +18,8 @@ import logging
 import threading
 import time
 import uuid
-from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -48,12 +49,146 @@ _SOURCE_CLASSES = {
 }
 
 _RUN_STATE_LOCK = threading.Lock()
+_LIVE_LOG_LOCK = threading.Lock()
 _CURRENT_RUN_STATE: dict[str, Any] | None = None
 _MAX_LIVE_EVENTS = 200
 _RUNS_DIR = Path(__file__).resolve().parent.parent / "data" / "scraped" / "runs"
 _LIVE_STATE_FILE = _RUNS_DIR / "current_run.json"
 _STOP_REQUEST_FILE = _RUNS_DIR / "stop_request.json"
 _LIVE_LOG_FILE = _RUNS_DIR / "current_run.log"
+_SCRAPE_HISTORY_FILE = _RUNS_DIR / "scrape_history.json"
+
+# Domain → catalogue file mapping (relative to project root / data/)
+_DOMAIN_CATALOGUE_FILES: dict[str, str] = {
+    "generation":  "data/generation/generation_technologies.json",
+    "storage":     "data/storage/storage_technologies.json",
+    "transmission": "data/transmission/transmission_technologies.json",
+    "conversion":  "data/conversion/conversion_technologies.json",
+}
+
+
+def _infer_domain(tech_id: str) -> str:
+    """Best-effort domain inference from *tech_id* when no explicit config domain exists.
+
+    Returns one of: generation | storage | transmission | conversion.
+    Falls back to 'generation' when no pattern matches.
+    """
+    t = tech_id.lower()
+    _storage = (
+        "bess", "batteries", "redox_flow", "compressed_air", "caes", "laes",
+        "gravity_storage", "flywheel", "supercapacitor", "pumped_hydro",
+        "hydro_pumped", "thermal_energy_storage", "hydrogen_storage",
+        "sensible_thermal", "latent_thermal", "hydrogen_underground",
+    )
+    _transmission = (
+        "hvdc", "hvac_transmission", "offshore_hvdc_cable", "smart_grid",
+        "pipeline", "distribution_cable", "substation",
+        "switchgear", "_network",
+    )
+    _conversion = (
+        "electrolyzer", "electrolysis", "fuel_cell", "heat_pump",
+        "methanation", "ammonia_synthesis", "ammonia_", "_ccs", "beccs",
+        "solar_thermal_collector", "district_heating", "building_insulation",
+        "demand_response", "ev_charging", "vehicle_to_grid",
+        "hydrogen_refueling", "led_lighting", "gasification",
+        "fischer_tropsch", "haber_bosch",
+    )
+    if any(m in t for m in _storage):
+        return "storage"
+    if any(m in t for m in _transmission):
+        return "transmission"
+    if any(m in t for m in _conversion):
+        return "conversion"
+    return "generation"
+
+
+def _build_tech_stub(
+    tech_id: str,
+    domain: str,
+    instance: dict[str, Any],
+) -> dict[str, Any]:
+    """Return an OEO-aligned stub technology card for *tech_id*.
+
+    *instance* is the ``proposed_instance`` dict from the candidate that
+    triggered stub creation.  Its ``_paper_*`` provenance fields are used to
+    build an adaptive description.
+
+    Fields populated when found in TECH_METADATA:
+        technology_name, carrier, oeo_class
+
+    Falls back to slug-based inference for unknown tech_ids so new technologies
+    scraped outside the known vocabulary still get a usable stub.
+    """
+    from scrapers.tech_metadata import TECH_METADATA  # lazy — avoids any circulars
+
+    meta = TECH_METADATA.get(tech_id, {})
+    name     = meta.get("name")    or tech_id.replace("_", " ").title()
+    carrier  = meta.get("carrier", "")
+    oeo_uri  = meta.get("oeo_class", "")
+
+    # ── adaptive description ──────────────────────────────────────────────
+    paper_title  = (instance.get("_paper_title")  or "").strip()
+    paper_year   = instance.get("_paper_year")
+    paper_doi    = (instance.get("_paper_doi")    or "").strip()
+    source_raw   = (instance.get("_source")       or "").strip()
+    source_label = source_raw.replace("_", " ").title() if source_raw else ""
+
+    # Count actual extracted parameter fields (exclude provenance/meta keys)
+    _meta_keys = {
+        "instance_id", "instance_name", "reference_source",
+        "_scraped", "_source", "_paper_doi", "_paper_title",
+        "_paper_year", "_scraped_at", "_extracted_params",
+    }
+    n_params = sum(1 for k in instance if k not in _meta_keys)
+
+    desc_parts: list[str] = [
+        f"{name} — auto-created from scraped literature evidence."
+    ]
+
+    if paper_title:
+        snippet = paper_title[:80] + ("…" if len(paper_title) > 80 else "")
+        desc_parts.append(f'First evidence: "{snippet}"')
+
+    prov_bits: list[str] = []
+    if source_label:
+        prov_bits.append(source_label)
+    if paper_year:
+        prov_bits.append(str(paper_year))
+    if paper_doi:
+        prov_bits.append(f"doi:{paper_doi}")
+    if prov_bits:
+        desc_parts.append(f"({', '.join(prov_bits)})")
+
+    if n_params:
+        desc_parts.append(
+            f"{n_params} parameter{'s' if n_params != 1 else ''} extracted from first instance."
+        )
+
+    oeo_local = oeo_uri.rpartition("/")[2] if oeo_uri else ""
+    if oeo_local:
+        desc_parts.append(
+            f"OEO class: {oeo_local} (auto-assigned — human review recommended)."
+        )
+    else:
+        desc_parts.append(
+            "Carrier, OEO class, and full description require human review."
+        )
+
+    stub: dict[str, Any] = {
+        "technology_id":    tech_id,
+        "technology_name":  name,
+        "domain":           domain,
+        "description":      " ".join(desc_parts),
+        "_auto_created":    True,
+        "_auto_created_at": datetime.now(timezone.utc).isoformat(),
+        "instances":        [],
+    }
+    if carrier:
+        stub["carrier"] = carrier
+    if oeo_uri:
+        stub["oeo_class"] = oeo_uri
+
+    return stub
 
 
 def _ensure_runs_dir() -> None:
@@ -103,8 +238,9 @@ def _append_live_log(line: str) -> None:
     _ensure_runs_dir()
     safe = line.replace("\r", " ").replace("\n", " ")
     try:
-        with _LIVE_LOG_FILE.open("a", encoding="utf-8") as fh:
-            fh.write(f"[{_now_utc_iso()}] {safe}\n")
+        with _LIVE_LOG_LOCK:
+            with _LIVE_LOG_FILE.open("a", encoding="utf-8") as fh:
+                fh.write(f"[{_now_utc_iso()}] {safe}\n")
     except Exception:
         pass
 
@@ -263,6 +399,63 @@ def _load_scraper_class(dotted_path: str) -> type:
 
 
 # ---------------------------------------------------------------------------
+# Scrape history – tracks (tech_id × source) → last scraped timestamp
+# Used by incremental mode to skip recently-scraped pairs.
+# ---------------------------------------------------------------------------
+
+def _load_scrape_history() -> dict[str, Any]:
+    if not _SCRAPE_HISTORY_FILE.exists():
+        return {}
+    try:
+        return json.loads(_SCRAPE_HISTORY_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_scrape_history(history: dict[str, Any]) -> None:
+    _ensure_runs_dir()
+    try:
+        tmp = _SCRAPE_HISTORY_FILE.with_suffix(".tmp")
+        tmp.write_text(
+            json.dumps(history, indent=2, default=str), encoding="utf-8"
+        )
+        tmp.replace(_SCRAPE_HISTORY_FILE)
+    except Exception as exc:
+        logger.debug("Could not save scrape history: %s", exc)
+
+
+def _is_recently_scraped(tech_id: str, source: str, cooldown_days: int) -> bool:
+    """Return True if this tech×source was last scraped within *cooldown_days*."""
+    if cooldown_days <= 0:
+        return False
+    history = _load_scrape_history()
+    entry = history.get(f"{tech_id}:{source}")
+    if not entry:
+        return False
+    last_scraped = entry.get("last_scraped_at")
+    if not last_scraped:
+        return False
+    try:
+        last_dt = datetime.fromisoformat(str(last_scraped))
+        if last_dt.tzinfo is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=cooldown_days)
+        return last_dt > cutoff
+    except Exception:
+        return False
+
+
+def _mark_scraped(tech_id: str, source: str, papers_found: int) -> None:
+    """Record that tech×source was successfully fetched right now."""
+    history = _load_scrape_history()
+    history[f"{tech_id}:{source}"] = {
+        "last_scraped_at": datetime.now(timezone.utc).isoformat(),
+        "papers_found": papers_found,
+    }
+    _save_scrape_history(history)
+
+
+# ---------------------------------------------------------------------------
 # Run result
 # ---------------------------------------------------------------------------
 
@@ -336,16 +529,20 @@ class ScrapingPipeline:
 
     def run(
         self,
-        tech_ids: list[str] | None = None,
-        sources:  list[str] | None = None,
+        tech_ids:    list[str] | None = None,
+        sources:     list[str] | None = None,
+        incremental: bool = True,
     ) -> PipelineResult:
         """
         Execute a full pipeline run.
 
         Parameters
         ----------
-        tech_ids : optional list of technology_ids to limit processing.
-        sources  : optional list of source names to use (subset of enabled sources).
+        tech_ids    : optional list of technology_ids to limit processing.
+        sources     : optional list of source names to use.
+        incremental : if True (default), skip tech×source pairs that were
+                      successfully fetched within ``output.incremental_cooldown_days``
+                      (default 7 days).  Pass ``incremental=False`` for a full refresh.
         """
         result = PipelineResult()
         run_t0 = time.perf_counter()
@@ -388,6 +585,7 @@ class ScrapingPipeline:
         # Track DOIs seen this run for deduplication
         seen_doi_this_run: set[str] = set()
         stop_requested = False
+        cooldown_days = int(getattr(self.cfg.output, "incremental_cooldown_days", 7))
 
         try:
             for tech_index, tech_id in enumerate(selected_tech_ids, start=1):
@@ -424,48 +622,102 @@ class ScrapingPipeline:
                     len(selected_tech_ids),
                 )
 
+                # ----------------------------------------------------------
+                # 1. Filter sources by incremental cooldown
+                # ----------------------------------------------------------
+                sources_to_fetch: list[str] = []
                 for source_name in enabled_sources:
                     if _is_stop_requested(result.run_id):
                         stop_requested = True
                         break
-                    self._live_run_update(current_phase="fetch", current_source=source_name)
-                    self._live_event(
-                        level="info",
-                        message=f"Fetching papers for '{tech_id}' from '{source_name}'.",
-                        technology_id=tech_id,
-                        source=source_name,
-                        phase="fetch",
-                    )
-                    source_t0 = time.perf_counter()
-                    try:
-                        papers = self._fetch_papers(
-                            source_name, tech_id, queries, result
-                        )
-                    except Exception as exc:
-                        msg = f"Source {source_name} failed for {tech_id}: {exc}"
-                        logger.warning(msg)
-                        result.errors.append(msg)
-                        self._live_run_update(errors_count=len(result.errors))
+                    if incremental and _is_recently_scraped(tech_id, source_name, cooldown_days):
                         self._live_event(
-                            level="error",
-                            message=msg,
+                            level="info",
+                            message=(
+                                f"Incremental skip: '{tech_id}' × '{source_name}' "
+                                f"was scraped within the last {cooldown_days} day(s)."
+                            ),
                             technology_id=tech_id,
                             source=source_name,
-                            phase="fetch",
+                            phase="incremental_skip",
                         )
+                        logger.debug("Incremental skip: %s × %s", tech_id, source_name)
                         continue
+                    sources_to_fetch.append(source_name)
 
-                    source_elapsed = int(time.perf_counter() - source_t0)
-                    self._live_event(
-                        level="info",
-                        message=(
-                            f"Fetched {len(papers)} paper(s) for '{tech_id}' from '{source_name}' "
-                            f"in {source_elapsed}s."
-                        ),
-                        technology_id=tech_id,
-                        source=source_name,
-                        phase="fetch",
-                    )
+                if stop_requested:
+                    break
+
+                if not sources_to_fetch:
+                    continue
+
+                # ----------------------------------------------------------
+                # 2. Parallel fetch from all remaining sources
+                # ----------------------------------------------------------
+                fetch_t0 = time.perf_counter()
+                self._live_event(
+                    level="info",
+                    message=(
+                        f"Fetching from {len(sources_to_fetch)} source(s) for '{tech_id}' "
+                        f"(parallel, max 4 threads)."
+                    ),
+                    technology_id=tech_id,
+                    phase="fetch",
+                )
+                self._live_run_update(current_phase="fetch", current_source=None)
+
+                papers_by_source: dict[str, list] = {}
+                max_workers = min(len(sources_to_fetch), 4)
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    future_to_src = {
+                        executor.submit(
+                            self._fetch_papers_from_source,
+                            src, tech_id, queries, result.run_id,
+                        ): src
+                        for src in sources_to_fetch
+                    }
+                    for future in as_completed(future_to_src):
+                        src = future_to_src[future]
+                        fetched_src, src_papers, fetch_exc = future.result()
+                        if fetch_exc is not None:
+                            msg = f"Source {src} failed for {tech_id}: {fetch_exc}"
+                            logger.warning(msg)
+                            result.errors.append(msg)
+                            self._live_run_update(errors_count=len(result.errors))
+                            self._live_event(
+                                level="error", message=msg,
+                                technology_id=tech_id, source=src, phase="fetch",
+                            )
+                        else:
+                            papers_by_source[fetched_src] = src_papers
+                            _mark_scraped(tech_id, src, len(src_papers))
+                            self._live_event(
+                                level="info",
+                                message=(
+                                    f"Fetched {len(src_papers)} paper(s) from '{src}'."
+                                ),
+                                technology_id=tech_id, source=src, phase="fetch",
+                            )
+
+                fetch_elapsed = int(time.perf_counter() - fetch_t0)
+                total_papers = sum(len(p) for p in papers_by_source.values())
+                self._live_event(
+                    level="info",
+                    message=(
+                        f"Fetch complete for '{tech_id}': {total_papers} papers from "
+                        f"{len(papers_by_source)} source(s) in {fetch_elapsed}s."
+                    ),
+                    technology_id=tech_id,
+                    phase="fetch",
+                )
+
+                # ----------------------------------------------------------
+                # 3. Sequential paper processing (thread-safe by design)
+                # ----------------------------------------------------------
+                for src_name, papers in papers_by_source.items():
+                    if stop_requested:
+                        break
+                    self._live_run_update(current_source=src_name)
 
                     for paper in papers:
                         if _is_stop_requested(result.run_id):
@@ -476,7 +728,7 @@ class ScrapingPipeline:
                             current_phase="extract",
                             papers_fetched=result.papers_fetched,
                             current_technology=tech_id,
-                            current_source=source_name,
+                            current_source=src_name,
                         )
 
                         # DOI-level dedup within this run
@@ -498,11 +750,11 @@ class ScrapingPipeline:
                                 self._live_event(
                                     level="info",
                                     message=(
-                                        f"Candidate created for '{tech_id}' from '{source_name}' "
+                                        f"Candidate created for '{tech_id}' from '{src_name}' "
                                         f"(paper: {paper.source_id})."
                                     ),
                                     technology_id=tech_id,
-                                    source=source_name,
+                                    source=src_name,
                                     paper_id=paper.source_id,
                                     phase="store",
                                 )
@@ -515,10 +767,11 @@ class ScrapingPipeline:
                                 level="error",
                                 message=msg,
                                 technology_id=tech_id,
-                                source=source_name,
+                                source=src_name,
                                 paper_id=paper.source_id,
                                 phase="extract",
                             )
+
                 if stop_requested:
                     break
 
@@ -647,6 +900,33 @@ class ScrapingPipeline:
     # Internal steps
     # ------------------------------------------------------------------
 
+    def _fetch_papers_from_source(
+        self,
+        source_name: str,
+        tech_id: str,
+        queries: list[str],
+        run_id: str,
+    ) -> tuple[str, list["PaperRecord"], Exception | None]:
+        """Fetch papers from *source_name* for use with ThreadPoolExecutor.
+
+        Returns *(source_name, papers, error)*.  Never raises.
+        """
+        cls_path = _SOURCE_CLASSES.get(source_name)
+        if not cls_path:
+            return source_name, [], None
+        try:
+            cls = _load_scraper_class(cls_path)
+        except (ImportError, AttributeError) as exc:
+            return source_name, [], exc
+        try:
+            with cls(self.cfg) as scraper:
+                papers = scraper.search(tech_id, queries)
+                raw_payload = [p.to_dict() for p in papers]
+                self._raw_store.save(source_name, tech_id, run_id, raw_payload)
+                return source_name, papers, None
+        except Exception as exc:
+            return source_name, [], exc
+
     def _fetch_papers(
         self,
         source_name: str,
@@ -654,22 +934,13 @@ class ScrapingPipeline:
         queries: list[str],
         result: PipelineResult,
     ) -> list[PaperRecord]:
-        cls_path = _SOURCE_CLASSES.get(source_name)
-        if not cls_path:
-            return []
-
-        try:
-            cls = _load_scraper_class(cls_path)
-        except (ImportError, AttributeError) as exc:
-            logger.warning("Could not load scraper %s: %s", source_name, exc)
-            return []
-
-        with cls(self.cfg) as scraper:
-            papers = scraper.search(tech_id, queries)
-            # Save raw API response
-            raw_payload = [p.to_dict() for p in papers]
-            self._raw_store.save(source_name, tech_id, result.run_id, raw_payload)
-            return papers
+        """Sequential single-source fetch (kept for CLI / test compatibility)."""
+        _, papers, exc = self._fetch_papers_from_source(
+            source_name, tech_id, queries, result.run_id
+        )
+        if exc is not None:
+            raise exc
+        return papers
 
     def _process_paper(self, paper: PaperRecord, tech_id: str) -> bool:
         """
@@ -713,6 +984,47 @@ class ScrapingPipeline:
         if not regex_values and llm_params is None:
             return False
 
+        # 5b. parameter_hints enforcement:
+        #   - Merges per-tech hints with global_hints from extraction config.
+        #   - Requires at least min_hinted_params (default 3) of those hints to be
+        #     present in the extracted params. This ensures candidates carry the core
+        #     economic/performance parameters expected for that technology type.
+        tech_cfg = self.cfg.technologies.get(tech_id)
+        tech_hints: list[str] = list(getattr(tech_cfg, "parameter_hints", None) or [])
+        global_hints: list[str] = list(getattr(self.cfg.extraction, "global_hints", None) or [])
+        all_hints: set[str] = set(tech_hints) | set(global_hints)
+
+        if all_hints:
+            extracted_keys = {ev.parameter for ev in regex_values}
+            if llm_params is not None:
+                for fn in llm_params.__dataclass_fields__:
+                    if fn not in ("notes", "confidence", "raw_response") and getattr(llm_params, fn) is not None:
+                        extracted_keys.add(fn)
+            matched_hints = extracted_keys.intersection(all_hints)
+            min_hinted = int(getattr(self.cfg.extraction, "min_hinted_params", 1))
+            if len(matched_hints) < min_hinted:
+                logger.debug(
+                    "Candidate for %s rejected: only %d/%d hinted params found "
+                    "(need %d). Found hints: %s. All hints: %s",
+                    tech_id, len(matched_hints), len(all_hints),
+                    min_hinted, sorted(matched_hints), sorted(all_hints),
+                )
+                return False
+
+        # 5c. Global minimum-params threshold
+        min_params = int(getattr(self.cfg.extraction, "min_params_to_save", 1))
+        total_extracted = len({ev.parameter for ev in regex_values})
+        if llm_params is not None:
+            for fn in llm_params.__dataclass_fields__:
+                if fn not in ("notes", "confidence", "raw_response") and getattr(llm_params, fn) is not None:
+                    total_extracted += 1
+        if total_extracted < min_params:
+            logger.debug(
+                "Candidate for %s rejected: only %d param(s) extracted (min_params_to_save=%d)",
+                tech_id, total_extracted, min_params,
+            )
+            return False
+
         # 6. Normalise → candidate
         candidate = self._normalizer.build_candidate(
             technology_id=tech_id,
@@ -722,6 +1034,22 @@ class ScrapingPipeline:
         )
         if candidate is None:
             return False
+
+        # 6b. Stamp the domain so approval can route it to the correct catalogue file.
+        candidate["technology_domain"] = (
+            getattr(tech_cfg, "domain", None) or _infer_domain(tech_id)
+        )
+
+        # 7. Validate extracted parameter bounds; attach warnings for admin review.
+        from scrapers.validators import validate_params
+        if candidate.get("extracted_params"):
+            val_warnings = validate_params(candidate["extracted_params"])
+            if val_warnings:
+                candidate["validation_warnings"] = [w.to_dict() for w in val_warnings]
+                logger.debug(
+                    "Candidate for %s has %d validation warning(s).",
+                    tech_id, len(val_warnings),
+                )
 
         if self._candidates.has_similar_candidate(
             technology_id=tech_id,
@@ -761,31 +1089,59 @@ class ScrapingPipeline:
         candidate_id: str,
         reviewed_by: str | None = None,
         notes: str = "",
+        dry_run: bool = False,
     ) -> dict[str, Any] | None:
         """
         Approve a pending candidate and merge its proposed_instance into
         the main technology JSON catalogue file.
 
+        Parameters
+        ----------
+        dry_run : if True, compute and return a merge preview without writing
+                  anything.  Useful for admin review before finalising approval.
+
         Returns the updated candidate on success, None if not found.
+        When dry_run=True returns a preview dict instead.
         """
         from scrapers.storage import CandidateStatus
         candidate = self._candidates.get_candidate(candidate_id)
         if candidate is None:
             return None
 
-        tech_id   = candidate.get("technology_id", "")
-        instance  = candidate.get("proposed_instance")
+        tech_id  = candidate.get("technology_id", "")
+        instance = candidate.get("proposed_instance")
+        domain   = candidate.get("technology_domain") or _infer_domain(tech_id)
 
         if instance and tech_id:
             try:
-                self._merge_instance_into_catalogue(tech_id, instance)
+                merge_preview = self._merge_instance_into_catalogue(
+                    tech_id, instance, domain=domain, dry_run=dry_run
+                )
             except Exception as exc:
                 logger.error(
                     "Failed to merge instance for candidate %s: %s", candidate_id, exc
                 )
                 return None
+
+            if dry_run:
+                return {
+                    "dry_run": True,
+                    "candidate_id": candidate_id,
+                    "technology_id": tech_id,
+                    "merge_preview": merge_preview,
+                    "validation_warnings": candidate.get("validation_warnings"),
+                }
+
             # Also push the approved instance to Supabase technology_instances
             self._sb_upsert_approved_instance(tech_id, instance)
+        elif dry_run:
+            return {
+                "dry_run": True,
+                "candidate_id": candidate_id,
+                "technology_id": tech_id,
+                "merge_preview": None,
+                "validation_warnings": candidate.get("validation_warnings"),
+            }
 
         return self._candidates.update_status(
             candidate_id,
@@ -795,12 +1151,19 @@ class ScrapingPipeline:
         )
 
     def _merge_instance_into_catalogue(
-        self, tech_id: str, new_instance: dict[str, Any]
-    ) -> None:
+        self, tech_id: str, new_instance: dict[str, Any], *, domain: str | None = None, dry_run: bool = False
+    ) -> dict[str, Any]:
         """
         Insert *new_instance* into the instances array of the catalogue JSON
-        file that owns *tech_id*.  Raises if the catalogue file is not found.
-        The write is atomic (temp file → rename).
+        file that owns *tech_id*.  Raises if no catalogue file and no domain
+        hint is available.  The write is atomic (temp file → rename).
+
+        When *dry_run=True* returns a preview dict describing what would change
+        without modifying the file.
+
+        When *tech_id* does not exist in any catalogue file, a minimal stub
+        technology card is created in the domain catalogue file so the instance
+        has a home.  Admins can enrich the stub later.
         """
         import json
         from scrapers.storage import _atomic_write
@@ -824,9 +1187,50 @@ class ScrapingPipeline:
                 break
 
         if catalogue_path is None or catalogue_data is None:
-            raise FileNotFoundError(
-                f"Cannot find catalogue JSON for technology_id='{tech_id}'"
+            # ----------------------------------------------------------------
+            # Tech not in any catalogue yet → create a stub tech card.
+            # ----------------------------------------------------------------
+            resolved_domain = domain or _infer_domain(tech_id)
+            rel_path = _DOMAIN_CATALOGUE_FILES.get(resolved_domain)
+            if rel_path is None:
+                raise FileNotFoundError(
+                    f"Cannot find catalogue JSON for technology_id='{tech_id}' "
+                    f"and domain '{resolved_domain}' has no registered catalogue file."
+                )
+            project_root = self.cfg.resolved_path("")
+            catalogue_path = project_root / rel_path
+            try:
+                raw = json.loads(catalogue_path.read_text(encoding="utf-8"))
+            except Exception:
+                raw = {"metadata": {}, "technologies": []}
+            catalogue_data = raw
+
+            stub = _build_tech_stub(tech_id, resolved_domain, new_instance)
+            catalogue_data.setdefault("technologies", []).append(stub)
+            logger.info(
+                "Created stub tech card for '%s' in %s",
+                tech_id, catalogue_path.name,
             )
+            # Locate the newly added stub for the instance loop below
+
+        # --- dry-run: return preview without writing ---
+        if dry_run:
+            new_instance_id = new_instance.get("instance_id")
+            action = "append_new"
+            is_stub = False
+            for tech_entry in catalogue_data.get("technologies", []):
+                if tech_entry.get("technology_id") == tech_id:
+                    is_stub = bool(tech_entry.get("_auto_created"))
+                    existing_ids = [i.get("instance_id") for i in tech_entry.get("instances", [])]
+                    if new_instance_id in existing_ids:
+                        action = "update_existing"
+                    break
+            return {
+                "instance_id": new_instance_id,
+                "action": "create_new_tech_then_append" if is_stub else action,
+                "catalogue_file": str(catalogue_path),
+                "fields_preview": list(new_instance.keys()),
+            }
 
         def _is_blank(v: Any) -> bool:
             return v is None or (isinstance(v, str) and not v.strip())
@@ -869,6 +1273,12 @@ class ScrapingPipeline:
             "Merged instance '%s' into %s",
             new_instance.get("instance_id"), catalogue_path.name,
         )
+        return {
+            "instance_id": new_instance.get("instance_id"),
+            "action": "append_new",
+            "catalogue_file": str(catalogue_path),
+            "fields_preview": list(new_instance.keys()),
+        }
 
     def _sb_upsert_approved_instance(
         self, tech_id: str, instance: dict[str, Any]

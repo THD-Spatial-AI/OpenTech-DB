@@ -27,7 +27,7 @@
       "BSW Wind Marktbericht 2023",
       "Bundesnetzagentur EEG Ausschreibungsdaten 2023"
     ],
-    "last_updated": "2026-05-07T07:41:21.284197+00:00"
+    "last_updated": "2026-05-26T13:52:36.260842+00:00"
   },
   "technologies": [
     {
@@ -6982,6 +6982,56 @@
           "country_iso2": "RU",
           "country": "Russia",
           "country_inference_source": "instance_text"
+        },
+        {
+          "_source": "open_alex",
+          "_scraped": true,
+          "_paper_doi": null,
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-26T11:02:53.713456+00:00",
+          "instance_id": "nuclear_conventional_2025_scraped_https_openalex_org_w",
+          "_paper_title": "Anticipation of Potential Trade-offs and Synergies between Energy and Water in the Context of the French Ecological Transition to 2050 : A Nexus Approach",
+          "instance_name": "Nuclear Power Plant (Conventional) (Open Alex, 2025) - Anticipation of Potential Trade-offs and Sy…",
+          "_paper_countries": [
+            "FR",
+            "GB"
+          ],
+          "reference_source": "Open Alex, 2025, http://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-373110",
+          "_extracted_params": {
+            "opex_var_usd_per_mwh": {
+              "unit": "USD/MWh",
+              "value": 78.76,
+              "source": "regex",
+              "confidence": 0.8
+            }
+          },
+          "opex_var_usd_per_mwh": 78.76
+        },
+        {
+          "_source": "open_alex",
+          "country": "Colombia",
+          "_scraped": true,
+          "_paper_doi": "10.32479/ijeep.19364",
+          "_paper_year": 2025,
+          "_scraped_at": "2026-05-26T11:02:52.798290+00:00",
+          "instance_id": "nuclear_conventional_2025_scraped_10_32479_ijeep_19364",
+          "_paper_title": "Estimation of Levelized Cost of Energy for Small Modular Reactors in Colombia: A Monte Carlo Simulation Approach",
+          "country_iso2": "CO",
+          "instance_name": "Nuclear Power Plant (Conventional) (Open Alex, 2025) - Estimation of Levelized Cost of Energy for…",
+          "_paper_countries": [
+            "CO"
+          ],
+          "lcoe_usd_per_mwh": 77.71,
+          "reference_source": "Open Alex, 2025, doi:10.32479/ijeep.19364",
+          "_extracted_params": {
+            "lcoe_usd_per_mwh": {
+              "unit": "USD/MWh",
+              "value": 77.71,
+              "source": "regex",
+              "confidence": 0.75
+            }
+          },
+          "country_inference_source": "paper_metadata"
         }
       ]
     },

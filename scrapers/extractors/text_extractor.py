@@ -8,14 +8,48 @@ pattern matching. No external services required.
 
 Extracted parameters
 --------------------
-  capex_usd_per_kw              Capital expenditure ($/kW or equivalent)
+Core economic
+  capex_usd_per_kw              Capital expenditure ($/kW)
+  capex_usd_per_kwh             Capital expenditure — energy basis ($/kWh, storage)
   opex_fixed_usd_per_kw_yr      Fixed O&M ($/kW/year)
   opex_var_usd_per_mwh          Variable O&M ($/MWh)
+  lcoe_usd_per_mwh              Levelized cost of electricity ($/MWh)
+  lcoh_usd_per_kg               Levelized cost of hydrogen ($/kg H₂)
+
+Core performance
   efficiency_percent            Net electrical efficiency (%)
+  capacity_factor_percent       Annual capacity factor (%)
   lifetime_years                Technical/economic lifetime (years)
-  co2_emission_factor_g_per_kwh Direct CO₂ emissions (g/kWh)
   typical_capacity_mw           Typical rated capacity (MW)
-  degradation_rate_percent_per_yr  Annual degradation rate (%)
+  degradation_rate_percent_per_yr  Annual degradation rate (%/yr)
+  ramp_rate_pct_per_min         Ramp rate (%/min full load)
+
+Environmental
+  co2_emission_factor_g_per_kwh Direct CO₂ emissions (g/kWh)
+  co2_capture_rate_percent      CO₂ capture efficiency for CCS (%)
+
+Storage-specific
+  energy_density_wh_per_kg      Gravimetric energy density (Wh/kg)
+  power_density_w_per_l         Volumetric power density (W/L)
+  self_discharge_pct_per_day    Self-discharge rate (%/day)
+  roundtrip_efficiency_fraction Round-trip efficiency (fraction 0–1)
+  cycle_lifetime_cycles         Cycle lifetime (full cycles)
+
+Wind-specific
+  rotor_diameter_m / hub_height_m / wind_rated_speed_ms
+
+Solar-specific
+  module_efficiency_fraction / performance_ratio / solar_multiple
+  thermal_storage_h
+
+Thermal-specific
+  heat_rate_mj_per_mwh / min_load_fraction / start_up_time_h
+
+Electrolyzer-specific
+  stack_lifetime_h / cop_heating_at_a7_w35
+
+Transmission-specific
+  loss_rate_pct_per_km
 
 Each extracted value carries:
   - value     : float
@@ -104,16 +138,23 @@ _YR = r"(?:per\s+)?(?:year|yr|annum|p\.a\.)"
 _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
     # ------------------------------------------------------------------ CAPEX
     "capex_usd_per_kw": [
-        # "$1,050/kW" or "USD 850 per kW"
+        # "$1,050/kW" or "USD 850 per kW" — with keyword prefix
         (
-            rf"(?:capital\s+(?:cost|expenditure)|CAPEX|overnight\s+cost|investment\s+cost)"
-            rf"[^$€\d]{{0,40}}{_CURRENCY}?{_NUM}[^a-zA-Z]{{0,10}}/{_PER_KW}",
+            rf"(?:capital\s+(?:cost|expenditure)|CAPEX|overnight\s+cost|investment\s+cost|"
+            rf"specific\s+investment|installed\s+cost|all[\-\s]in\s+cost|EPC\s+cost|"
+            rf"total\s+capital\s+(?:cost|requirement)|construction\s+cost)"
+            rf"[^$€\d]{{0,40}}{_CURRENCY}?{_NUM}[^a-zA-Z]{{0,10}}(?:/|\s+per\s+){_PER_KW}",
             0.90, "USD/kW",
         ),
-        # "1,200 $/kW" bare
+        # "1,200 $/kW" bare — dollar/euro sign with slash
         (
             rf"{_CURRENCY}{_NUM}{_OWS}/{_OWS}{_PER_KW}",
             0.80, "USD/kW",
+        ),
+        # "1,200 USD per kW" bare — currency word with per
+        (
+            rf"{_NUM}{_OWS}(?:USD|EUR|€|US\$)\s+per\s+{_PER_KW}",
+            0.78, "USD/kW",
         ),
         # "1.2 M€/MW" → convert MW→kW (/1000) and EUR→USD
         (
@@ -124,6 +165,11 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
         (
             rf"{_CURRENCY}?{_NUM}{_OWS}(?:USD|EUR|€)?\s*(?:·|\*|×)?\s*kW[\s\-]?(?:−1|-1|⁻¹)",
             0.78, "USD/kW",
+        ),
+        # "overnight cost of $7,000 per kilowatt"
+        (
+            rf"overnight\s+(?:capital\s+)?cost[^$€\d]{{0,40}}{_CURRENCY}?{_NUM}[^a-zA-Z]{{0,10}}per\s+kilowatt",
+            0.90, "USD/kW",
         ),
         # ATB structured: "capex_usd_per_kw = 950"
         (
@@ -213,6 +259,36 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
         ),
         (
             rf"lifetime_years\s*=\s*{_NUM}",
+            0.95, "years",
+        ),
+    ],
+
+    # ------------------------------------------------- Construction time
+    "construction_time_years": [
+        # "construction period of 5 years" / "construction lead time of 6 years"
+        (
+            rf"(?:construction|build|project\s+development)\s+"
+            rf"(?:period|time|duration|lead[\s-]time)"
+            rf"[^0-9]{{0,20}}{_NUM}\s*(?:years?|yr)",
+            0.90, "years",
+        ),
+        # "5-year construction time" / "6-year build period"
+        (
+            rf"{_NUM}[\s-]year[^a-z]{{0,15}}(?:construction|build|development)",
+            0.88, "years",
+        ),
+        # "takes X years to construct / build"
+        (
+            rf"takes?\s+{_NUM}\s*(?:years?|yr)\s+to\s+(?:construct|build|complete)",
+            0.85, "years",
+        ),
+        # "construction duration: X years"
+        (
+            rf"construction\s+duration[^0-9]{{0,20}}{_NUM}\s*(?:years?|yr)",
+            0.87, "years",
+        ),
+        (
+            rf"construction_time_years\s*=\s*{_NUM}",
             0.95, "years",
         ),
     ],
@@ -374,6 +450,231 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
         (rf"COP\s+(?:of\s+)?{_NUM}\s*(?:at\s+A7/W35|heating)?", 0.85, ""),
         (rf"cop_heating_at_a7_w35\s*=\s*{_NUM}", 0.95, ""),
     ],
+
+    # ----------------------------------------------------------------- LCOE
+    "lcoe_usd_per_mwh": [
+        # "LCOE of 65 USD/MWh" or "levelized cost of energy of 65 $/MWh"
+        (
+            rf"(?:LCOE|levelized\s+cost\s+of\s+(?:energy|electricity))"
+            rf"[^$€\d]{{0,50}}{_CURRENCY}?{_NUM}\s*{_CURRENCY}?(?:/|per\s+){_PER_MWH}",
+            0.90, "USD/MWh",
+        ),
+        # "65 €/MWh" (bare — lower confidence, context boost later)
+        (
+            rf"(?:€|\$|USD|EUR)\s*{_NUM}\s*/\s*MWh\b",
+            0.75, "USD/MWh",
+        ),
+        # ATB structured
+        (rf"lcoe_usd_per_mwh\s*=\s*{_NUM}", 0.95, "USD/MWh"),
+    ],
+
+    # ----------------------------------------------------------------- LCOH
+    "lcoh_usd_per_kg": [
+        (
+            rf"(?:LCOH|levelized\s+cost\s+of\s+hydrogen)"
+            rf"[^$€\d]{{0,50}}{_CURRENCY}?{_NUM}\s*{_CURRENCY}?(?:/|per\s+)kg",
+            0.90, "USD/kg",
+        ),
+        (rf"(?:€|\$|USD|EUR)\s*{_NUM}\s*/\s*kg\s*H[₂2]", 0.85, "USD/kg"),
+        (rf"lcoh_usd_per_kg\s*=\s*{_NUM}", 0.95, "USD/kg"),
+    ],
+
+    # ------------------------------------------------------------- CAPEX $/kWh
+    "capex_usd_per_kwh": [
+        (
+            rf"(?:capital\s+(?:cost|expenditure)|CAPEX|storage\s+cost)"
+            rf"[^$€\d]{{0,40}}{_CURRENCY}?{_NUM}\s*{_CURRENCY}?(?:/|per\s+){_PER_KWH}",
+            0.88, "USD/kWh",
+        ),
+        (
+            rf"{_CURRENCY}{_NUM}\s*/\s*kWh\b",
+            0.78, "USD/kWh",
+        ),
+        (rf"capex_usd_per_kwh\s*=\s*{_NUM}", 0.95, "USD/kWh"),
+    ],
+
+    # ----------------------------------------------------- Capacity factor %
+    "capacity_factor_percent": [
+        (
+            rf"capacity\s+factor\s+(?:of\s+)?{_NUM}\s*%",
+            0.90, "%",
+        ),
+        (
+            rf"{_NUM}\s*%\s+capacity\s+factor",
+            0.88, "%",
+        ),
+        (
+            rf"capacity\s+factor\s+(?:of\s+)?{_NUM}\s+(?:percent|pct)",
+            0.85, "%",
+        ),
+        (
+            rf"load\s+factor\s+(?:of\s+)?{_NUM}\s*%",
+            0.82, "%",
+        ),
+        (
+            rf"load\s+factor\s+(?:of\s+)?{_NUM}\s+(?:percent|pct)",
+            0.78, "%",
+        ),
+        (
+            rf"annual\s+(?:energy\s+)?yield[^%\d]{{0,40}}{_NUM}\s*%\s+(?:of\s+)?installed",
+            0.80, "%",
+        ),
+        (rf"capacity_factor_percent\s*=\s*{_NUM}", 0.95, "%"),
+    ],
+
+    # ------------------------------------------------------- Energy density
+    "energy_density_wh_per_kg": [
+        (
+            rf"(?:specific\s+energy|energy\s+density|gravimetric\s+energy)"
+            rf"[^0-9]{{0,30}}{_NUM}\s*Wh\s*/\s*kg",
+            0.90, "Wh/kg",
+        ),
+        (
+            rf"{_NUM}\s*Wh\s*/\s*kg\b",
+            0.82, "Wh/kg",
+        ),
+        (
+            rf"{_NUM}\s*kWh\s*/\s*kg\b",
+            0.80, "kWh/kg",   # will be ×1000 in normalise
+        ),
+        (rf"energy_density_wh_per_kg\s*=\s*{_NUM}", 0.95, "Wh/kg"),
+    ],
+
+    # -------------------------------------------- Power density (W/L) — batteries
+    "power_density_w_per_l": [
+        (
+            rf"(?:power\s+density|specific\s+power)[^0-9]{{0,30}}{_NUM}\s*W\s*/\s*L\b",
+            0.88, "W/L",
+        ),
+        (
+            rf"{_NUM}\s*W\s*/\s*(?:litre|liter|L)\b",
+            0.78, "W/L",
+        ),
+        (rf"power_density_w_per_l\s*=\s*{_NUM}", 0.95, "W/L"),
+    ],
+
+    # ------------------------------------------------------ Self-discharge
+    "self_discharge_pct_per_day": [
+        (
+            rf"self[\-\s]?discharge\s+(?:rate\s+)?(?:of\s+)?{_NUM}\s*%\s*(?:per\s+day|/day)",
+            0.90, "%/day",
+        ),
+        (
+            rf"{_NUM}\s*%\s*(?:per\s+day|/day)\s+self[\-\s]?discharge",
+            0.85, "%/day",
+        ),
+        (rf"self_discharge_pct_per_day\s*=\s*{_NUM}", 0.95, "%/day"),
+    ],
+
+    # ------------------------------------------------------- Ramp rate %/min
+    "ramp_rate_pct_per_min": [
+        (
+            rf"ramp(?:ing)?\s+rate\s+(?:of\s+)?{_NUM}\s*%\s*(?:per\s+min(?:ute)?|/min)",
+            0.90, "%/min",
+        ),
+        (
+            rf"{_NUM}\s*%\s*/\s*min(?:ute)?\s+ramp",
+            0.85, "%/min",
+        ),
+        (rf"ramp_rate_pct_per_min\s*=\s*{_NUM}", 0.95, "%/min"),
+    ],
+
+    # --------------------------------------------------- CO₂ capture rate %
+    "co2_capture_rate_percent": [
+        (
+            rf"(?:CO[₂2]|carbon)\s+capture\s+(?:rate|efficiency)\s+(?:of\s+)?{_NUM}\s*%",
+            0.90, "%",
+        ),
+        (
+            rf"{_NUM}\s*%\s+(?:CO[₂2]|carbon)\s+capture",
+            0.85, "%",
+        ),
+        (rf"co2_capture_rate_percent\s*=\s*{_NUM}", 0.95, "%"),
+    ],
+
+    # -------------------------------------------- Cold start time (hours)
+    "cold_start_time_h": [
+        (
+            rf"cold[\s\-]?start[\s\-]?(?:up\s+)?time\s+(?:of\s+)?{_NUM}\s*h(?:ours?)?",
+            0.88, "h",
+        ),
+        (rf"cold_start_time_h\s*=\s*{_NUM}", 0.95, "h"),
+    ],
+
+    # ----------------------------------------- DOD max fraction (storage)
+    "dod_max_fraction": [
+        (
+            rf"(?:maximum|max\.?)\s+(?:depth\s+of\s+discharge|DOD)\s+(?:of\s+)?{_NUM}\s*%",
+            0.88, "%",
+        ),
+        (
+            rf"DOD\s+(?:of\s+)?{_NUM}\s*%",
+            0.82, "%",
+        ),
+        (rf"dod_max_fraction\s*=\s*{_NUM}", 0.95, "fraction"),
+    ],
+
+    # --------------------------------------------- Charge efficiency (fraction)
+    "charge_efficiency_fraction": [
+        (
+            rf"charge(?:ing)?\s+efficiency\s+(?:of\s+)?{_NUM}\s*%",
+            0.88, "%",
+        ),
+        (rf"charge_efficiency_fraction\s*=\s*{_NUM}", 0.95, "fraction"),
+    ],
+
+    # ------------------------------------------ Discharge efficiency (fraction)
+    "discharge_efficiency_fraction": [
+        (
+            rf"discharge\s+efficiency\s+(?:of\s+)?{_NUM}\s*%",
+            0.88, "%",
+        ),
+        (rf"discharge_efficiency_fraction\s*=\s*{_NUM}", 0.95, "fraction"),
+    ],
+
+    # ------------------------------------------------- Transmission: voltage kV
+    "voltage_kv": [
+        (
+            rf"(?:operating|rated|nominal|line)\s+voltage\s+(?:of\s+)?{_NUM}\s*kV",
+            0.88, "kV",
+        ),
+        (
+            rf"{_NUM}\s*kV\s+(?:HVDC|HVAC|AC|DC|line|transmission)",
+            0.85, "kV",
+        ),
+        (rf"voltage_kv\s*=\s*{_NUM}", 0.95, "kV"),
+    ],
+
+    # ---------------------------------------- Water withdrawal (m³/MWh)
+    "water_withdrawal_m3_per_mwh": [
+        (
+            rf"water\s+(?:withdrawal|consumption|use)\s+(?:of\s+)?{_NUM}\s*m[³3]/MWh",
+            0.88, "m³/MWh",
+        ),
+        (rf"water_withdrawal_m3_per_mwh\s*=\s*{_NUM}", 0.95, "m³/MWh"),
+    ],
+
+    # -------------------------------------------- Land use (m²/kW)
+    "land_use_m2_per_kw": [
+        (
+            rf"land\s+(?:use|area|footprint)\s+(?:of\s+)?{_NUM}\s*m[²2]/kW",
+            0.88, "m²/kW",
+        ),
+        (
+            rf"{_NUM}\s*m[²2]\s*/\s*kW\s+land",
+            0.82, "m²/kW",
+        ),
+        (rf"land_use_m2_per_kw\s*=\s*{_NUM}", 0.95, "m²/kW"),
+    ],
+
+    # ---------------------------------------- Optical efficiency (CSP)
+    "optical_efficiency_fraction": [
+        (
+            rf"optical\s+efficiency\s+(?:of\s+)?{_NUM}\s*%",
+            0.88, "%",
+        ),
+        (rf"optical_efficiency_fraction\s*=\s*{_NUM}", 0.95, "fraction"),
+    ],
 }
 
 
@@ -521,6 +822,24 @@ class TextExtractor:
                 value = raw_value * 1000   # tCO2/MWh → g/kWh (×1000/1 = ×1000)
                 unit  = "g/kWh"
 
+            elif unit_hint == "kWh/kg":
+                value = raw_value * 1000   # kWh/kg → Wh/kg
+                unit  = "Wh/kg"
+
+            elif unit_hint in ("%",) and param in (
+                "module_efficiency_fraction",
+                "performance_ratio",
+                "roundtrip_efficiency_fraction",
+                "charge_efficiency_fraction",
+                "discharge_efficiency_fraction",
+                "dod_max_fraction",
+                "optical_efficiency_fraction",
+                "min_load_fraction",
+            ):
+                # These params are fractions but patterns match % text;
+                # keep value as %, unit as % — caller converts to fraction if needed
+                pass
+
             # Plausibility checks – reject obviously wrong values
             if not self._plausible(param, value):
                 return None, unit, 0.0
@@ -539,14 +858,35 @@ class TextExtractor:
         (e.g. a year value accidentally matched as a CAPEX).
         """
         bounds: dict[str, tuple[float, float]] = {
-            "capex_usd_per_kw":              (50,     25_000),
-            "opex_fixed_usd_per_kw_yr":      (0.1,    1_000),
-            "opex_var_usd_per_mwh":          (0.0,    500),
-            "efficiency_percent":             (1.0,    700),   # COP×100 up to 700
-            "lifetime_years":                (5.0,    100),
-            "co2_emission_factor_g_per_kwh": (0.0,    3_000),
-            "typical_capacity_mw":           (0.0003, 20_000),
-            "degradation_rate_percent_per_yr": (0.0,  10),
+            "capex_usd_per_kw":                (50,      25_000),
+            "capex_usd_per_kwh":               (5,       10_000),
+            "opex_fixed_usd_per_kw_yr":        (0.1,     1_000),
+            "opex_var_usd_per_mwh":            (0.0,     500),
+            "lcoe_usd_per_mwh":                (1.0,     2_000),
+            "lcoh_usd_per_kg":                 (0.5,     50),
+            "efficiency_percent":              (1.0,     500),   # COP×100 ≤ 5 → 500%
+            "capacity_factor_percent":         (1.0,     100),
+            "lifetime_years":                  (5.0,     100),            "construction_time_years":          (0.3,    25),            "co2_emission_factor_g_per_kwh":   (0.0,     3_000),
+            "co2_capture_rate_percent":        (0.0,     100),
+            "typical_capacity_mw":             (0.0003,  20_000),
+            "degradation_rate_percent_per_yr": (0.0,     10),
+            "energy_density_wh_per_kg":        (10,      5_000),
+            "power_density_w_per_l":           (1,       10_000),
+            "self_discharge_pct_per_day":      (0.0,     10),
+            "ramp_rate_pct_per_min":           (0.01,    100),
+            "cycle_lifetime_cycles":           (10,      1_000_000),
+            "roundtrip_efficiency_fraction":   (0.1,     100),  # % or fraction
+            "charge_efficiency_fraction":      (0.1,     100),
+            "discharge_efficiency_fraction":   (0.1,     100),
+            "dod_max_fraction":                (0.1,     100),
+            "voltage_kv":                      (1,       2_000),
+            "loss_rate_pct_per_km":            (0.0001,  5),
+            "land_use_m2_per_kw":              (0.0,     100_000),
+            "water_withdrawal_m3_per_mwh":     (0.0,     500),
+            "stack_lifetime_h":                (100,     200_000),
+            "hub_height_m":                    (10,      300),
+            "rotor_diameter_m":                (1,       400),
+            "thermal_storage_h":               (0.5,     20),
         }
         lo, hi = bounds.get(param, (-1e12, 1e12))
         return lo <= value <= hi

@@ -509,8 +509,9 @@ export async function fetchScraperStatus(): Promise<ScraperStatus> {
   return response.json() as Promise<ScraperStatus>;
 }
 
-export async function fetchScraperRuns(limit = 20): Promise<{ count: number; runs: ScraperRun[] }> {
-  const response = await fetch(`${BASE_URL}/scraper/runs?limit=${limit}`, { headers: HEADERS });
+export async function fetchScraperRuns(limit = 20, token?: string): Promise<{ count: number; runs: ScraperRun[] }> {
+  const authHeaders = token ? { ...HEADERS, Authorization: `Bearer ${token}` } : HEADERS;
+  const response = await fetch(`${BASE_URL}/scraper/runs?limit=${limit}`, { headers: authHeaders });
   if (!response.ok) {
     let detail = `Error ${response.status}`;
     try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
@@ -558,15 +559,16 @@ export async function stopScraperRun(
 }
 
 export async function fetchScraperCandidates(
-  options?: { status?: string; technology_id?: string; limit?: number }
+  options?: { status?: string; technology_id?: string; limit?: number; token?: string }
 ): Promise<{ count: number; candidates: ScraperCandidate[] }> {
   const params = new URLSearchParams();
   if (options?.status)        params.set("status", options.status);
   if (options?.technology_id) params.set("technology_id", options.technology_id);
   if (options?.limit)         params.set("limit", String(options.limit));
   const qs = params.toString();
+  const authHeaders = options?.token ? { ...HEADERS, Authorization: `Bearer ${options.token}` } : HEADERS;
   const response = await fetch(`${BASE_URL}/scraper/candidates${qs ? `?${qs}` : ""}`, {
-    headers: HEADERS,
+    headers: authHeaders,
   });
   if (!response.ok) {
     let detail = `Error ${response.status}`;
@@ -578,11 +580,13 @@ export async function fetchScraperCandidates(
 }
 
 export async function fetchScraperCandidate(
-  candidateId: string
+  candidateId: string,
+  token?: string
 ): Promise<ScraperCandidate> {
+  const authHeaders = token ? { ...HEADERS, Authorization: `Bearer ${token}` } : HEADERS;
   const response = await fetch(
     `${BASE_URL}/scraper/candidates/${encodeURIComponent(candidateId)}`,
-    { headers: HEADERS }
+    { headers: authHeaders }
   );
   if (!response.ok) {
     let detail = `Error ${response.status}`;

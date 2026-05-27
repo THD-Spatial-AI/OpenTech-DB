@@ -138,6 +138,11 @@ _YR = r"(?:per\s+)?(?:year|yr|annum|p\.a\.)"
 _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
     # ------------------------------------------------------------------ CAPEX
     "capex_usd_per_kw": [
+        # Structured pseudo-text: "capex_usd_per_kw = 950"
+        (
+            rf"capex_usd_per_kw\s*=\s*{_NUM}",
+            0.95, "USD/kW",
+        ),
         # "$1,050/kW" or "USD 850 per kW" — with keyword prefix
         (
             rf"(?:capital\s+(?:cost|expenditure)|CAPEX|overnight\s+cost|investment\s+cost|"
@@ -145,6 +150,24 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
             rf"total\s+capital\s+(?:cost|requirement)|construction\s+cost)"
             rf"[^$€\d]{{0,40}}{_CURRENCY}?{_NUM}[^a-zA-Z]{{0,10}}(?:/|\s+per\s+){_PER_KW}",
             0.90, "USD/kW",
+        ),
+        # "overnight cost of $7,000 per kilowatt"
+        (
+            rf"overnight\s+(?:capital\s+)?cost[^$€\d]{{0,40}}{_CURRENCY}?{_NUM}[^a-zA-Z]{{0,10}}per\s+kilowatt",
+            0.90, "USD/kW",
+        ),
+        # Table/colon format: "CAPEX: 850 USD/kW" or "Capital cost: $1,200/kW"
+        (
+            rf"(?:capital\s+(?:cost|expenditure)|CAPEX|overnight\s+cost|investment\s+cost|"
+            rf"specific\s+investment|installed\s+cost)"
+            rf"\s*[:/]\s*{_CURRENCY}?{_NUM}\s*{_CURRENCY}?(?:/|\s+per\s+){_PER_KW}",
+            0.88, "USD/kW",
+        ),
+        # "system cost of 900 USD/kW" / "project cost of 1,100 $/kW"
+        (
+            rf"(?:system|project|plant|total)\s+cost\s+(?:of\s+)?{_CURRENCY}?{_NUM}"
+            rf"[^a-zA-Z]{{0,10}}(?:/|\s+per\s+){_PER_KW}",
+            0.82, "USD/kW",
         ),
         # "1,200 $/kW" bare — dollar/euro sign with slash
         (
@@ -166,25 +189,41 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
             rf"{_CURRENCY}?{_NUM}{_OWS}(?:USD|EUR|€)?\s*(?:·|\*|×)?\s*kW[\s\-]?(?:−1|-1|⁻¹)",
             0.78, "USD/kW",
         ),
-        # "overnight cost of $7,000 per kilowatt"
+        # Range: "costs between 800 and 1,200 $/kW" or "800–1200 $/kW" → pick lower bound
         (
-            rf"overnight\s+(?:capital\s+)?cost[^$€\d]{{0,40}}{_CURRENCY}?{_NUM}[^a-zA-Z]{{0,10}}per\s+kilowatt",
-            0.90, "USD/kW",
+            rf"(?:capital\s+cost|CAPEX|investment)[^$€\d]{{0,40}}"
+            rf"{_CURRENCY}?{_NUM}[^a-zA-Z]{{0,5}}(?:to|–|-|and)\s*\d[\d,]*"
+            rf"\s*{_CURRENCY}?(?:/|\s+per\s+){_PER_KW}",
+            0.72, "USD/kW",
         ),
-        # ATB structured: "capex_usd_per_kw = 950"
+        # "approximately $900/kW" / "about 950 USD/kW" / "around $1,000 per kW"
         (
-            rf"capex_usd_per_kw\s*=\s*{_NUM}",
-            0.95, "USD/kW",
+            rf"(?:approximately|about|around|roughly|estimate[sd]?\s+at)"
+            rf"\s*{_CURRENCY}?{_NUM}\s*{_CURRENCY}?(?:/|\s+per\s+){_PER_KW}",
+            0.72, "USD/kW",
         ),
     ],
 
     # ---------------------------------------------------------- Fixed O&M
     "opex_fixed_usd_per_kw_yr": [
+        # Structured pseudo-text
+        (
+            rf"opex_fixed_usd_per_kw_yr\s*=\s*{_NUM}",
+            0.95, "USD/kW/yr",
+        ),
         # "fixed O&M costs of 18 USD per kW per year"
         (
-            rf"(?:fixed\s+O&?M|fixed\s+operation|O&?M\s+cost)[^$€\d]{{0,40}}"
+            rf"(?:fixed\s+O&?M|fixed\s+operation(?:al)?\s+(?:and\s+maintenance\s+)?cost|"
+            rf"O&?M\s+cost|annual\s+O&?M|maintenance\s+cost)"
+            rf"[^$€\d]{{0,40}}"
             rf"(?:{_CURRENCY})?{_NUM}\s*{_CURRENCY}?(?:/|per\s+){_PER_KW}\s*(?:/|per\s+){_YR}",
             0.88, "USD/kW/yr",
+        ),
+        # Table/colon: "Fixed O&M: 18 $/kW/yr"
+        (
+            rf"(?:fixed\s+O&?M|fixed\s+operations?|annual\s+fixed\s+cost)"
+            rf"\s*[:/]\s*{_CURRENCY}?{_NUM}\s*{_CURRENCY}?(?:/|per\s+){_PER_KW}\s*(?:/|per\s+){_YR}",
+            0.86, "USD/kW/yr",
         ),
         # "18 USD/kW/year" or "18 $/kW/yr"
         (
@@ -196,36 +235,51 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
             rf"{_NUM}\s*{_CURRENCY}per\s+kW\s+per\s+{_YR}",
             0.83, "USD/kW/yr",
         ),
+        # "O&M costs of 15 $/kW-year"
         (
-            rf"opex_fixed_usd_per_kw_yr\s*=\s*{_NUM}",
-            0.95, "USD/kW/yr",
+            rf"O&?M\s+(?:cost|expense)[^$€\d]{{0,30}}{_CURRENCY}?{_NUM}"
+            rf"\s*{_CURRENCY}?/\s*kW[\s\-]?(?:year|yr)",
+            0.83, "USD/kW/yr",
         ),
     ],
 
     # -------------------------------------------------------- Variable O&M
     "opex_var_usd_per_mwh": [
+        # Structured pseudo-text
+        (
+            rf"opex_var_usd_per_mwh\s*=\s*{_NUM}",
+            0.95, "USD/MWh",
+        ),
         # "variable O&M of 3.5 USD/MWh"
         (
-            rf"(?:variable\s+O&?M|variable\s+cost)[^$€\d]{{0,40}}"
+            rf"(?:variable\s+O&?M|variable\s+(?:operation(?:al)?\s+)?cost)"
+            rf"[^$€\d]{{0,40}}"
             rf"(?:{_CURRENCY})?{_NUM}\s*{_CURRENCY}?(?:/|per\s+){_PER_MWH}",
             0.88, "USD/MWh",
+        ),
+        # Table/colon: "Variable O&M: 3 $/MWh"
+        (
+            rf"(?:variable\s+O&?M|variable\s+cost)\s*[:/]\s*{_CURRENCY}?{_NUM}"
+            rf"\s*{_CURRENCY}?(?:/|per\s+){_PER_MWH}",
+            0.86, "USD/MWh",
         ),
         # "3.5 USD/MWh" or "3.5 $/MWh"
         (
             rf"{_NUM}\s*{_CURRENCY}/{_PER_MWH}",
             0.80, "USD/MWh",
         ),
-        (
-            rf"opex_var_usd_per_mwh\s*=\s*{_NUM}",
-            0.95, "USD/MWh",
-        ),
     ],
 
     # -------------------------------------------------------- Efficiency %
     "efficiency_percent": [
+        # Structured pseudo-text
+        (
+            rf"efficiency_percent\s*=\s*{_NUM}",
+            0.95, "%",
+        ),
         # "net electrical efficiency of 58.2%"
         (
-            rf"(?:net\s+)?(?:electrical|thermal|conversion|LHV|HHV)?\s*efficiency"
+            rf"(?:net\s+)?(?:electrical|thermal|conversion|LHV|HHV|overall|cycle)?\s*efficiency"
             rf"[^%\d]{{0,30}}{_NUM}\s*%",
             0.90, "%",
         ),
@@ -234,22 +288,29 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
             rf"{_NUM}\s*%\s*(?:(?:net\s+)?(?:electrical|thermal|LHV|HHV)\s*)?efficiency",
             0.85, "%",
         ),
+        # Table/colon: "Efficiency: 58%"
+        (
+            rf"(?:electrical|thermal|net|conversion)?\s*efficiency\s*[:/]\s*{_NUM}\s*%",
+            0.86, "%",
+        ),
         # COP: "COP of 3.8" → multiply by 100
         (
             rf"COP\s+(?:of\s+)?{_NUM}",
             0.80, "COP",
         ),
-        # ATB structured
-        (
-            rf"efficiency_percent\s*=\s*{_NUM}",
-            0.95, "%",
-        ),
+        # "heat rate of 8.5 GJ/MWh" → efficiency = 3600/8500 ≈ 42%
+        # We skip this here; handled in normaliser if needed
     ],
 
     # --------------------------------------------------------- Lifetime
     "lifetime_years": [
+        # Structured pseudo-text
         (
-            rf"(?:technical|economic|design|expected|plant|asset)\s+(?:lifetime|life)"
+            rf"lifetime_years\s*=\s*{_NUM}",
+            0.95, "years",
+        ),
+        (
+            rf"(?:technical|economic|design|expected|plant|asset|service)\s+(?:lifetime|life)"
             rf"[^0-9]{{0,20}}{_NUM}\s*(?:years?|yr)",
             0.90, "years",
         ),
@@ -257,14 +318,30 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
             rf"lifetime\s+(?:of\s+)?{_NUM}\s*(?:years?|yr)",
             0.87, "years",
         ),
+        # Table/colon: "Lifetime: 25 years"
         (
-            rf"lifetime_years\s*=\s*{_NUM}",
-            0.95, "years",
+            rf"(?:technical|design|plant|economic)?\s*lifetime\s*[:/]\s*{_NUM}\s*(?:years?|yr)",
+            0.86, "years",
+        ),
+        # "operates for 30 years" / "designed for 25-year operation"
+        (
+            rf"(?:operates?\s+for|designed\s+for|operates?\s+over)\s+{_NUM}[\s\-]?(?:years?|yr)",
+            0.80, "years",
+        ),
+        # "20-year economic life" / "25-year design life"
+        (
+            rf"{_NUM}[\s\-]year\s+(?:economic|technical|design|plant|operational)\s+life",
+            0.83, "years",
         ),
     ],
 
     # ------------------------------------------------- Construction time
     "construction_time_years": [
+        # Structured pseudo-text
+        (
+            rf"construction_time_years\s*=\s*{_NUM}",
+            0.95, "years",
+        ),
         # "construction period of 5 years" / "construction lead time of 6 years"
         (
             rf"(?:construction|build|project\s+development)\s+"
@@ -287,37 +364,54 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
             rf"construction\s+duration[^0-9]{{0,20}}{_NUM}\s*(?:years?|yr)",
             0.87, "years",
         ),
+        # Table/colon: "Construction time: 4 years"
         (
-            rf"construction_time_years\s*=\s*{_NUM}",
-            0.95, "years",
+            rf"construction\s+(?:time|period|lead[\s-]time)\s*[:/]\s*{_NUM}\s*(?:years?|yr)",
+            0.86, "years",
         ),
     ],
 
     # ---------------------------------------------------- CO₂ emissions
     "co2_emission_factor_g_per_kwh": [
+        # Structured pseudo-text
+        (
+            rf"co2_emission_factor.*?=\s*{_NUM}",
+            0.95, "g/kWh",
+        ),
         # "450 g CO₂/kWh" or "450 g/kWh CO2"
         (
-            rf"{_NUM}\s*g(?:CO2|CO₂|_CO2)?\s*/\s*kWh",
+            rf"{_NUM}\s*g\s*(?:CO[₂2]|carbon\s*dioxide)?\s*/\s*kWh",
             0.88, "g/kWh",
         ),
         # "0.45 kg CO₂/kWh" → convert to g/kWh (*1000)
         (
-            rf"{_NUM}\s*kg(?:CO2|CO₂)?\s*/\s*kWh",
+            rf"{_NUM}\s*kg\s*(?:CO[₂2])?\s*/\s*kWh",
             0.85, "kg/kWh",
         ),
         # "0.45 tCO₂/MWh" → convert to g/kWh (*1000)
         (
-            rf"{_NUM}\s*(?:t|tonne)(?:CO2|CO₂)?\s*/\s*MWh",
+            rf"{_NUM}\s*(?:t|tonne)\s*(?:CO[₂2])?\s*/\s*MWh",
             0.85, "tCO2/MWh",
         ),
+        # Table/colon: "CO2 emissions: 820 g/kWh"
         (
-            rf"co2_emission_factor.*?=\s*{_NUM}",
-            0.95, "g/kWh",
+            rf"(?:CO[₂2]|carbon)\s+(?:emission|intensity|factor)\s*[:/]\s*{_NUM}\s*g\s*/\s*kWh",
+            0.87, "g/kWh",
+        ),
+        # "emissions factor of 850 g CO₂/kWh"
+        (
+            rf"emission\s+factor\s+(?:of\s+)?{_NUM}\s*g\s*(?:CO[₂2])?\s*/\s*kWh",
+            0.87, "g/kWh",
         ),
     ],
 
     # --------------------------------------------------- Capacity (MW)
     "typical_capacity_mw": [
+        # Structured pseudo-text
+        (
+            rf"typical_capacity_mw\s*=\s*{_NUM}",
+            0.95, "MW",
+        ),
         # "typical plant capacity is 450 MW" / "rated capacity of 450 MW"
         (
             rf"(?:rated|installed|typical|nameplate|plant)[\s\w]{{0,20}}capacity\s+(?:of\s+|is\s+)?{_NUM}\s*MW",
@@ -328,9 +422,10 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
             rf"{_NUM}\s*MW\s+(?:power\s+plant|wind\s+farm|solar\s+park|project|plant|turbine)",
             0.82, "MW",
         ),
+        # GW capacity → convert to MW
         (
-            rf"typical_capacity_mw\s*=\s*{_NUM}",
-            0.95, "MW",
+            rf"(?:rated|installed|typical|nameplate)[\s\w]{{0,20}}capacity\s+(?:of\s+)?{_NUM}\s*GW",
+            0.80, "GW_to_MW",
         ),
     ],
 
@@ -453,19 +548,85 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
 
     # ----------------------------------------------------------------- LCOE
     "lcoe_usd_per_mwh": [
+        # Structured pseudo-text
+        (rf"lcoe_usd_per_mwh\s*=\s*{_NUM}", 0.95, "USD/MWh"),
         # "LCOE of 65 USD/MWh" or "levelized cost of energy of 65 $/MWh"
         (
-            rf"(?:LCOE|levelized\s+cost\s+of\s+(?:energy|electricity))"
+            rf"(?:LCOE|levelized\s+cost\s+of\s+(?:energy|electricity|power)|LCOE)"
             rf"[^$€\d]{{0,50}}{_CURRENCY}?{_NUM}\s*{_CURRENCY}?(?:/|per\s+){_PER_MWH}",
             0.90, "USD/MWh",
         ),
-        # "65 €/MWh" (bare — lower confidence, context boost later)
+        # Table/colon: "LCOE: 45 $/MWh"
+        (
+            rf"LCOE\s*[:/]\s*{_CURRENCY}?{_NUM}\s*{_CURRENCY}?(?:/|per\s+){_PER_MWH}",
+            0.90, "USD/MWh",
+        ),
+        # "levelized cost: 45 USD/MWh"
+        (
+            rf"levelized\s+(?:cost|energy\s+cost)\s*[:/]\s*{_CURRENCY}?{_NUM}"
+            rf"\s*{_CURRENCY}?(?:/|per\s+){_PER_MWH}",
+            0.88, "USD/MWh",
+        ),
+        # "achieves an LCOE of 45 $/MWh" / "results in LCOE of 50 $/MWh"
+        (
+            rf"(?:achieves?|results?\s+in|estimates?\s+at|calculated\s+at)\s+"
+            rf"(?:an?\s+)?LCOE\s+(?:of\s+)?{_CURRENCY}?{_NUM}"
+            rf"\s*{_CURRENCY}?(?:/|per\s+){_PER_MWH}",
+            0.88, "USD/MWh",
+        ),
+        # "65 €/MWh" (bare — lower confidence)
         (
             rf"(?:€|\$|USD|EUR)\s*{_NUM}\s*/\s*MWh\b",
             0.75, "USD/MWh",
         ),
-        # ATB structured
-        (rf"lcoe_usd_per_mwh\s*=\s*{_NUM}", 0.95, "USD/MWh"),
+        # "cost of electricity is 55 USD/MWh"
+        (
+            rf"cost\s+of\s+(?:electricity|energy|generation)\s+(?:is\s+)?{_CURRENCY}?{_NUM}"
+            rf"\s*{_CURRENCY}?(?:/|per\s+){_PER_MWH}",
+            0.82, "USD/MWh",
+        ),
+    ],
+
+    # ----------------------------------------------------- Capacity factor %
+    "capacity_factor_percent": [
+        # Structured pseudo-text
+        (
+            rf"capacity_factor_percent\s*=\s*{_NUM}",
+            0.95, "%",
+        ),
+        (
+            rf"capacity\s+factor\s+(?:of\s+)?{_NUM}\s*%",
+            0.90, "%",
+        ),
+        (
+            rf"{_NUM}\s*%\s+capacity\s+factor",
+            0.88, "%",
+        ),
+        # Table/colon: "Capacity factor: 28%"
+        (
+            rf"capacity\s+factor\s*[:/]\s*{_NUM}\s*%",
+            0.88, "%",
+        ),
+        (
+            rf"capacity\s+factor\s+(?:of\s+)?{_NUM}\s+(?:percent|pct)",
+            0.85, "%",
+        ),
+        (
+            rf"load\s+factor\s+(?:of\s+)?{_NUM}\s*%",
+            0.82, "%",
+        ),
+        # "full load hours of 2,000 h" → capacity factor ≈ 2000/8760 ≈ 22.8%
+        # (keep as raw FLH so _normalise can convert — use a special unit tag)
+        (
+            rf"(?:full[\s\-]load\s+hours?|FLH|annual\s+generation\s+hours?)"
+            rf"\s+(?:of\s+)?{_NUM}\s*h(?:ours?)?",
+            0.78, "FLH",
+        ),
+        # "annual energy yield of X% of installed" (proxy for CF)
+        (
+            rf"annual\s+(?:energy\s+)?yield[^%\d]{{0,40}}{_NUM}\s*%\s+(?:of\s+)?installed",
+            0.80, "%",
+        ),
     ],
 
     # ----------------------------------------------------------------- LCOH
@@ -491,35 +652,6 @@ _PATTERNS: dict[str, list[tuple[str, float, str]]] = {
             0.78, "USD/kWh",
         ),
         (rf"capex_usd_per_kwh\s*=\s*{_NUM}", 0.95, "USD/kWh"),
-    ],
-
-    # ----------------------------------------------------- Capacity factor %
-    "capacity_factor_percent": [
-        (
-            rf"capacity\s+factor\s+(?:of\s+)?{_NUM}\s*%",
-            0.90, "%",
-        ),
-        (
-            rf"{_NUM}\s*%\s+capacity\s+factor",
-            0.88, "%",
-        ),
-        (
-            rf"capacity\s+factor\s+(?:of\s+)?{_NUM}\s+(?:percent|pct)",
-            0.85, "%",
-        ),
-        (
-            rf"load\s+factor\s+(?:of\s+)?{_NUM}\s*%",
-            0.82, "%",
-        ),
-        (
-            rf"load\s+factor\s+(?:of\s+)?{_NUM}\s+(?:percent|pct)",
-            0.78, "%",
-        ),
-        (
-            rf"annual\s+(?:energy\s+)?yield[^%\d]{{0,40}}{_NUM}\s*%\s+(?:of\s+)?installed",
-            0.80, "%",
-        ),
-        (rf"capacity_factor_percent\s*=\s*{_NUM}", 0.95, "%"),
     ],
 
     # ------------------------------------------------------- Energy density
@@ -794,7 +926,19 @@ class TextExtractor:
         conf    = base_confidence
 
         try:
-            if unit_hint == "M_USD/MW":
+            if unit_hint == "GW_to_MW":
+                value = raw_value * 1000   # GW → MW
+                unit  = "MW"
+
+            elif unit_hint == "FLH":
+                # Full load hours → capacity factor %  (FLH / 8760 × 100)
+                if 100 < value <= 8760:
+                    value = round(value / 8760 * 100, 2)
+                    unit  = "%"
+                else:
+                    return None, unit, 0.0   # implausible FLH
+
+            elif unit_hint == "M_USD/MW":
                 # 1.2 M€/MW → $/kW = 1.2e6 / 1000 = 1200 $/kW
                 mag = 1e6
                 value = _currency_to_usd(raw_value * mag / 1000, context)

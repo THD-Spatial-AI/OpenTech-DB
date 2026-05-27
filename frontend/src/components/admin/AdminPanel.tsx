@@ -2037,11 +2037,11 @@ function CatalogueProfilesTab({ token }: { token: string }) {
 
       {/* Two-panel split layout */}
       <div
-        className="flex border border-slate-200 rounded-2xl overflow-hidden"
-        style={{ height: "calc(100vh - 300px)", minHeight: "520px" }}
+        className="flex border border-slate-200 rounded-2xl overflow-hidden shadow-sm"
+        style={{ height: "calc(100vh - 230px)", minHeight: "540px" }}
       >
         {/* LEFT: compact navigable profile list grouped by type */}
-        <div className="w-72 shrink-0 flex flex-col border-r border-slate-200 bg-white">
+        <div className="w-[320px] shrink-0 flex flex-col border-r border-slate-200 bg-white">
 
           {/* Search */}
           <div className="p-3 border-b border-slate-100">
@@ -2545,11 +2545,11 @@ function CatalogueManager({ token }: { token: string }) {
 
           {/* ── Two-panel split layout ── */}
           <div
-            className="flex border border-slate-200 rounded-2xl overflow-hidden"
-            style={{ height: "calc(100vh - 300px)", minHeight: "520px" }}
+            className="flex border border-slate-200 rounded-2xl overflow-hidden shadow-sm"
+            style={{ height: "calc(100vh - 230px)", minHeight: "540px" }}
           >
             {/* LEFT: compact navigable tech list */}
-            <div className="w-72 shrink-0 flex flex-col border-r border-slate-200 bg-white">
+            <div className="w-[320px] shrink-0 flex flex-col border-r border-slate-200 bg-white">
 
               {/* Search input */}
               <div className="p-3 border-b border-slate-100">
@@ -2690,13 +2690,13 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4 flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
-        <span className="material-symbols-outlined text-[20px] text-white">{icon}</span>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-inner ${color}`}>
+        <span className="material-symbols-outlined text-[21px] text-white">{icon}</span>
       </div>
-      <div>
-        <p className="text-2xl font-bold text-slate-800 tabular-nums">{value}</p>
-        <p className="text-xs text-slate-400">{label}</p>
+      <div className="min-w-0">
+        <p className="text-2xl font-bold text-slate-800 tabular-nums leading-none">{value}</p>
+        <p className="text-xs text-slate-400 mt-1 leading-snug">{label}</p>
       </div>
     </div>
   );
@@ -3142,60 +3142,65 @@ export default function AdminPanel() {
       : all.filter((s) => s.status === activeTab);
 
   return (
-    <div className="max-w-[1200px] mx-auto px-8 py-12 w-full space-y-8">
-      {/* Page title */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-            <span className="material-symbols-outlined text-[28px] text-indigo-600">
-              admin_panel_settings
-            </span>
-            Admin Panel
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Manage submissions and edit the live technology catalogue.
-          </p>
+    <div className="w-full">
+      {/* ── Header strip ── */}
+      <div className="px-8 pt-8 pb-0 border-b border-slate-200/80">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm shrink-0">
+              <span className="material-symbols-outlined text-[20px] text-white">admin_panel_settings</span>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800 tracking-tight leading-none">Admin Panel</h1>
+              <p className="text-slate-400 text-xs mt-1 leading-none">
+                Manage submissions and edit the live technology catalogue.
+              </p>
+            </div>
+          </div>
+          {panelTab === "submissions" && (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => token && load(token)}
+              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
+                         border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
+            >
+              <span className={`material-symbols-outlined text-[16px] ${loading ? "animate-spin" : ""}`}>
+                refresh
+              </span>
+              Refresh
+            </button>
+          )}
         </div>
-        {panelTab === "submissions" && (
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => token && load(token)}
-            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
-                       border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
-          >
-            <span className={`material-symbols-outlined text-[16px] ${loading ? "animate-spin" : ""}`}>
-              refresh
-            </span>
-            Refresh
-          </button>
-        )}
+
+        {/* ── Top-level nav tabs ── */}
+        <div className="flex gap-0.5">
+          {([
+            { id: "submissions" as PanelTab, label: "Submissions",         icon: "inbox"          },
+            { id: "profiles"   as PanelTab, label: "Profile Submissions",  icon: "ssid_chart"     },
+            { id: "catalogue"  as PanelTab, label: "Catalogue",            icon: "database"       },
+            { id: "scraper"    as PanelTab, label: "Scraper Pipeline",     icon: "travel_explore" },
+          ]).map(({ id, label, icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setPanelTab(id)}
+              className={[
+                "flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-t-lg transition-all border-b-2 -mb-px",
+                panelTab === id
+                  ? "text-indigo-700 border-indigo-500 bg-white shadow-[0_-1px_3px_0_rgb(0,0,0,0.04)]"
+                  : "text-slate-400 border-transparent hover:text-slate-600 hover:border-slate-300 hover:bg-slate-50/80",
+              ].join(" ")}
+            >
+              <span className={`material-symbols-outlined text-[15px] ${panelTab === id ? "text-indigo-500" : ""}`}>{icon}</span>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ── Top-level panel tabs ── */}
-      <div className="flex gap-1 border-b border-slate-200">
-        {([
-          { id: "submissions" as PanelTab, label: "Submissions",         icon: "inbox"           },
-          { id: "profiles"   as PanelTab, label: "Profile Submissions",  icon: "ssid_chart"      },
-          { id: "catalogue"  as PanelTab, label: "Catalogue Management", icon: "database"        },
-          { id: "scraper"    as PanelTab, label: "Scraper Pipeline",     icon: "travel_explore"  },
-        ]).map(({ id, label, icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setPanelTab(id)}
-            className={[
-              "flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-colors border-b-2",
-              panelTab === id
-                ? "text-indigo-600 border-indigo-500 bg-indigo-50/60"
-                : "text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-50",
-            ].join(" ")}
-          >
-            <span className="material-symbols-outlined text-[16px]">{icon}</span>
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* ── Tab content ── */}
+      <div className="px-8 py-7 space-y-6">
 
       {/* ── Catalogue management panel ── */}
       {panelTab === "catalogue" && token && (
@@ -3346,7 +3351,9 @@ export default function AdminPanel() {
           ))}
         </div>
       )}
-      </>)}
+      </>
+      )}
+      </div>
     </div>
   );
 }

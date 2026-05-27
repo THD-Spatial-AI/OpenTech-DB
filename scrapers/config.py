@@ -136,19 +136,17 @@ class ScraperConfig:
 
     @property
     def enabled_sources(self) -> list[str]:
-        """Names of all currently-enabled source scrapers."""
-        # All known source keys – new ones just need to be added here
-        all_sources = (
-            "open_alex", "semantic_scholar", "scopus",
-            "google_scholar", "nrel_atb", "irena",
-            "eia_api", "crossref", "arxiv", "europe_pmc",
-            "iea_reports", "fraunhofer_ise", "ember_data",
-        )
-        return [
-            name
-            for name in all_sources
-            if getattr(getattr(self.sources, name, _Namespace({})), "enabled", False)
-        ]
+        """Names of all currently-enabled source scrapers.
+
+        Reads directly from self.sources so new scrapers added to the YAML
+        are automatically picked up without editing this list.
+        """
+        result: list[str] = []
+        for name, value in self.sources.__dict__.items():
+            if isinstance(value, _Namespace):
+                if getattr(value, "enabled", False):
+                    result.append(name)
+        return result
 
     @property
     def contact_email(self) -> str:

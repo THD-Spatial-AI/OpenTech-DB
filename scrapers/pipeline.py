@@ -43,6 +43,8 @@ _SOURCE_CLASSES = {
     "scopus":           "scrapers.sources.scopus_api.ScopusScraper",
     "google_scholar":   "scrapers.sources.scholarly_gs.GoogleScholarScraper",
     "nrel_atb":         "scrapers.sources.nrel_atb.NRELATBScraper",
+    "pypsa_techdata":   "scrapers.sources.pypsa_techdata.PyPSATechDataScraper",
+    "irena_costs":      "scrapers.sources.irena_costs.IRENACostsScraper",
     "crossref":         "scrapers.sources.crossref.CrossrefScraper",
     "arxiv":            "scrapers.sources.arxiv_source.ArXivScraper",
     "europe_pmc":       "scrapers.sources.europe_pmc.EuropePMCScraper",

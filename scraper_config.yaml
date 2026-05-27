@@ -124,10 +124,25 @@ sources:
       - "https://www.ise.fraunhofer.de/content/dam/ise/de/documents/publications/studies/Photovoltaics-Report.pdf"
 
   ember_data:
-    enabled: true
-    description: "Ember Climate – open electricity data & reports"
+    enabled: false
+    description: "Ember Climate – electricity generation data only, no technology cost parameters"
     base_url: "https://ember-climate.org/data"
     api_url: "https://api.ember-climate.org/v1"
+
+  pypsa_techdata:
+    enabled: true
+    description: "PyPSA/technology-data – aggregated IRENA·DEA·NREL cost CSV (GitHub, no auth)"
+    base_url: "https://raw.githubusercontent.com/PyPSA/technology-data/master/outputs"
+    # Which projection years to download. Each year is a separate CSV (~50 KB).
+    projection_years:
+      - 2025
+      - 2030
+
+  irena_costs:
+    enabled: true
+    description: "IRENA Renewable Power Generation Costs – globally-weighted averages"
+    base_url: "https://www.irena.org"
+    report_year: 2023
 
 # ---------------------------------------------------------------------------
 # Extraction settings

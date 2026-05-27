@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for taking the time to contribute to **[PROJECT_NAME]**.
+Thank you for taking the time to contribute to **[OpenTech | DB]**.
 
 This project welcomes contributions such as bug reports, feature requests, documentation improvements, code changes, and general feedback.
 

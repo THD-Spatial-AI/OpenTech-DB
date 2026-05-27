@@ -1,17 +1,14 @@
-# CITATION.cff — Update this file with your project's citation information.
-# See https://citation-file-format.github.io/ for the full specification.
-
-cff-version: 1.2.0
-title: "Project Title"
-message: "If you use this software, please cite it as below."
+cff-version: 1.0.0
+title: "OpenTech | DB"
+message: "OPENTECH | DB is a domain-specific data repository and REST API that stores, manages, and distributes standardised technical and economic parameters for energy system technologies. It acts as a single source of truth for energy modelling workflows at the Deggendorf Institute of Technology (DIT) and partner institutions. "
 type: software
 authors:
-  - family-names: "Last Name"
-    given-names: "First Name"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
+  - family-names: "Miranda"
+    given-names: "Ricardo"
+    orcid: "https://orcid.org/0009-0007-9686-0599"
     affiliation: "THD-Spatial"
-repository-code: "https://github.com/THD-Spatial/repo-name"
-url: "https://THD-Spatial.github.io/city2tabula"
+repository-code: "https://github.com/THD-Spatial-AI/OpenTech-DB.git"
+url: "https://github.com/THD-Spatial-AI/OpenTech-DB"
 license: MIT
-version: "0.1.0"
-date-released: "2026-01-01"
+version: "1.0.0"
+date-released: "2026-04-01"

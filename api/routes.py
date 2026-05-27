@@ -103,7 +103,7 @@ from api._auth_helpers import (
     _row_to_record,
     _SUBMISSIONS_TABLE,
 )
-from api._catalogue_ops import _build_updated_catalogue, _create_github_pr_for_approval
+from api._catalogue_ops import _build_updated_catalogue, _create_github_pr_for_approval, _merge_submission_to_supabase
 
 router          = APIRouter(prefix="/technologies", tags=["Technologies"])
 debug_router    = APIRouter(prefix="/debug",         tags=["Debug"])
@@ -176,9 +176,9 @@ def debug_data(authorization: str | None = Header(default=None)):
     return result
 
 
-@debug_router.post("/reload", summary="Clear the technology cache and reload from disk")
+@debug_router.post("/reload", summary="Clear the technology cache and reload from database")
 def reload_cache(authorization: str | None = Header(default=None)):
-    """Force a full reload of all JSON files without restarting the server."""
+    """Force a full reload of all technologies (from Supabase when configured, otherwise JSON files) without restarting the server."""
     _require_admin(authorization)
     _load_all_technologies.cache_clear()
     _build_ontology_schema.cache_clear()
@@ -1368,13 +1368,16 @@ def act_on_submission(
                 raise HTTPException(status_code=409, detail=f"Submission already {row['status']}.")
 
             pr_url: str | None = None
+            merge_result: dict | None = None
             if body.action == "approve":
                 effective_payload = body.edited_payload or row.get("payload", {})
-                pr_url = _create_github_pr_for_approval({
-                    "payload":          effective_payload,
-                    "submission_id":    submission_id,
-                    "technology_name":  effective_payload.get("technology_name") or row.get("technology_name", ""),
-                })
+                record_for_merge = {
+                    "id":              submission_id,
+                    "payload":         effective_payload,
+                    "technology_name": effective_payload.get("technology_name") or row.get("technology_name", ""),
+                }
+                # Primary: merge directly into Supabase technologies table
+                merge_result = _merge_submission_to_supabase(record_for_merge, sb)
             feedback = " | ".join(filter(None, [body.reason, body.admin_notes])) or None
             update_data: dict = {
                 "status":           "approved" if body.action == "approve" else "rejected",
@@ -1382,8 +1385,6 @@ def act_on_submission(
                 "reviewed_by":      admin_email,
                 "rejection_reason": feedback,
             }
-            if pr_url:
-                update_data["pr_url"] = pr_url
             if body.edited_payload:
                 update_data["payload"] = body.edited_payload
             sb.table(_SUBMISSIONS_TABLE).update(update_data).eq("id", submission_id).execute()
@@ -1391,8 +1392,8 @@ def act_on_submission(
             logger.info("Admin %s submission %s (DB)", body.action, submission_id)
             result_status = body.action.replace("approve", "approved").replace("reject", "rejected")
             response: dict = {"status": result_status, "submission_id": submission_id}
-            if pr_url:
-                response["pr_url"] = pr_url
+            if merge_result:
+                response["merged"] = merge_result
             return response
         except HTTPException:
             raise
@@ -1428,7 +1429,7 @@ def act_on_submission(
     with path.open("w", encoding="utf-8") as fh:
         json.dump(record, fh, indent=2, ensure_ascii=False)
 
-    logger.info("Admin %s submission %s (file)", body.action, submission_id)
+    logger.info("Admin %s submission %s (file fallback)", body.action, submission_id)
     response = {"status": record["status"], "submission_id": submission_id}
     if pr_url:
         response["pr_url"] = pr_url

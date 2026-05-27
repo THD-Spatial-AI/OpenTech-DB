@@ -1,10 +1,11 @@
 """
 api/_catalogue_ops.py
 =====================
-Catalogue-merge logic and GitHub PR helper.
+Catalogue-merge logic, GitHub PR helper, and Supabase merge.
 
 Exports used by api/routes.py:
-  _build_updated_catalogue, _create_github_pr_for_approval
+  _build_updated_catalogue, _create_github_pr_for_approval,
+  _merge_submission_to_supabase
 """
 from __future__ import annotations
 
@@ -203,3 +204,148 @@ def _create_github_pr_for_approval(record: dict) -> str:
     pr_url = pr_resp.json()["html_url"]
     logger.info("Opened GitHub PR for approved submission %s: %s", submission_id[:8], pr_url)
     return pr_url
+
+
+def _merge_submission_to_supabase(record: dict, sb) -> dict:
+    """
+    Merge an approved human submission into the Supabase ``technologies`` table.
+
+    If a technology with the same slug already exists, the new instances are
+    appended to it.  Otherwise a new row is inserted.
+
+    Returns a dict with keys ``technology_id``, ``action`` ("created" or
+    "updated"), and ``id`` (UUID string of the technologies row).
+
+    Clears the loader LRU cache so the merged technology is immediately
+    visible to all subsequent API requests.
+    """
+    from api._loader import (
+        DATA_DIR,
+        _load_catalogue_file,
+        _load_all_technologies,
+        _build_ontology_schema,
+    )
+
+    effective_payload = record.get("payload") or {}
+    tech_name = (
+        effective_payload.get("technology_name")
+        or record.get("technology_name")
+        or "Unknown Technology"
+    ).strip()
+    domain      = (effective_payload.get("domain") or "conversion").lower().strip()
+    carrier     = effective_payload.get("carrier", "electricity")
+    oeo_class   = effective_payload.get("oeo_class", "")
+    description = effective_payload.get("description", "")
+    submission_id = str(record.get("id") or record.get("submission_id") or "x")
+
+    # Derive the slug used as technology_id
+    tech_slug = re.sub(r"[^a-z0-9_]", "_", tech_name.lower())[:60].strip("_")
+
+    # Build instances in catalogue format (same shape as JSON catalogue files)
+    instances_raw = effective_payload.get("instances") or [{}]
+    new_instances: list[dict] = []
+    for idx, inst in enumerate(instances_raw):
+        variant  = (inst.get("variant_name") or f"{tech_name} v{idx + 1}").strip()
+        safe_var = re.sub(r"[^a-z0-9_]", "_", variant.lower())[:40]
+        inst_id  = f"{tech_slug}_{safe_var}"
+        new_instances.append({
+            "instance_id":                               inst_id,
+            "instance_name":                             variant,
+            "typical_capacity_mw":                       inst.get("capacity_mw", 0),
+            "capex_usd_per_kw":                          inst.get("capex_usd_per_kw", 0),
+            "opex_fixed_usd_per_kw_yr":                  inst.get("opex_fixed_usd_per_kw_yr", 0),
+            "opex_var_usd_per_mwh":                      inst.get("opex_var_usd_per_mwh", 0),
+            "efficiency_percent":                        inst.get("efficiency_percent", 0),
+            "lifetime_years":                            inst.get("lifetime_years", 20),
+            "co2_emission_factor_operational_g_per_kwh": inst.get("co2_emission_factor_operational_g_per_kwh", 0),
+            "reference_source":                          inst.get("reference_source", "contributor_submission"),
+            **(({"country_iso2": inst["country_iso2"]} if inst.get("country_iso2") else {})),
+            **(({"country":      inst["country"]}      if inst.get("country")      else {})),
+        })
+
+    # ── Check whether the technology already exists ──────────────────────────
+    existing_resp = (
+        sb.table("technologies")
+        .select("id, payload")
+        .eq("technology_id", tech_slug)
+        .maybe_single()
+        .execute()
+    )
+
+    if existing_resp.data:
+        # Append new instances to the existing payload
+        existing_payload: dict = dict(existing_resp.data["payload"])
+        existing_instances: list = existing_payload.get("instances") or []
+        existing_instance_ids = {
+            i.get("instance_id") for i in existing_instances if isinstance(i, dict)
+        }
+        for inst in new_instances:
+            if inst["instance_id"] in existing_instance_ids:
+                # Avoid ID collision by appending the submission ID suffix
+                inst["instance_id"] = f"{inst['instance_id']}_{submission_id[:6]}"
+            existing_instances.append(inst)
+        existing_payload["instances"] = existing_instances
+
+        sb.table("technologies") \
+          .update({"payload": existing_payload}) \
+          .eq("technology_id", tech_slug) \
+          .execute()
+
+        action  = "updated"
+        tech_id = str(existing_resp.data["id"])
+
+    else:
+        # Parse a fresh Technology object through the catalogue loader so that
+        # all field mappings (unit conversions, UUID generation, etc.) are applied
+        # consistently with the JSON ingestion path.
+        synthetic_catalogue = {
+            "metadata": {"domain": domain, "version": "1.0.0", "last_updated": ""},
+            "technologies": [{
+                "technology_id":   tech_slug,
+                "technology_name": tech_name,
+                "domain":          domain,
+                "carrier":         carrier,
+                "oeo_class":       oeo_class,
+                "description":     description,
+                "instances":       new_instances,
+                "source":          "contributor_submission",
+            }],
+        }
+        # Use the domain data dir as base_dir (profile file resolution won't be
+        # needed for contributor submissions, but the path must exist).
+        base_dir = DATA_DIR / domain
+        base_dir.mkdir(parents=True, exist_ok=True)
+        fake_path = base_dir / f"{domain}_technologies.json"
+
+        parsed = _load_catalogue_file(fake_path, synthetic_catalogue)
+        if not parsed:
+            raise HTTPException(
+                status_code=422,
+                detail="Could not parse the submission payload as a valid Technology.",
+            )
+        tech       = parsed[0]
+        tech_id    = str(tech.id)
+        payload_dict = json.loads(tech.model_dump_json())
+
+        sb.table("technologies").insert({
+            "id":            tech_id,
+            "technology_id": tech_slug,
+            "name":          tech_name,
+            "category":      domain,
+            "carrier":       carrier,
+            "oeo_class":     oeo_class,
+            "description":   description,
+            "payload":       payload_dict,
+        }).execute()
+
+        action = "created"
+
+    # Invalidate loader and ontology caches → change is immediately live
+    _load_all_technologies.cache_clear()
+    _build_ontology_schema.cache_clear()
+
+    logger.info(
+        "Merged submission %s into technologies table (%s, %s)",
+        submission_id[:8], tech_slug, action,
+    )
+    return {"technology_id": tech_slug, "action": action, "id": tech_id}

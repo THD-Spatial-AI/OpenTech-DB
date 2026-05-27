@@ -198,24 +198,25 @@ export default function SideNavBar({
       className="h-[calc(100vh-3.5rem)] w-64 fixed left-0 top-14 bg-surface-container-low
                  border-r border-outline-variant/15 flex-col z-[60] hidden lg:flex"
     >
-      {/* Brand + collapse */}
-      <div className="relative flex items-center justify-center px-4 py-2 border-b border-outline-variant/10 flex-shrink-0">
-        <img src={logoWithTitle} alt="OPENTECH|DB" className="h-16 w-auto object-contain" />
-        <button
-          onClick={handleCollapseToggle}
-          aria-label="Collapse sidebar"
-          className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors"
-        >
-          <span className="material-symbols-outlined text-on-surface-variant text-lg">first_page</span>
-        </button>
-      </div>
-
       {/* Scrollable content */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 min-h-0">
 
         {/* ── World Map ─────────────────────────────────────────────────── */}
         <div>
-          <SectionHeading icon="public" label="Global Explorer" />
+          <div className="flex items-center gap-2 px-2 mb-1.5">
+            <span className="material-symbols-outlined text-sm text-primary/70">public</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface flex-1">
+              Global Explorer
+            </span>
+            <button
+              onClick={handleCollapseToggle}
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+              className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors ml-auto"
+            >
+              <span className="material-symbols-outlined text-on-surface-variant/60 hover:text-on-surface-variant text-base">first_page</span>
+            </button>
+          </div>
           <button
             onClick={() => onViewChange("worldmap")}
             aria-current={activeView === "worldmap" ? "page" : undefined}

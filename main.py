@@ -13,6 +13,9 @@ Interactive docs:
 
 from __future__ import annotations
 
+from dotenv import load_dotenv
+load_dotenv()  # load .env before any env-dependent imports
+
 import json
 import logging
 import uuid as _uuid

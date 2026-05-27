@@ -3,11 +3,15 @@ api/_loader.py
 ==============
 Pure data-loading layer — no HTTP, no auth, no side effects beyond disk reads.
 
+Primary data source: Supabase `technologies` table (when SUPABASE_URL +
+SUPABASE_SERVICE_ROLE_KEY are set).  Falls back to local JSON files under
+data/ when Supabase is not configured (local dev).
+
 Exports (used by api/routes.py and tests):
-  DATA_DIR, _UUID_NS
+  DATA_DIR, _UUID_NS, _TECHNOLOGIES_TABLE
   _pv, _detect_lifecycle, _map_carrier, _is_catalogue
   _map_catalogue_instance, _load_catalogue_file, _pick_legacy_model
-  _load_all_technologies, _get_all
+  _load_all_technologies, _get_all, _load_from_json
   _build_ontology_schema
   _PENDING_DIR
 """
@@ -15,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -43,6 +48,7 @@ logger = logging.getLogger(__name__)
 DATA_DIR  = Path(__file__).resolve().parent.parent / "data"
 _UUID_NS  = uuid.UUID("12345678-1234-5678-1234-567812345678")
 _PENDING_DIR = DATA_DIR / "pending_submissions"
+_TECHNOLOGIES_TABLE = "technologies"
 
 # ---------------------------------------------------------------------------
 # Constants – VRE & carrier mapping
@@ -350,11 +356,54 @@ def _pick_legacy_model(raw: dict) -> type[Technology]:
     return _CATEGORY_MODEL_MAP.get(cat, Technology)
 
 # ---------------------------------------------------------------------------
-# Cached main loader
+# Supabase loader helpers
 # ---------------------------------------------------------------------------
 
-@lru_cache(maxsize=1)
-def _load_all_technologies() -> dict[str, Technology]:
+def _get_sb_for_loader():
+    """Return a Supabase service-role client for the loader, or None if not configured."""
+    url = os.getenv("SUPABASE_URL", "")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not url or not key:
+        return None
+    try:
+        from supabase import create_client  # type: ignore[import]
+        return create_client(url, key)
+    except Exception as exc:
+        logger.warning("Supabase client unavailable: %s — falling back to JSON files", exc)
+        return None
+
+
+def _load_from_supabase(sb) -> dict[str, Technology]:
+    """Fetch all active technologies from the Supabase `technologies` table."""
+    techs: dict[str, Technology] = {}
+    page_size = 500
+    offset = 0
+    while True:
+        resp = (
+            sb.table(_TECHNOLOGIES_TABLE)
+            .select("id, payload")
+            .eq("is_active", True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        rows = resp.data or []
+        for row in rows:
+            try:
+                payload = row["payload"]
+                model_cls = _pick_legacy_model(payload)
+                tech = model_cls.model_validate(payload)
+                techs[str(tech.id)] = tech
+            except Exception as exc:  # noqa: BLE001
+                logger.error("  FAIL Supabase row %s → %s: %s", row.get("id"), type(exc).__name__, exc)
+        if len(rows) < page_size:
+            break
+        offset += page_size
+    logger.info("Loaded %d technologies from Supabase", len(techs))
+    return techs
+
+
+def _load_from_json() -> dict[str, Technology]:
+    """Load all technologies from the local JSON catalogue files (fallback path)."""
     logger.info("DATA_DIR resolved to: %s (exists=%s)", DATA_DIR, DATA_DIR.exists())
     techs: dict[str, Technology] = {}
     _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries", "scraped"}
@@ -380,8 +429,31 @@ def _load_all_technologies() -> dict[str, Technology]:
         except Exception as exc:  # noqa: BLE001
             logger.error("  FAIL %s → %s: %s", json_file.name, type(exc).__name__, exc)
 
-    logger.info("Total technologies loaded: %d", len(techs))
+    logger.info("Total technologies loaded from JSON: %d", len(techs))
     return techs
+
+
+# ---------------------------------------------------------------------------
+# Cached main loader — Supabase primary, JSON fallback
+# ---------------------------------------------------------------------------
+
+@lru_cache(maxsize=1)
+def _load_all_technologies() -> dict[str, Technology]:
+    """
+    Load all active technologies.
+
+    Primary path: Supabase ``technologies`` table (when SUPABASE_URL and
+    SUPABASE_SERVICE_ROLE_KEY env vars are present).
+    Fallback: local JSON files under data/ (for local dev without Supabase).
+    """
+    sb = _get_sb_for_loader()
+    if sb is not None:
+        try:
+            return _load_from_supabase(sb)
+        except Exception as exc:
+            logger.error("Supabase load failed (%s) — falling back to JSON files", exc)
+
+    return _load_from_json()
 
 
 def _get_all() -> dict[str, Technology]:
@@ -390,28 +462,32 @@ def _get_all() -> dict[str, Technology]:
 
 @lru_cache(maxsize=1)
 def _build_ontology_schema() -> dict:
-    """Scan all catalogue JSON files to derive the live controlled-vocabulary lists."""
+    """Derive the live controlled-vocabulary lists from the loaded technology cache."""
     from schemas.models import TechnologyCategory, EnergyCarrier
 
     oeo_classes: set[str] = set()
     reference_sources: set[str] = set()
 
-    for json_file in DATA_DIR.rglob("*.json"):
-        try:
-            raw = _load_json_file(json_file)
-        except Exception as exc:
-            logger.warning("Cannot read %s for ontology schema: %s", json_file, exc)
-            continue
-        if not _is_catalogue(raw):
-            continue
-        for tech in raw.get("technologies", []):
-            oeo_uri = tech.get("oeo_class")
-            if oeo_uri:
-                oeo_classes.add(oeo_uri)
-            for inst in tech.get("instances", []):
-                ref = inst.get("reference_source")
-                if ref:
-                    reference_sources.add(ref)
+    for tech in _get_all().values():
+        if tech.oeo_uri:
+            oeo_classes.add(tech.oeo_uri)
+        for inst in tech.instances:
+            # Collect sources from every ParameterValue field
+            for pv in [
+                inst.capex_per_kw,
+                inst.capex_per_kwh,
+                inst.opex_fixed_per_kw_yr,
+                inst.opex_variable_per_mwh,
+                inst.economic_lifetime_yr,
+                inst.electrical_efficiency,
+                inst.capacity_kw,
+                inst.co2_emission_factor,
+            ]:
+                if pv is not None and getattr(pv, "source", None):
+                    reference_sources.add(pv.source)
+            # Also capture the reference_source stored in extra
+            if inst.extra and inst.extra.get("reference_source"):
+                reference_sources.add(inst.extra["reference_source"])
 
     return {
         "allowed_domains":           [c.value for c in TechnologyCategory],

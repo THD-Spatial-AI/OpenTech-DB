@@ -72,16 +72,17 @@ bounds, and no ontology alignment.
 │   ┌──────▼──────┐   ┌───────────────────────┐   ┌─────────────▼──────────┐  │
 │   │ Data Layer  │   │  Framework Adapters   │   │   Scraper Pipeline     │  │
 │   │             │   │                       │   │                        │  │
-│   │ data/*.json │   │  pypsa_adapter.py     │   │  pipeline.py           │  │
-│   │ Pydantic v2 │   │  calliope_adapter.py  │   │  scheduler.py          │  │
-│   │ LRU cache   │   │                       │   │  sources/ extractors/  │  │
-│   └─────────────┘   └───────────────────────┘   │  normalizer.py         │  │
-│                                                  │  storage.py            │  │
+│   │ Supabase    │   │  pypsa_adapter.py     │   │  pipeline.py           │  │
+│   │ (primary)   │   │  calliope_adapter.py  │   │  scheduler.py          │  │
+│   │ JSON (dev)  │   │                       │   │  sources/ extractors/  │  │
+│   │ LRU cache   │   │                       │   │  normalizer.py         │  │
+│   └─────────────┘   └───────────────────────┘   │  storage.py            │  │
 │                                                  └────────────────────────┘  │
 │                                                                               │
 │   ┌──────────────────────────────────────────────────────────────────────┐   │
-│   │                    Supabase (optional cloud backend)                  │   │
-│   │   Auth sessions · scraper_candidates · scraper_runs · admin roles    │   │
+│   │                         Supabase PostgreSQL                          │   │
+│   │  technologies · Auth sessions · scraper_candidates · scraper_runs   │   │
+│   │  technology_submissions · admin roles                                │   │
 │   └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                               │
 └───────────────────────────────────────────────────────────────────────────────┘
@@ -169,27 +170,31 @@ The backend is a **FastAPI** application with:
 **Data loading flow:**
 
 ```
-JSON files on disk
-      │
-      ▼
-_load_json_file()
-      │
-      ├── is catalogue format? ──YES──► _load_catalogue_file()   (flat fields)
-      │                                  _map_catalogue_instance()
-      │
-      └── legacy format ────────────► _pick_legacy_model()
-                                        model.model_validate(raw)
-                                              │
-                                              ▼
-                                   dict[str, Technology]
-                                        (LRU cached)
-                                              │
-                                              ▼
-                                      HTTP route handlers
+ SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY set?
+       │
+       YES ─────────────────────────────────────────────────────────────────►
+       │                                                                     │
+       │         SELECT id, payload FROM technologies WHERE is_active        │
+       │                           │                                         │
+       NO (local dev)              ▼                                         │
+       │                   model_validate(payload)                           │
+       │                   (dispatch via _pick_legacy_model)                 │
+       ▼                           │                                         │
+JSON files on disk                 └──────────────────────────────────────►  │
+      │                                                                      │
+      ▼                                                                      │
+_load_json_file()                                                            │
+      │                              dict[str, Technology]  (LRU cached)  ◄─┘
+      ├── catalogue format ──► _load_catalogue_file()                        │
+      └── legacy format ─────► _pick_legacy_model() + model_validate()       │
+                                              │                              │
+                                              ▼                              │
+                                      HTTP route handlers ◄──────────────────┘
 ```
 
-The LRU cache (`@lru_cache`) ensures JSON files are parsed once per process lifetime.
-`POST /api/v1/debug/reload` explicitly clears the cache for hot-reload without restart.
+The LRU cache ensures technologies are loaded once per process lifetime.
+`POST /api/v1/debug/reload` clears both the technology cache and the ontology schema
+cache, triggering a fresh fetch from Supabase (or JSON files) on the next request.
 
 ---
 

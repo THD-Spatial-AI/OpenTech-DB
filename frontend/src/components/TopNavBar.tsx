@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import type { ActiveView } from "./SideNavBar";
+import logoIcon from "../assets/icon_no_title.png";
 
 // Base URL for the backend (same as services/api.ts reads from env)
 const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace("/api/v1", "") ?? "http://localhost:8000";
@@ -55,48 +56,56 @@ interface TopNavBarProps {
   onLoginClick: () => void;
   onViewChange: (v: ActiveView) => void;
   activeView: ActiveView;
+  sidebarCollapsed?: boolean;
 }
 
-export default function TopNavBar({ onLoginClick, onViewChange, activeView }: TopNavBarProps) {
+export default function TopNavBar({ onLoginClick, onViewChange, activeView, sidebarCollapsed }: TopNavBarProps) {
   const { user, signOut, isAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="bg-surface-container-low font-headline text-on-surface fixed top-0 left-0 right-0 z-[70] border-b border-outline-variant/15">
-      <div className="flex items-center w-full px-8 py-3 max-w-[1440px] mx-auto gap-4">
+    <header className="bg-surface-container-low font-headline text-on-surface fixed top-0 left-0 right-0 z-[70] border-b border-outline-variant/15 h-14 flex">
 
-        {/* Brand + Nav links */}
-        <div className="flex items-center gap-6 min-w-0 flex-1">
-          <div className="flex flex-col leading-none flex-shrink-0">
-            <span className="text-xl font-bold tracking-tighter text-on-surface">OPENTECH | DB</span>
-            <span className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 mt-0.5">
-              OEO-aligned Energy Parameters
-            </span>
-          </div>
-
-          <nav aria-label="Main navigation" className="hidden md:flex items-center gap-1 min-w-0 overflow-hidden">
-            {NAV_LINKS.map(({ label, href, icon, active, external }) => (
-              <a
-                key={label}
-                href={href}
-                target={external ? "_blank" : undefined}
-                rel={external ? "noopener noreferrer" : undefined}
-                className={[
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors",
-                  active
-                    ? "text-primary bg-primary/8 font-bold"
-                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container",
-                ].join(" ")}
-              >
-                <span className="material-symbols-outlined text-[16px]">{icon}</span>
-                {label}
-                {external && (
-                  <span className="material-symbols-outlined text-[11px] opacity-40">open_in_new</span>
-                )}
-              </a>
-            ))}
-          </nav>
+      {/* ── Brand zone — mirrors sidebar width ── */}
+      <div
+        className={[
+          "hidden lg:flex shrink-0 items-center gap-2.5 px-4 border-r border-outline-variant/15 overflow-hidden transition-[width] duration-300",
+          sidebarCollapsed ? "w-16" : "w-64",
+        ].join(" ")}
+      >
+        <img src={logoIcon} alt="" aria-hidden="true" className="h-8 w-8 object-contain shrink-0" />
+        <div className={`flex flex-col leading-none min-w-0 transition-opacity duration-200 ${sidebarCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+          <span className="text-base font-bold tracking-tight text-on-surface whitespace-nowrap">OPENTECH | DB</span>
+          <span className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 mt-0.5 whitespace-nowrap">
+            OEO-aligned Energy Parameters
+          </span>
         </div>
+      </div>
+
+      {/* ── Nav links + auth ── */}
+      <div className="flex items-center flex-1 px-6 gap-4 min-w-0">
+        <nav aria-label="Main navigation" className="hidden md:flex items-center gap-1 min-w-0 overflow-hidden">
+          {NAV_LINKS.map(({ label, href, icon, active, external }) => (
+            <a
+              key={label}
+              href={href}
+              target={external ? "_blank" : undefined}
+              rel={external ? "noopener noreferrer" : undefined}
+              className={[
+                "flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors",
+                active
+                  ? "text-primary bg-primary/8 font-bold"
+                  : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container",
+              ].join(" ")}
+            >
+              <span className="material-symbols-outlined text-[16px]">{icon}</span>
+              {label}
+              {external && (
+                <span className="material-symbols-outlined text-[11px] opacity-40">open_in_new</span>
+              )}
+            </a>
+          ))}
+        </nav>
 
         {/* GitHub icon + Auth area */}
         <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
@@ -247,7 +256,7 @@ export default function TopNavBar({ onLoginClick, onViewChange, activeView }: To
               Sign in
             </button>
           )}
-        </div>
+      </div>
       </div>
     </header>
   );

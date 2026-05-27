@@ -227,9 +227,28 @@ class CandidateStore:
     def _sb_save(self, candidate: dict[str, Any]) -> None:
         try:
             self._sb.table("scraper_candidates").insert(self._to_row(candidate)).execute()
+            return
         except Exception as exc:
-            logger.error("Supabase insert failed: %s — falling back to file", exc)
-            _atomic_write(self._pending / f"{candidate['candidate_id']}.json", candidate)
+            # If the insert failed because migration 007 hasn't been applied yet,
+            # retry without the new columns rather than losing the record entirely.
+            exc_str = str(exc)
+            if "technology_domain" in exc_str or "validation_warnings" in exc_str:
+                logger.warning(
+                    "Supabase missing columns (migration 007 not applied) — "
+                    "retrying without technology_domain / validation_warnings. "
+                    "Run db/migrations/007_candidates_domain_warnings.sql in the "
+                    "Supabase SQL editor to fix this permanently."
+                )
+                try:
+                    self._sb.table("scraper_candidates").insert(
+                        self._to_row(candidate, with_extras=False)
+                    ).execute()
+                    return
+                except Exception as exc2:
+                    logger.error("Supabase insert (compat) failed: %s — falling back to file", exc2)
+            else:
+                logger.error("Supabase insert failed: %s — falling back to file", exc)
+        _atomic_write(self._pending / f"{candidate['candidate_id']}.json", candidate)
 
     def _sb_update_status(
         self, candidate_id: str, status: CandidateStatus,
@@ -509,9 +528,17 @@ class CandidateStore:
         }.get(status, self._pending)
 
     @staticmethod
-    def _to_row(c: dict[str, Any]) -> dict[str, Any]:
-        """Convert a candidate dict to a flat Supabase-compatible row."""
-        return {
+    def _to_row(c: dict[str, Any], *, with_extras: bool = True) -> dict[str, Any]:
+        """Convert a candidate dict to a flat Supabase-compatible row.
+
+        Parameters
+        ----------
+        with_extras
+            When True (default), include ``technology_domain`` and
+            ``validation_warnings`` columns added in migration 007.
+            Set to False when inserting into an un-migrated database.
+        """
+        row: dict[str, Any] = {
             "candidate_id":      c["candidate_id"],
             "scraped_at":        c.get("scraped_at"),
             "status":            c.get("status", "pending"),
@@ -529,6 +556,10 @@ class CandidateStore:
             "reviewed_at":       c.get("reviewed_at"),
             "reviewed_by":       c.get("reviewed_by"),
         }
+        if with_extras:
+            row["technology_domain"]   = c.get("technology_domain")
+            row["validation_warnings"] = c.get("validation_warnings") or []
+        return row
 
 
 class RawStore:

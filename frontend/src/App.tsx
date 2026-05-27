@@ -199,6 +199,7 @@ export default function App() {
             onLoginClick={() => setShowAuth(true)}
             onViewChange={setActiveView}
             activeView={activeView}
+            sidebarCollapsed={sidebarCollapsed}
           />
 
           {/* ── Page content ─────────────────────────────────────────── */}

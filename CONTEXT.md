@@ -7,7 +7,7 @@
 ## Core concepts
 
 **Catalogue**
-The curated collection of Technologies stored as JSON files under `data/`. The catalogue is the primary database — version-controlled, diff-able, and portable. Distinct from the Supabase PostgreSQL database, which stores Candidates, Submissions, and auth data only.
+The curated collection of Technologies. **Primary store: Supabase `technologies` table** (one row per Technology, full Pydantic-serialised payload in JSONB). When Supabase is not configured, the system falls back to JSON files under `data/` (used for local development and as the initial seed). The catalogue is version-controlled via the seed data in `data/` — run `scripts/seed_technologies_to_supabase.py` to push JSON changes to Supabase. Distinct from the Supabase `scraper_candidates` and `technology_submissions` tables, which store unreviewed Candidates and Submissions.
 
 **Technology**
 A category of energy device (e.g., "Combined Cycle Gas Turbine"). Defines what kind of device it is: its OEO class, OEO URI, input/output energy carriers, and domain. One Technology contains one or more Instances. Technologies are never a single data point — they are the grouping concept.

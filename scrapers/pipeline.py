@@ -94,6 +94,8 @@ def _infer_domain(tech_id: str) -> str:
         "demand_response", "ev_charging", "vehicle_to_grid",
         "hydrogen_refueling", "led_lighting", "gasification",
         "fischer_tropsch", "haber_bosch",
+        # Power-to-X and direct air capture
+        "power_to_", "p2x", "direct_air", "dac",
     )
     if any(m in t for m in _storage):
         return "storage"

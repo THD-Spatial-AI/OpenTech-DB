@@ -73,10 +73,10 @@ export default function TopNavBar({ onLoginClick, onViewChange, activeView, side
           sidebarCollapsed ? "w-16" : "w-64",
         ].join(" ")}
       >
-        <img src={logoIcon} alt="" aria-hidden="true" className="h-8 w-8 object-contain shrink-0" />
+        <img src={logoIcon} alt="" aria-hidden="true" className="h-12 w-12 object-contain shrink-0" />
         <div className={`flex flex-col leading-none min-w-0 transition-opacity duration-200 ${sidebarCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
           <span className="text-base font-bold tracking-tight text-on-surface whitespace-nowrap">OPENTECH | DB</span>
-          <span className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 mt-0.5 whitespace-nowrap">
+          <span className="text-[8px] font-label uppercase tracking-widest text-on-surface-variant/60 mt-0.5 whitespace-nowrap">
             OEO-aligned Energy Parameters
           </span>
         </div>

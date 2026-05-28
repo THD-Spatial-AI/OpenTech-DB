@@ -23,6 +23,141 @@ from fastapi import HTTPException
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Shared slug utilities
+# ---------------------------------------------------------------------------
+
+def _slugify(name: str) -> str:
+    """Normalize a technology name to a URL-safe slug."""
+    return re.sub(r"[^a-z0-9_]", "_", name.lower().strip())[:60].strip("_")
+
+
+def _slug_word_overlap(a: str, b: str) -> float:
+    """Jaccard-like word-overlap coefficient between two underscored slugs."""
+    stop = {"", "a", "the", "of", "for", "in", "and", "or"}
+    words_a = set(a.split("_")) - stop
+    words_b = set(b.split("_")) - stop
+    if not words_a or not words_b:
+        return 0.0
+    return len(words_a & words_b) / min(len(words_a), len(words_b))
+
+
+def _find_similar_technologies(tech_name: str, sb) -> list[dict]:
+    """
+    Check the ``technologies`` table for entries whose slug overlaps
+    significantly with *tech_name*.  Returns a list of
+    ``{"technology_id", "name"}`` dicts so the submission endpoint can warn
+    the submitter about potential duplicates.
+
+    Only runs when Supabase is configured; returns an empty list otherwise.
+    """
+    if sb is None:
+        return []
+    new_slug = _slugify(tech_name)
+    if not new_slug:
+        return []
+    similar: list[dict] = []
+    try:
+        resp = (
+            sb.table("technologies")
+            .select("technology_id, name")
+            .eq("is_active", True)
+            .execute()
+        )
+        for row in resp.data or []:
+            existing_slug = row.get("technology_id", "")
+            if (
+                existing_slug == new_slug
+                or existing_slug.startswith(new_slug)
+                or new_slug.startswith(existing_slug)
+                or _slug_word_overlap(new_slug, existing_slug) >= 0.6
+            ):
+                similar.append({
+                    "technology_id": existing_slug,
+                    "name": row.get("name", existing_slug),
+                })
+    except Exception as exc:
+        logger.warning("Collision check against technologies table failed: %s", exc)
+    return similar
+
+
+# ---------------------------------------------------------------------------
+# Submitter notification (best-effort SMTP)
+# ---------------------------------------------------------------------------
+
+def _notify_submitter(
+    email: str | None,
+    status: str,
+    tech_name: str,
+    *,
+    reason: str | None = None,
+    pr_url: str | None = None,
+) -> None:
+    """
+    Send a best-effort status-change email to the submission author.
+
+    Requires the following env vars:
+      SMTP_HOST     — e.g. "smtp.gmail.com"
+      SMTP_PORT     — default 587
+      SMTP_USER     — login username (also used as From when SMTP_FROM is absent)
+      SMTP_PASSWORD — login password
+      SMTP_FROM     — optional sender address
+
+    Silently logs and returns when unconfigured or on any send error.
+    """
+    import smtplib
+    import ssl
+    from email.mime.text import MIMEText
+
+    if not email:
+        return
+
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASSWORD", "")
+    from_addr = os.getenv("SMTP_FROM", smtp_user or "noreply@opentech-db.org")
+
+    if not smtp_host or not smtp_user:
+        logger.debug(
+            "SMTP not configured — skipping notification to %s for '%s'",
+            email, tech_name,
+        )
+        return
+
+    if status == "approved":
+        subject = f"Your submission '{tech_name}' has been approved"
+        lines = [
+            f"Your technology submission '{tech_name}' has been approved and is now live in the catalogue.",
+        ]
+        if pr_url:
+            lines += ["", f"Catalogue update: {pr_url}"]
+    else:
+        subject = f"Update on your submission '{tech_name}'"
+        lines = [
+            f"Thank you for submitting '{tech_name}'.",
+            "It could not be approved in its current form.",
+        ]
+        if reason:
+            lines += ["", f"Reason: {reason}"]
+        lines += ["", "Please resubmit with the requested changes."]
+
+    msg = MIMEText("\n".join(lines))
+    msg["Subject"] = subject
+    msg["From"]    = from_addr
+    msg["To"]      = email
+
+    try:
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as srv:
+            srv.starttls(context=ctx)
+            srv.login(smtp_user, smtp_pass)
+            srv.sendmail(from_addr, [email], msg.as_string())
+        logger.info("Notified %s: submission '%s' → %s", email, tech_name, status)
+    except Exception as exc:
+        logger.warning("Failed to notify %s (submission '%s'): %s", email, tech_name, exc)
+
+
 def _build_updated_catalogue(catalogue: dict, record: dict) -> dict:
     """
     Return a deep copy of catalogue with the submission's technology merged in.
@@ -206,9 +341,90 @@ def _create_github_pr_for_approval(record: dict) -> str:
     return pr_url
 
 
+def _build_instance_table_rows(
+    tech_uuid: str,
+    tech_id_slug: str,
+    instances: list,
+    *,
+    from_pydantic: bool,
+) -> list[dict]:
+    """
+    Build rows for `technology_instances` from either Pydantic objects or
+    submission-format dicts.
+
+    Args:
+        tech_uuid:    UUID string of the parent technologies row.
+        tech_id_slug: Human-readable slug from technologies.technology_id.
+        instances:    List of EquipmentInstance Pydantic objects (from_pydantic=True)
+                      OR list of submission-format dicts (from_pydantic=False).
+        from_pydantic: Whether instances are Pydantic objects.
+    """
+    import uuid as _uuid_mod
+
+    rows: list[dict] = []
+    for inst in instances:
+        if from_pydantic:
+            def _pv(attr: str):
+                pv = getattr(inst, attr, None)
+                return pv.value if pv else None
+
+            def _src(attr: str):
+                pv = getattr(inst, attr, None)
+                return pv.source if pv else None
+
+            inst_id_str = str(inst.id)
+            rows.append({
+                "id":              inst_id_str,
+                "technology_uuid": tech_uuid,
+                "technology_id":   tech_id_slug,
+                "instance_id":     inst_id_str,
+                "label":           inst.label,
+                "life_cycle_stage": inst.life_cycle_stage.value if inst.life_cycle_stage else "commercial",
+                "reference_year":  inst.reference_year,
+                "country_iso2":    (inst.extra or {}).get("country_iso2"),
+                "reference_source": _src("capex_per_kw") or _src("opex_fixed_per_kw_yr"),
+                "capex_usd_per_kw":           _pv("capex_per_kw"),
+                "opex_fixed_usd_per_kw_yr":   _pv("opex_fixed_per_kw_yr"),
+                "opex_var_usd_per_mwh":        _pv("opex_variable_per_mwh"),
+                "efficiency_fraction":         _pv("electrical_efficiency"),
+                "lifetime_years":              _pv("economic_lifetime_yr"),
+                "co2_t_per_mwh":               _pv("co2_emission_factor"),
+                "payload":         json.loads(inst.model_dump_json()),
+            })
+        else:
+            # submission-format dict: values are plain numerics, not ParameterValue
+            inst_slug = inst.get("instance_id") or str(_uuid_mod.uuid4())
+            rows.append({
+                "id":              str(_uuid_mod.uuid4()),
+                "technology_uuid": tech_uuid,
+                "technology_id":   tech_id_slug,
+                "instance_id":     inst_slug,
+                "label":           inst.get("instance_name") or inst_slug,
+                "life_cycle_stage": "commercial",
+                "reference_year":  None,
+                "country_iso2":    inst.get("country_iso2") or inst.get("country_code") or inst.get("iso2"),
+                "reference_source": inst.get("reference_source"),
+                "capex_usd_per_kw":           inst.get("capex_usd_per_kw"),
+                "opex_fixed_usd_per_kw_yr":   inst.get("opex_fixed_usd_per_kw_yr"),
+                "opex_var_usd_per_mwh":        inst.get("opex_var_usd_per_mwh"),
+                "efficiency_fraction":         (
+                    inst.get("efficiency_percent", 0) / 100
+                    if inst.get("efficiency_percent") else None
+                ),
+                "lifetime_years":              inst.get("lifetime_years"),
+                "co2_t_per_mwh":               (
+                    inst.get("co2_emission_factor_operational_g_per_kwh", 0) / 1_000_000
+                    if inst.get("co2_emission_factor_operational_g_per_kwh") else None
+                ),
+                "payload":         inst,
+            })
+    return rows
+
+
 def _merge_submission_to_supabase(record: dict, sb) -> dict:
     """
-    Merge an approved human submission into the Supabase ``technologies`` table.
+    Merge an approved human submission into the Supabase ``technologies`` table
+    AND into the ``technology_instances`` table.
 
     If a technology with the same slug already exists, the new instances are
     appended to it.  Otherwise a new row is inserted.
@@ -291,6 +507,18 @@ def _merge_submission_to_supabase(record: dict, sb) -> dict:
           .eq("technology_id", tech_slug) \
           .execute()
 
+        # Write new instance rows to technology_instances
+        inst_rows = _build_instance_table_rows(
+            tech_id,
+            tech_slug,
+            new_instances,
+            from_pydantic=False,
+        )
+        if inst_rows:
+            sb.table("technology_instances") \
+              .upsert(inst_rows, on_conflict="technology_uuid,instance_id") \
+              .execute()
+
         action  = "updated"
         tech_id = str(existing_resp.data["id"])
 
@@ -337,6 +565,18 @@ def _merge_submission_to_supabase(record: dict, sb) -> dict:
             "description":   description,
             "payload":       payload_dict,
         }).execute()
+
+        # Write instance rows to technology_instances
+        inst_rows = _build_instance_table_rows(
+            tech_id,
+            tech_slug,
+            tech.instances,
+            from_pydantic=True,
+        )
+        if inst_rows:
+            sb.table("technology_instances") \
+              .upsert(inst_rows, on_conflict="technology_uuid,instance_id") \
+              .execute()
 
         action = "created"
 

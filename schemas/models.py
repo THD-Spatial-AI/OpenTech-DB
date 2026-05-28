@@ -42,23 +42,28 @@ class TechnologyCategory(str, Enum):
 
 class EnergyCarrier(str, Enum):
     """Energy carriers following OEO vocabulary."""
-    ELECTRICITY      = "electricity"
-    NATURAL_GAS      = "natural_gas"
-    HYDROGEN         = "hydrogen"
-    HEAT             = "heat"
-    COOLING          = "cooling"
-    STEAM            = "steam"
-    OIL              = "oil"
-    COAL             = "coal"
-    BIOMASS          = "biomass"
-    BIOGAS           = "biogas"
-    SYNGAS           = "syngas"
-    WATER            = "water"
-    CO2              = "co2"
-    AMMONIA          = "ammonia"
-    WIND             = "wind"
-    SOLAR_IRRADIANCE = "solar_irradiance"
-    NUCLEAR_FUEL     = "nuclear_fuel"
+    ELECTRICITY       = "electricity"
+    NATURAL_GAS       = "natural_gas"
+    HYDROGEN          = "hydrogen"
+    HEAT              = "heat"
+    COOLING           = "cooling"
+    STEAM             = "steam"
+    OIL               = "oil"
+    COAL              = "coal"
+    BIOMASS           = "biomass"
+    BIOGAS            = "biogas"
+    SYNGAS            = "syngas"
+    METHANE           = "methane"
+    LIQUID_FUEL       = "liquid_fuel"
+    NITROGEN          = "nitrogen"
+    FLUE_GAS          = "flue_gas"
+    WATER             = "water"
+    CO2               = "co2"
+    AMMONIA           = "ammonia"
+    WIND              = "wind"
+    SOLAR_IRRADIANCE  = "solar_irradiance"
+    NUCLEAR_FUEL      = "nuclear_fuel"
+    GEOTHERMAL_ENERGY = "geothermal_energy"
 
 
 class LifeCycleStage(str, Enum):
@@ -378,6 +383,8 @@ class TechnologySummary(BaseModel):
     oeo_class:  str | None
     oeo_uri:    HttpUrl | None
     n_instances: int = Field(0, description="Number of equipment instances available.")
+    input_carriers:  list[EnergyCarrier] = Field(default_factory=list)
+    output_carriers: list[EnergyCarrier] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 

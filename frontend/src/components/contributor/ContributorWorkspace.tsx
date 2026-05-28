@@ -17,7 +17,7 @@
  */
 
 import { Suspense, useMemo, useState, useCallback, useEffect } from "react";
-import { fetchOntologySchema, fetchMySubmissions } from "../../services/api";
+import { fetchOntologySchema, fetchMySubmissions, fetchAllCatalogueTechnologies } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import VisualTechBuilder from "./visual-builder/VisualTechBuilder";
 import ErrorBoundary from "../ErrorBoundary";
@@ -205,9 +205,10 @@ export default function ContributorWorkspace() {
   const [activeTab, setActiveTab] = useState<Tab>("new");
   const [submissionCount, setSubmissionCount] = useState(0);
 
-  // Stable Promise reference — created once, never re-created on re-renders.
-  // use() in AddTechnology will read this same reference each time.
-  const schemaPromise = useMemo(() => fetchOntologySchema(), []);
+  // Stable Promise references — created once, never re-created on re-renders.
+  // use() in VisualTechBuilder / EquipmentPalette will read these same references each time.
+  const schemaPromise          = useMemo(() => fetchOntologySchema(), []);
+  const catalogueTechsPromise  = useMemo(() => fetchAllCatalogueTechnologies(), []);
 
   const handleSuccess = useCallback(
     (_technologyName: string) => {
@@ -279,6 +280,7 @@ export default function ContributorWorkspace() {
               <Suspense fallback={<FormSkeleton />}>
                 <VisualTechBuilder
                   schemaPromise={schemaPromise}
+                  catalogueTechsPromise={catalogueTechsPromise}
                   onSubmitSuccess={(name) => {
                     handleSuccess(name);
                     setActiveTab("my");

@@ -60,7 +60,7 @@ _VRE_ID_HINTS  = {"pv", "wind", "solar", "run_of_river", "marine"}
 _CARRIER_MAP: dict[str, str] = {
     "solar":                 "solar_irradiance",
     "wind":                  "wind",
-    "hydro":                 "electricity",
+    "hydro":                 "water",
     "natural_gas":           "natural_gas",
     "gas":                   "natural_gas",
     "coal":                  "coal",
@@ -69,7 +69,11 @@ _CARRIER_MAP: dict[str, str] = {
     "biomass":               "biomass",
     "biogas":                "biogas",
     "syngas":                "syngas",
-    "municipal_solid_waste": "biomass",
+    "methane":               "methane",
+    "liquid_synthetic_fuel": "liquid_fuel",
+    "liquid_fuel":           "liquid_fuel",
+    "nitrogen":              "nitrogen",
+    "flue_gas":              "flue_gas",
     "marine":                "electricity",
     "electricity":           "electricity",
     "hydrogen":              "hydrogen",
@@ -80,12 +84,15 @@ _CARRIER_MAP: dict[str, str] = {
     "water":                 "water",
     "co2":                   "co2",
     "ammonia":               "ammonia",
-    "geothermal":            "electricity",
+    "geothermal":            "geothermal_energy",
+    "geothermal_energy":     "geothermal_energy",
+    # Legacy compound values — kept as fallback; proper JSON should use arrays instead
     "electricity_heat":      "electricity",
     "hydrogen_co2":          "hydrogen",
-    "hydrogen_co":           "hydrogen",
+    "hydrogen_co":           "syngas",
     "hydrogen_nitrogen":     "hydrogen",
     "flue_gas_electricity":  "electricity",
+    "municipal_solid_waste": "biomass",
 }
 
 _CATEGORY_MODEL_MAP: dict[TechnologyCategory, type[Technology]] = {
@@ -245,6 +252,36 @@ def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> d
     }
 
 # ---------------------------------------------------------------------------
+# Carrier extraction helper
+# ---------------------------------------------------------------------------
+
+def _extract_carriers(
+    tech_raw: dict,
+    *,
+    plural_key: str,
+    singular_key: str | None = None,
+    generic_key: str | None = None,
+    default: str | None = None,
+) -> list[str]:
+    """Return a mapped list of EnergyCarrier values from a technology dict.
+
+    Priority: plural-array field → singular field → generic field → default.
+    Each raw value is passed through `_map_carrier`; unmappable values are dropped.
+    """
+    raw_list = tech_raw.get(plural_key)
+    if isinstance(raw_list, list):
+        return [c for raw in raw_list if (c := _map_carrier(raw))]
+    for key in (singular_key, generic_key):
+        if key and (raw_single := tech_raw.get(key)):
+            mapped = _map_carrier(raw_single)
+            return [mapped] if mapped else []
+    if default:
+        mapped = _map_carrier(default)
+        return [mapped] if mapped else []
+    return []
+
+
+# ---------------------------------------------------------------------------
 # Catalogue-format file loader
 # ---------------------------------------------------------------------------
 
@@ -263,23 +300,33 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
 
             oeo_class_short = oeo_uri_full.rstrip("/").split("/")[-1] if oeo_uri_full else None
 
-            raw_carrier    = tech_raw.get("carrier")
-            raw_in_carrier = tech_raw.get("input_carrier", raw_carrier)
+            raw_carrier = tech_raw.get("carrier")
 
             try:
                 _cat_tmp = TechnologyCategory(tech_raw.get("domain", domain_str))
             except ValueError:
                 _cat_tmp = TechnologyCategory.GENERATION
 
-            if _cat_tmp in (TechnologyCategory.TRANSMISSION, TechnologyCategory.STORAGE):
-                raw_out_carrier = tech_raw.get("output_carrier", raw_carrier or "electricity")
-            else:
-                raw_out_carrier = tech_raw.get("output_carrier", "electricity")
+            # Input carriers: try plural array, then input_carrier, then carrier
+            in_carriers = _extract_carriers(
+                tech_raw,
+                plural_key="input_carriers",
+                singular_key="input_carrier",
+                generic_key="carrier",
+            )
+            in_carrier_val = in_carriers[0] if in_carriers else None
 
-            in_carrier_val  = _map_carrier(raw_in_carrier)
-            out_carrier_val = _map_carrier(raw_out_carrier)
-            in_carriers  = [in_carrier_val]  if in_carrier_val  else []
-            out_carriers = [out_carrier_val] if out_carrier_val else []
+            # Output carriers: try plural array, then output_carrier, then domain-aware default
+            if _cat_tmp in (TechnologyCategory.TRANSMISSION, TechnologyCategory.STORAGE):
+                out_default = raw_carrier or "electricity"
+            else:
+                out_default = "electricity"
+            out_carriers = _extract_carriers(
+                tech_raw,
+                plural_key="output_carriers",
+                singular_key="output_carrier",
+                default=out_default,
+            )
 
             try:
                 cat = TechnologyCategory(domain)

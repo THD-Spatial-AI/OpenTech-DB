@@ -99,7 +99,7 @@ interface TechBuilderState {
   setCanvasWarning: (w: string | null) => void;
   updateNodeData: (id: string, patch: Partial<TechNodeData>) => void;
   updateCarrierNode: (id: string, patch: Partial<CarrierNodeData>) => void;
-  addEquipmentNode: (oeoClass: string, domain: string, position: XYPosition) => void;
+  addEquipmentNode: (oeoClass: string, domain: string, position: XYPosition, labelOverride?: string, inputCarriers?: string[], outputCarriers?: string[]) => void;
   clearGraph: () => void;
 }
 
@@ -634,7 +634,7 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
       ),
     }),
 
-  addEquipmentNode: (oeoClass, _domain, position) => {
+  addEquipmentNode: (oeoClass, _domain, position, labelOverride, inputCarriers, outputCarriers) => {
     // ── Enforce single technology node ──────────────────────────────────────
     const existingTech = get().nodes.find((n) => n.type === "techNode");
     if (existingTech) {
@@ -648,11 +648,12 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
     const techId  = `tech-${nodeCounter++}`;
     const oeoId   = getOeoId(oeoClass);
     const meta    = OEO_META[oeoId];
-    const label   = meta?.label ?? shortLabel(oeoClass);
+    const label   = labelOverride ?? (meta?.label ?? shortLabel(oeoClass));
     const domain  = meta?.domain ?? "conversion";
 
-    const rawInputs  = meta?.inputs  ?? (domain === "generation" ? ["solar_irradiance"] : ["electricity"]);
-    const rawOutputs = meta?.outputs ?? ["electricity"];
+    // Use real carriers from drag payload first, then OEO_META, then sensible defaults
+    const rawInputs  = inputCarriers  ?? meta?.inputs  ?? (domain === "generation" ? ["solar_irradiance"] : ["electricity"]);
+    const rawOutputs = outputCarriers ?? meta?.outputs ?? ["electricity"];
 
     // ── Carrier nodes + edges ────────────────────────────────────────────────
     const carrierNodes: Node[] = [];

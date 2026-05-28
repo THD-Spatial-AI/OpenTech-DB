@@ -38,7 +38,7 @@ import {
   Panel,
   type NodeTypes,
 } from "@xyflow/react";
-import type { OntologySchema } from "../../../types/api";
+import type { OntologySchema, TechnologyCatalogueResponse } from "../../../types/api";
 import { useTechBuilderStore, CARRIER_COLORS } from "./useTechBuilderStore";
 import CustomTechNode from "./CustomTechNode";
 import CarrierNode from "./CarrierNode";
@@ -156,7 +156,7 @@ function FlowCanvas() {
       const raw = event.dataTransfer.getData("application/reactflow");
       if (!raw) return;
 
-      let parsed: { oeoClass: string; domain: string };
+      let parsed: { oeoClass: string; domain: string; labelOverride?: string; inputCarriers?: string[]; outputCarriers?: string[] };
       try {
         parsed = JSON.parse(raw) as { oeoClass: string; domain: string };
       } catch {
@@ -168,7 +168,7 @@ function FlowCanvas() {
         y: event.clientY,
       });
 
-      addEquipmentNode(parsed.oeoClass, parsed.domain, position);
+      addEquipmentNode(parsed.oeoClass, parsed.domain, position, parsed.labelOverride, parsed.inputCarriers, parsed.outputCarriers);
     },
     [screenToFlowPosition, addEquipmentNode]
   );
@@ -260,6 +260,8 @@ interface VisualTechBuilderProps {
    * the parent <Suspense> boundary handles the loading state.
    */
   schemaPromise: Promise<OntologySchema>;
+  /** Stable Promise for all catalogue technology summaries (for the Equipment Palette). */
+  catalogueTechsPromise: Promise<TechnologyCatalogueResponse>;
   onSubmitSuccess: (technologyName: string) => void;
 }
 
@@ -269,6 +271,7 @@ interface VisualTechBuilderProps {
  */
 export default function VisualTechBuilder({
   schemaPromise,
+  catalogueTechsPromise,
   onSubmitSuccess,
 }: VisualTechBuilderProps) {
   // React 19 use() — suspends until the schema promise resolves.
@@ -282,7 +285,7 @@ export default function VisualTechBuilder({
   return (
     <div className="flex h-full min-h-0 rounded-2xl overflow-hidden border border-outline-variant/20 shadow-sm">
       {/* Left — Equipment Palette */}
-      <EquipmentPalette schema={schema} />
+      <EquipmentPalette schema={schema} catalogueTechsPromise={catalogueTechsPromise} />
 
       {/* Centre — React Flow Canvas */}
       <ReactFlowProvider>

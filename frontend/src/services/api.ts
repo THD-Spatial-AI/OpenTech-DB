@@ -78,6 +78,17 @@ export function fetchCategoryTechnologies(
 }
 
 /**
+ * Fetches all technology summaries across all categories (up to 200).
+ * Used by the Equipment Palette to show real catalogue entries alongside OEO classes.
+ * Cached once per session. Safe to pass to React 19 `use()` inside <Suspense>.
+ */
+export function fetchAllCatalogueTechnologies(): Promise<TechnologyCatalogueResponse> {
+  return cached("catalogue:all", () =>
+    apiFetch<TechnologyCatalogueResponse>("/technologies?limit=100")
+  );
+}
+
+/**
  * Returns a stable Promise for a single technology by ID (full detail with instances).
  * Safe to pass directly to the React 19 `use()` hook inside <Suspense>.
  */

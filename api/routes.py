@@ -103,7 +103,13 @@ from api._auth_helpers import (
     _row_to_record,
     _SUBMISSIONS_TABLE,
 )
-from api._catalogue_ops import _build_updated_catalogue, _create_github_pr_for_approval, _merge_submission_to_supabase
+from api._catalogue_ops import (
+    _build_updated_catalogue,
+    _create_github_pr_for_approval,
+    _merge_submission_to_supabase,
+    _find_similar_technologies,
+    _notify_submitter,
+)
 
 router          = APIRouter(prefix="/technologies", tags=["Technologies"])
 debug_router    = APIRouter(prefix="/debug",         tags=["Debug"])
@@ -625,6 +631,8 @@ def list_technologies(
             oeo_class=t.oeo_class,
             oeo_uri=t.oeo_uri,
             n_instances=len(t.instances),
+            input_carriers=t.input_carriers,
+            output_carriers=t.output_carriers,
         )
         for t in page
     ]
@@ -659,6 +667,8 @@ def list_by_category(
             oeo_class=t.oeo_class,
             oeo_uri=t.oeo_uri,
             n_instances=len(t.instances),
+            input_carriers=t.input_carriers,
+            output_carriers=t.output_carriers,
         )
         for t in page
     ]
@@ -1135,6 +1145,7 @@ class SubmissionResponse(BaseModel):
     id: str
     technology_name: str
     status: str = "pending_review"
+    similar_technologies: list[dict] = []
 
 
 @router.post(
@@ -1161,6 +1172,10 @@ def submit_technology(
 
     # ── Supabase path ──────────────────────────────────────────────────────────
     sb = _get_sb()
+
+    # Collision check: warn the submitter if a similar technology already exists
+    similar = _find_similar_technologies(tech_name, sb)
+
     if sb is not None:
         try:
             result = sb.table(_SUBMISSIONS_TABLE).insert({
@@ -1176,7 +1191,11 @@ def submit_technology(
             }).execute()
             submission_id = result.data[0]["id"]
             logger.info("DB submission: %s by %s (%s)", tech_name, user_email, submission_id)
-            return SubmissionResponse(id=submission_id, technology_name=tech_name)
+            return SubmissionResponse(
+                id=submission_id,
+                technology_name=tech_name,
+                similar_technologies=similar,
+            )
         except Exception as exc:
             logger.error("Supabase insert failed, falling back to file storage: %s", exc)
             # fall through to file storage
@@ -1205,6 +1224,109 @@ def submit_technology(
 
     logger.info("File submission: %s (%s)", tech_name, submission_id)
     return SubmissionResponse(id=submission_id, technology_name=tech_name)
+
+
+# ---------------------------------------------------------------------------
+# Submitter self-edit — PATCH /technologies/submissions/{id}
+# ---------------------------------------------------------------------------
+
+class SubmissionPatch(BaseModel):
+    technology_name: str | None = None
+    carrier:         str | None = None
+    oeo_class:       str | None = None
+    description:     str | None = None
+    payload:         dict | None = None  # partial merge into existing payload
+
+
+@router.patch(
+    "/submissions/{submission_id}",
+    response_model=SubmissionResponse,
+    summary="Edit a pending submission",
+)
+@_limiter.limit("20/minute")
+def patch_submission(
+    request: Request,
+    submission_id: str,
+    patch: SubmissionPatch,
+    authorization: Annotated[str | None, Header()] = None,
+) -> SubmissionResponse:
+    """
+    Edit a pending submission before it enters admin review.
+
+    Only the original submitter (matched by ``user_id`` in the JWT) or an
+    admin may modify a submission.  Approved or rejected submissions cannot
+    be edited.
+
+    Supabase must be configured; returns 501 otherwise.
+    """
+    user_id, _ = _extract_user_from_token(authorization)
+
+    sb = _get_sb()
+    if sb is None:
+        raise HTTPException(status_code=501, detail="Submission editing requires Supabase.")
+
+    try:
+        result = (
+            sb.table(_SUBMISSIONS_TABLE)
+            .select("*")
+            .eq("id", submission_id)
+            .single()
+            .execute()
+        )
+        row = result.data
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Submission not found.") from exc
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Submission not found.")
+    if row.get("status") != "pending_review":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot edit a submission with status '{row['status']}'.",
+        )
+
+    # Authorization: the original submitter or an admin
+    is_admin = False
+    try:
+        _require_admin(authorization)
+        is_admin = True
+    except HTTPException:
+        pass
+
+    if not is_admin and (not user_id or row.get("user_id") != user_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You can only edit your own pending submissions.",
+        )
+
+    update: dict = {}
+    if patch.technology_name is not None:
+        update["technology_name"] = patch.technology_name.strip()
+    if patch.carrier is not None:
+        update["carrier"] = patch.carrier.strip()
+    if patch.oeo_class is not None:
+        update["oeo_class"] = patch.oeo_class.strip()
+    if patch.description is not None:
+        update["description"] = patch.description.strip()
+    if patch.payload is not None:
+        merged = {**(row.get("payload") or {}), **patch.payload}
+        update["payload"] = merged
+        # Keep top-level denormalised fields in sync with payload values
+        if "technology_name" not in update and merged.get("technology_name"):
+            update["technology_name"] = merged["technology_name"].strip()
+
+    if not update:
+        return SubmissionResponse(id=submission_id, technology_name=row["technology_name"])
+
+    try:
+        sb.table(_SUBMISSIONS_TABLE).update(update).eq("id", submission_id).execute()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to update submission: {exc}") from exc
+
+    return SubmissionResponse(
+        id=submission_id,
+        technology_name=update.get("technology_name", row["technology_name"]),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1378,6 +1500,21 @@ def act_on_submission(
                 }
                 # Primary: merge directly into Supabase technologies table
                 merge_result = _merge_submission_to_supabase(record_for_merge, sb)
+
+                # Secondary: open a GitHub PR to keep the JSON catalogue in sync.
+                # Non-blocking — a PR failure must not roll back the Supabase merge.
+                try:
+                    pr_url = _create_github_pr_for_approval({
+                        "submission_id": submission_id,
+                        **record_for_merge,
+                    })
+                except Exception as pr_exc:
+                    logger.warning(
+                        "GitHub PR creation failed for submission %s "
+                        "(Supabase merge succeeded): %s",
+                        submission_id[:8], pr_exc,
+                    )
+
             feedback = " | ".join(filter(None, [body.reason, body.admin_notes])) or None
             update_data: dict = {
                 "status":           "approved" if body.action == "approve" else "rejected",
@@ -1387,6 +1524,8 @@ def act_on_submission(
             }
             if body.edited_payload:
                 update_data["payload"] = body.edited_payload
+            if pr_url:
+                update_data["pr_url"] = pr_url
             sb.table(_SUBMISSIONS_TABLE).update(update_data).eq("id", submission_id).execute()
 
             logger.info("Admin %s submission %s (DB)", body.action, submission_id)
@@ -1394,6 +1533,18 @@ def act_on_submission(
             response: dict = {"status": result_status, "submission_id": submission_id}
             if merge_result:
                 response["merged"] = merge_result
+            if pr_url:
+                response["pr_url"] = pr_url
+
+            # Notify the submitter (best-effort)
+            _notify_submitter(
+                row.get("submitter_email"),
+                result_status,
+                row.get("technology_name", ""),
+                reason=feedback,
+                pr_url=pr_url,
+            )
+
             return response
         except HTTPException:
             raise
@@ -1430,10 +1581,143 @@ def act_on_submission(
         json.dump(record, fh, indent=2, ensure_ascii=False)
 
     logger.info("Admin %s submission %s (file fallback)", body.action, submission_id)
-    response = {"status": record["status"], "submission_id": submission_id}
+
+    result_status = record["status"]
+    _notify_submitter(
+        record.get("submitter_email"),
+        result_status,
+        record.get("technology_name", ""),
+        reason=record.get("rejection_reason") or None,
+        pr_url=pr_url,
+    )
+
+    response = {"status": result_status, "submission_id": submission_id}
     if pr_url:
         response["pr_url"] = pr_url
     return response
+
+
+# ---------------------------------------------------------------------------
+# Admin — bulk approve / reject
+# ---------------------------------------------------------------------------
+
+class BulkActionRequest(BaseModel):
+    submission_ids: list[str]
+    action:         str            # "approve" | "reject"
+    reason:         str | None = None
+    admin_notes:    str | None = None
+
+
+@admin_router.post(
+    "/submissions/bulk",
+    summary="Bulk approve or reject pending submissions",
+)
+def bulk_act_on_submissions(
+    body: BulkActionRequest,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict:
+    """
+    Approve or reject up to 50 pending submissions in a single request.
+
+    Each submission is processed independently; partial success is reported.
+    Supabase must be configured; returns 501 otherwise.
+
+    Response shape::
+
+        {
+          "action": "approve",
+          "total": 3,
+          "succeeded": [{"id": "…", "status": "approved"}, …],
+          "skipped":   [{"id": "…", "reason": "Already approved"}, …],
+          "failed":    [{"id": "…", "error": "…"}, …]
+        }
+    """
+    admin_payload = _require_admin(authorization)
+    admin_email   = admin_payload.get("email", "admin")
+
+    if body.action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'.")
+    if not body.submission_ids:
+        raise HTTPException(status_code=400, detail="submission_ids must not be empty.")
+    if len(body.submission_ids) > 50:
+        raise HTTPException(status_code=400, detail="Cannot process more than 50 submissions at once.")
+
+    sb = _get_sb()
+    if sb is None:
+        raise HTTPException(status_code=501, detail="Bulk actions require Supabase.")
+
+    now      = datetime.now(timezone.utc).isoformat()
+    feedback = " | ".join(filter(None, [body.reason, body.admin_notes])) or None
+    results: dict = {"succeeded": [], "skipped": [], "failed": []}
+
+    for sub_id in body.submission_ids:
+        try:
+            fetch = (
+                sb.table(_SUBMISSIONS_TABLE)
+                .select("*")
+                .eq("id", sub_id)
+                .single()
+                .execute()
+            )
+            row = fetch.data
+            if not row:
+                results["failed"].append({"id": sub_id, "error": "Not found"})
+                continue
+            if row.get("status") != "pending_review":
+                results["skipped"].append({"id": sub_id, "reason": f"Already {row['status']}"})
+                continue
+
+            pr_url: str | None = None
+            if body.action == "approve":
+                effective_payload = row.get("payload", {})
+                record_for_merge  = {
+                    "id":              sub_id,
+                    "payload":         effective_payload,
+                    "technology_name": effective_payload.get("technology_name") or row.get("technology_name", ""),
+                }
+                _merge_submission_to_supabase(record_for_merge, sb)
+                try:
+                    pr_url = _create_github_pr_for_approval({
+                        "submission_id": sub_id,
+                        **record_for_merge,
+                    })
+                except Exception as pr_exc:
+                    logger.warning(
+                        "Bulk: GitHub PR failed for %s (Supabase merge succeeded): %s",
+                        sub_id[:8], pr_exc,
+                    )
+
+            update_data: dict = {
+                "status":           "approved" if body.action == "approve" else "rejected",
+                "reviewed_at":      now,
+                "reviewed_by":      admin_email,
+                "rejection_reason": feedback,
+            }
+            if pr_url:
+                update_data["pr_url"] = pr_url
+            sb.table(_SUBMISSIONS_TABLE).update(update_data).eq("id", sub_id).execute()
+
+            _notify_submitter(
+                row.get("submitter_email"),
+                update_data["status"],
+                row.get("technology_name", ""),
+                reason=feedback,
+                pr_url=pr_url,
+            )
+
+            results["succeeded"].append({"id": sub_id, "status": update_data["status"]})
+
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.error("Bulk action failed for submission %s: %s", sub_id, exc)
+            results["failed"].append({"id": sub_id, "error": str(exc)})
+
+    return {
+        "action":  body.action,
+        "total":   len(body.submission_ids),
+        **results,
+    }
 
 
 # ---------------------------------------------------------------------------

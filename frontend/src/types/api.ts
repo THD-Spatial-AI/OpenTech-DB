@@ -121,6 +121,8 @@ export interface TechnologySummary {
   oeo_class: string | null;
   oeo_uri: string | null;
   n_instances: number;
+  input_carriers: EnergyCarrier[];
+  output_carriers: EnergyCarrier[];
 }
 
 // ── API list/catalogue response ───────────────────────────────────────────────

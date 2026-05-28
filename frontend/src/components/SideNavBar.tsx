@@ -17,7 +17,6 @@
 import { useState } from "react";
 import type { TechnologyCategory } from "../types/api";
 import { useAuth } from "../context/AuthContext";
-import logoWithTitle from "../assets/icon_title.png";
 import logoIconOnly from "../assets/icon_no_title.png";
 
 const API_BASE =
@@ -48,7 +47,7 @@ interface SideNavBarProps {
 const CATEGORIES: { icon: string; label: string; value: TechnologyCategory }[] = [
   { icon: "bolt",                  label: "Generation",   value: "generation"   },
   { icon: "battery_charging_full", label: "Storage",      value: "storage"      },
-  { icon: "settings",              label: "Conversion",   value: "conversion"   },
+  { icon: "flowchart",              label: "Conversion",   value: "conversion"   },
   { icon: "cable",                 label: "Transmission", value: "transmission" },
 ];
 

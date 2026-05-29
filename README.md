@@ -10,9 +10,8 @@
 [![Data: CC BY 4.0](https://img.shields.io/badge/Data-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 [![OEO](https://img.shields.io/badge/ontology-OEO-green)](https://openenergy-platform.org/ontology/oeo/)
 
-**55+ technologies** · generation · storage · transmission · conversion · time-series profiles · contributor workflow
 
-📖 **[Full documentation](docs/index.md)**
+📖 **[Full documentation](https://thd-spatial-ai.github.io/OpenTech-DB/)**
 
 ---
 

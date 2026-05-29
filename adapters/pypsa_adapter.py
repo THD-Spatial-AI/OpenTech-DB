@@ -265,9 +265,26 @@ def _link_params_conversion(
     inst: EquipmentInstance | None,
     discount_rate: float,
 ) -> dict[str, Any]:
-    """Translate to PyPSA Link parameters for a conversion unit (e.g. electrolyzer)."""
-    eff    = (_val(inst.electrical_efficiency) if inst else None) or _val(tech.fleet_conversion_efficiency)
-    capex  = _val(inst.capex_per_kw) if inst else None
+    """Translate to PyPSA Link parameters for a conversion unit (e.g. electrolyzer).
+
+    For multi-output technologies (e.g. CHP with electricity + heat):
+    - bus0 / efficiency:  input carrier → primary output carrier
+    - bus1_carrier:       primary output (efficiency = electrical_efficiency)
+    - bus2_carrier:       secondary output (efficiency2 = thermal_efficiency)
+
+    PyPSA multi-output Link format requires bus0..busN and efficiency..efficiencyN.
+    """
+    el_eff = (_val(inst.electrical_efficiency) if inst else None) or _val(getattr(tech, "fleet_conversion_efficiency", None))
+    th_eff = _val(inst.thermal_efficiency)  if inst else None
+
+    # Choose the primary Link efficiency based on the first output carrier
+    _THERMAL_CARRIERS = {"heat", "steam", "cooling"}
+    primary_out = tech.output_carriers[0].value if tech.output_carriers else "electricity"
+    if primary_out in _THERMAL_CARRIERS:
+        main_eff = th_eff  # e.g. COP for heat pumps / thermal eff for boilers
+    else:
+        main_eff = el_eff  # e.g. electrical/conversion efficiency
+    capex  = _val(inst.capex_per_kw)        if inst else None
     opex_f = _val(inst.opex_fixed_per_kw_yr) if inst else None
     life   = _val(inst.economic_lifetime_yr) if inst else 20.0
 
@@ -280,13 +297,23 @@ def _link_params_conversion(
     bus0_carrier = tech.input_carriers[0].value  if tech.input_carriers  else "electricity"
     bus1_carrier = tech.output_carriers[0].value if tech.output_carriers else "hydrogen"
 
-    return {k: v for k, v in {
+    params: dict[str, Any] = {
         "_oeo_class":    tech.oeo_class,
         "_source_label": inst.label if inst else tech.name,
         "bus0_carrier":  bus0_carrier,
         "bus1_carrier":  bus1_carrier,
-        "efficiency":    eff,
+        "efficiency":    main_eff,
         "p_nom":         _val(inst.capacity_kw) / 1000 if (inst and inst.capacity_kw) else None,
         "capital_cost":  capital_cost,
         "marginal_cost": _val(inst.opex_variable_per_mwh) if inst else None,
-    }.items() if v is not None}
+    }
+
+    # Multi-output: add secondary bus for each additional output carrier
+    for idx, carrier in enumerate(tech.output_carriers[1:], start=2):
+        params[f"bus{idx}_carrier"] = carrier.value
+
+    # efficiency2 (secondary output) from thermal_efficiency when present
+    if th_eff is not None and len(tech.output_carriers) >= 2:
+        params["efficiency2"] = th_eff
+
+    return {k: v for k, v in params.items() if v is not None}

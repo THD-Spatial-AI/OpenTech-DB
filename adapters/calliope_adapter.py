@@ -556,14 +556,17 @@ def _conversion_tech(
     ~~~~~~~~~~~~~~~~~~~~~
     * Single output-carrier technologies use ``conversion``.
     * Technologies with >1 output carriers (e.g. CHP electricity + heat) use
-      ``conversion_plus``.  Additional ``carrier_ratios`` can be passed via
-      ``inst.extra["carrier_ratios"]`` and are forwarded verbatim.
-    * ``energy_eff``  = primary conversion efficiency (carrier_in -> carrier_out).
+      ``conversion_plus``.
+    * ``energy_eff``  = primary output efficiency (carrier_in -> primary carrier_out).
+    * For ``conversion_plus``, ``carrier_ratios`` are computed automatically from
+      ``inst.thermal_efficiency / inst.electrical_efficiency`` when both are present,
+      or can be overridden via ``inst.extra["carrier_ratios"]``.
     * ``energy_ramping``  is mapped from ramp_up/down_rate when available.
     * ``om_prod``  covers variable O&M on the output carrier [EUR/kWh].
     """
-    eff       = (_val(inst.electrical_efficiency)    if inst else None) \
+    el_eff    = (_val(inst.electrical_efficiency)    if inst else None) \
                 or _val(getattr(tech, "fleet_conversion_efficiency", None))
+    th_eff    = _val(inst.thermal_efficiency)    if inst else None
     capex     = _val(inst.capex_per_kw)          if inst else None
     opex_f    = _val(inst.opex_fixed_per_kw_yr)  if inst else None
     opex_v    = _val(inst.opex_variable_per_mwh) if inst else None
@@ -587,6 +590,16 @@ def _conversion_tech(
     n_out  = len(tech.output_carriers)
     parent = "conversion_plus" if n_out > 1 else "conversion"
 
+    # Primary efficiency: depends on what the primary output carrier is.
+    # Thermal-primary techs (boilers, heat pumps) use thermal_efficiency (= COP / thermal eff).
+    # All other techs (electrolyzers, fuel cells, chemical processes) use electrical_efficiency.
+    _THERMAL_CARRIERS = {"heat", "steam", "cooling"}
+    primary_out = tech.output_carriers[0].value if tech.output_carriers else "electricity"
+    if primary_out in _THERMAL_CARRIERS:
+        primary_eff = th_eff or _val(getattr(tech, "fleet_conversion_efficiency", None))
+    else:
+        primary_eff = el_eff
+
     # --- essentials -----------------------------------------------------------
     essentials: dict[str, Any] = {
         "name":        inst.label if inst else tech.name,
@@ -601,8 +614,8 @@ def _conversion_tech(
     # --- constraints ----------------------------------------------------------
     constraints: dict[str, Any] = {}
 
-    if eff is not None:
-        constraints["energy_eff"] = eff                        # fraction, carrier_in->carrier_out
+    if primary_eff is not None:
+        constraints["energy_eff"] = primary_eff                # fraction, carrier_in->primary carrier_out
 
     if cap_kw is not None:
         constraints["energy_cap_max"] = cap_kw                 # kW
@@ -613,8 +626,21 @@ def _conversion_tech(
     if energy_ramping is not None:
         constraints["energy_ramping"] = energy_ramping         # fraction/hour
 
-    # Forward any model-specific extra constraints (e.g. carrier_ratios for CHP)
-    if inst and inst.extra:
+    # conversion_plus: carrier_ratios define secondary output quantities
+    # relative to the primary output.
+    # Ratio = secondary_eff / primary_eff (e.g. heat_out / elec_out for CHP).
+    # Prefer explicit carrier_ratios from extra, else auto-compute from efficiencies.
+    if parent == "conversion_plus" and n_out >= 2:
+        extra_ratios = (inst.extra.get("carrier_ratios") if inst and inst.extra else None)
+        if extra_ratios is not None:
+            constraints["carrier_ratios"] = extra_ratios
+        elif el_eff and th_eff and el_eff > 0:
+            secondary_carrier = tech.output_carriers[1].value
+            constraints["carrier_ratios"] = {
+                f"carrier_out.{secondary_carrier}": round(th_eff / el_eff, 4)
+            }
+    elif inst and inst.extra:
+        # For single-output: still honour any manually set extra constraints
         for key, val in inst.extra.items():
             constraints.setdefault(key, val)
 

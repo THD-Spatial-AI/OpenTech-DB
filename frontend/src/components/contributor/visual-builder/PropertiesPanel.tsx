@@ -21,12 +21,13 @@
  * inline next to each field.
  */
 
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import { z } from "zod/v4";
 import {
   useTechBuilderStore,
   CARRIER_COLORS,
+  getCarrierFieldConfig,
   type TechNodeData,
   type CarrierNodeData,
   type CarrierPort,
@@ -34,6 +35,12 @@ import {
 import CostCalculatorWizard from "./CostCalculatorWizard";
 import { submitTechnology } from "../../../services/api";
 import type { OntologySchema } from "../../../types/api";
+import {
+  getArchetypeForOeoClass,
+  getDefaultValues,
+  type ArchetypeSchema,
+  type DerivedBadge,
+} from "../../../lib/archetypeSchemas";
 
 // ── Zod validation schema ─────────────────────────────────────────────────────
 
@@ -187,6 +194,9 @@ function CarrierPropertiesContent({
   data: CarrierNodeData;
 }) {
   const updateCarrierNode = useTechBuilderStore((s) => s.updateCarrierNode);
+  const updateNodeData    = useTechBuilderStore((s) => s.updateNodeData);
+  const storeNodes        = useTechBuilderStore((s) => s.nodes);
+  const storeEdges        = useTechBuilderStore((s) => s.edges);
   const color   = CARRIER_COLORS[data.carrier] ?? "#6366f1";
   const isInput = data.direction === "input";
 
@@ -195,14 +205,63 @@ function CarrierPropertiesContent({
     [nodeId, updateCarrierNode]
   );
 
+  // ── Find connected tech node + archetype ────────────────────────────────────
+  const techNodeId = useMemo(() => {
+    // Input carrier: edge goes carrier→tech (source=carrier, target=tech)
+    // Output carrier: edge goes tech→carrier (source=tech, target=carrier)
+    return isInput
+      ? storeEdges.find((e) => e.source === nodeId)?.target ?? null
+      : storeEdges.find((e) => e.target === nodeId)?.source ?? null;
+  }, [nodeId, isInput, storeEdges]);
+
+  const techData = useMemo(() => {
+    if (!techNodeId) return null;
+    const n = storeNodes.find((n) => n.id === techNodeId && n.type === "techNode");
+    return n ? (n.data as unknown as TechNodeData) : null;
+  }, [techNodeId, storeNodes]);
+
+  const archetype = useMemo(
+    () => (techData?.oeoClass ? getArchetypeForOeoClass(techData.oeoClass) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [techData?.oeoClass]
+  );
+
+  // ── Write an archetype input value to the connected tech node ───────────────
+  const updateArchInput = useCallback(
+    (id: string, val: number) => {
+      if (!techNodeId || !techData || !archetype) return;
+      const newInputValues = { ...(techData.archetypeInputValues ?? {}), [id]: val };
+      const effectiveValues = { ...getDefaultValues(archetype), ...newInputValues };
+      const derived = archetype.derive(effectiveValues);
+      updateNodeData(techNodeId, {
+        archetypeInputValues: newInputValues,
+        efficiencyPercent:    derived.efficiencyPercent,
+        co2FactorGPerKwh:     derived.co2FactorGPerKwh,
+      });
+    },
+    [techNodeId, techData, archetype, updateNodeData]
+  );
+
+  // ── Derived output flow for OUTPUT carrier panels ───────────────────────────
+  const derivedOutputKw = useMemo(() => {
+    if (isInput || !archetype || !techData || !techNodeId) return null;
+    const inputEdges = storeEdges.filter((e) => e.target === techNodeId);
+    let inputFlowKw = 0;
+    inputEdges.forEach((e) => {
+      const n = storeNodes.find((x) => x.id === e.source && x.type === "carrierNode");
+      if (n) inputFlowKw += ((n.data as unknown as CarrierNodeData).flowRateKw) || 0;
+    });
+    if (inputFlowKw <= 0) return null;
+    const effectiveValues = { ...getDefaultValues(archetype), ...(techData.archetypeInputValues ?? {}) };
+    const outputFlows = archetype.deriveOutputFlowKw(inputFlowKw, effectiveValues);
+    return outputFlows[data.carrier] ?? null;
+  }, [isInput, archetype, techData, techNodeId, storeEdges, storeNodes, data.carrier]);
+
   return (
     <>
       {/* Header */}
       <div className="px-4 py-3.5 border-b border-outline-variant/15 flex-shrink-0 flex items-center gap-2">
-        <span
-          className="w-4 h-4 rounded-full flex-shrink-0"
-          style={{ background: color }}
-        />
+        <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: color }} />
         <h2 className="text-sm font-bold text-on-surface flex-1 min-w-0 truncate capitalize">
           {data.carrier.replace(/_/g, " ")}
         </h2>
@@ -214,98 +273,425 @@ function CarrierPropertiesContent({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-        <p className="text-[10px] text-on-surface-variant/60 leading-relaxed">
-          {isInput
-            ? "Energy carrier flowing into the technology. Set stream properties below to document the input conditions."
-            : "Energy carrier flowing out of the technology. Set stream properties below to document the output conditions."}
-        </p>
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
-        {/* Flow rate */}
-        <div>
-          <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
-            Nominal Flow Rate (kW)
-          </label>
-          <input
-            type="number"
-            min={0}
-            step={1}
-            value={data.flowRateKw || ""}
-            onChange={(e) =>
-              update({ flowRateKw: parseFloat(e.target.value) || 0 })
-            }
-            className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            placeholder="e.g. 5000"
-          />
-          <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
-            Nominal power through this carrier link at rated conditions
-          </p>
-        </div>
+        {/* ── Archetype-aware: INPUT physics inputs ──────────────────────────── */}
+        {archetype && isInput && (
+          <div className="rounded-lg bg-primary/5 border border-primary/15 p-3 space-y-3">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[14px] text-primary">{archetype.icon}</span>
+              <p className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                {archetype.label} — Physics Inputs
+              </p>
+            </div>
 
-        {/* Temperature */}
-        <div>
-          <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
-            Temperature (°C)
-            <span className="ml-1 font-normal text-on-surface-variant/40">— optional</span>
-          </label>
-          <input
-            type="number"
-            step={1}
-            value={data.temperatureC ?? ""}
-            onChange={(e) =>
-              update({
-                temperatureC: e.target.value === "" ? null : parseFloat(e.target.value),
-              })
-            }
-            className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            placeholder="e.g. 120"
-          />
-          <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
-            Relevant for heat, steam, geothermal and cooling streams
-          </p>
-        </div>
+            {/* Primary flow rate — renamed per archetype */}
+            <div>
+              <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+                {archetype.inputCarrierFlowLabel}
+                <span className="ml-1 font-normal text-on-surface-variant/50">({archetype.inputCarrierFlowUnit})</span>
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={data.flowRateKw || ""}
+                onChange={(e) => update({ flowRateKw: parseFloat(e.target.value) || 0 })}
+                className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="e.g. 1000"
+              />
+            </div>
 
-        {/* Pressure */}
-        <div>
-          <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
-            Pressure (bar)
-            <span className="ml-1 font-normal text-on-surface-variant/40">— optional</span>
-          </label>
-          <input
-            type="number"
-            min={0}
-            step={0.1}
-            value={data.pressureBar ?? ""}
-            onChange={(e) =>
-              update({
-                pressureBar:
-                  e.target.value === "" ? null : parseFloat(e.target.value),
-              })
-            }
-            className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            placeholder="e.g. 30"
-          />
-          <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
-            Relevant for natural gas, hydrogen, steam and CO₂ streams
-          </p>
-        </div>
+            {/* Carrier-level physics fields (e.g. tSourceC for heat pump) */}
+            {archetype.inputCarrierFields?.map((field) => {
+              const currentVal = Number((techData?.archetypeInputValues ?? {})[field.id] ?? field.defaultValue);
+              const dp = field.step >= 1 ? 0 : 1;
+              return (
+                <div key={field.id}>
+                  <div className="flex justify-between items-baseline mb-1">
+                    <span className="flex items-center text-[10px] font-semibold text-on-surface-variant">
+                      {field.label}
+                      {field.tooltip && <InfoTooltip text={field.tooltip} />}
+                    </span>
+                    <span className="text-[11px] font-bold tabular-nums text-primary">
+                      {currentVal.toFixed(dp)}&nbsp;{field.unit}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={field.min}
+                    max={field.max}
+                    step={field.step}
+                    value={currentVal}
+                    onChange={(e) => updateArchInput(field.id, parseFloat(e.target.value))}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-[9px] text-on-surface-variant/40 mt-0.5">
+                    <span>{field.min}&nbsp;{field.unit}</span>
+                    <span>{field.max}&nbsp;{field.unit}</span>
+                  </div>
+                  {field.presets && field.presets.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {field.presets.map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => updateArchInput(field.id, preset.value)}
+                          className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
+                            Math.abs(currentVal - preset.value) < field.step / 2
+                              ? "bg-primary text-white border-primary"
+                              : "bg-surface-container border-outline-variant/30 text-on-surface-variant hover:border-primary/50 hover:text-primary"
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {field.description && (
+                    <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">{field.description}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-        {/* Quality note */}
-        <div>
-          <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
-            Quality Note
-            <span className="ml-1 font-normal text-on-surface-variant/40">— optional</span>
-          </label>
-          <textarea
-            rows={3}
-            value={data.qualityNote}
-            onChange={(e) => update({ qualityNote: e.target.value })}
-            className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-            placeholder="e.g. H₂ purity > 99.9 %, Biomass moisture < 15 %…"
-          />
-        </div>
+        {/* ── Archetype-aware: OUTPUT derived flow ───────────────────────────── */}
+        {archetype && !isInput && (
+          <div className={`rounded-lg border p-3 space-y-2 ${
+            derivedOutputKw != null
+              ? "bg-emerald-50 border-emerald-200"
+              : "bg-surface-container border-outline-variant/20"
+          }`}>
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[14px] text-emerald-600">functions</span>
+              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                Derived Output — {archetype.label}
+              </p>
+            </div>
+            {derivedOutputKw != null ? (
+              <div>
+                <p className="text-lg font-bold text-emerald-900 tabular-nums">
+                  {derivedOutputKw.toFixed(1)}
+                  <span className="text-sm font-normal text-emerald-700 ml-1">kW</span>
+                </p>
+                <p className="text-[9px] text-emerald-700 mt-0.5">
+                  {data.carrier.replace(/_/g, " ")} output — derived from input × conversion
+                </p>
+              </div>
+            ) : (
+              <p className="text-[9px] text-on-surface-variant/50 leading-relaxed">
+                Set the input carrier <strong>flow rate</strong> to see derived output.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ── Generic flow rate (hidden for archetype input carriers — shown above) ── */}
+        {(!archetype || !isInput) && (
+          <div>
+            <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+              Nominal Flow Rate (kW)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={data.flowRateKw || ""}
+              onChange={(e) => update({ flowRateKw: parseFloat(e.target.value) || 0 })}
+              className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="e.g. 5000"
+            />
+            <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
+              Nominal power through this carrier link at rated conditions
+            </p>
+          </div>
+        )}
+
+        {/* ── Config-driven stream properties ────────────────────────────────── */}
+        {(() => {
+          const cfg = getCarrierFieldConfig(data.carrier);
+          return (
+            <>
+              {cfg.showTemperature && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+                    {cfg.temperatureLabel ?? "Temperature (°C)"}
+                  </label>
+                  <input
+                    type="number"
+                    step={1}
+                    value={data.temperatureC ?? ""}
+                    onChange={(e) =>
+                      update({ temperatureC: e.target.value === "" ? null : parseFloat(e.target.value) })
+                    }
+                    className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder="e.g. 120"
+                  />
+                  {cfg.temperatureHint && (
+                    <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">{cfg.temperatureHint}</p>
+                  )}
+                </div>
+              )}
+
+              {cfg.showPressure && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+                    {cfg.pressureLabel ?? "Pressure (bar)"}
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={data.pressureBar ?? ""}
+                    onChange={(e) =>
+                      update({ pressureBar: e.target.value === "" ? null : parseFloat(e.target.value) })
+                    }
+                    className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder="e.g. 30"
+                  />
+                  {cfg.pressureHint && (
+                    <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">{cfg.pressureHint}</p>
+                  )}
+                </div>
+              )}
+
+              {cfg.showQualityNote && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+                    {cfg.qualityLabel ?? "Quality Note"}
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={data.qualityNote}
+                    onChange={(e) => update({ qualityNote: e.target.value })}
+                    className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                    placeholder={cfg.qualityHint ?? "e.g. purity, grade, specification…"}
+                  />
+                  {cfg.qualityHint && (
+                    <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">{cfg.qualityHint}</p>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
     </>
+  );
+}
+
+// ── Archetype Physics Section ────────────────────────────────────────────────
+// Rendered in place of the flat "Technical Parameters" section whenever the
+// selected node's OEO class is covered by a known physics archetype.
+
+const BADGE_ACCENT_CLASSES: Record<string, { bg: string; border: string; label: string; value: string; unit: string }> = {
+  green: { bg: "bg-emerald-50",  border: "border-emerald-200", label: "text-emerald-700", value: "text-emerald-900", unit: "text-emerald-600" },
+  blue:  { bg: "bg-blue-50",     border: "border-blue-200",    label: "text-blue-700",    value: "text-blue-900",    unit: "text-blue-600" },
+  amber: { bg: "bg-amber-50",    border: "border-amber-200",   label: "text-amber-700",   value: "text-amber-900",   unit: "text-amber-600" },
+};
+
+function DerivedBadgeChip({ badge }: { badge: DerivedBadge }) {
+  const accent = BADGE_ACCENT_CLASSES[badge.accent ?? "green"];
+  return (
+    <div
+      className={`flex flex-col items-center ${accent.bg} border ${accent.border} rounded-lg px-3 py-2 min-w-[76px]`}
+      title={badge.description}
+    >
+      <span className={`text-[9px] font-bold ${accent.label} uppercase tracking-wider`}>
+        {badge.label}
+      </span>
+      <span className={`text-sm font-bold ${accent.value} tabular-nums leading-tight`}>
+        {badge.value}
+      </span>
+      {badge.unit && (
+        <span className={`text-[8px] ${accent.unit} text-center leading-tight`}>{badge.unit}</span>
+      )}
+    </div>
+  );
+}
+
+// ── Info tooltip helper ────────────────────────────────────────────────────────
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="relative group inline-flex items-center ml-1">
+      <span className="material-symbols-outlined text-[12px] text-on-surface-variant/35 hover:text-primary cursor-help select-none">
+        info
+      </span>
+      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-60 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        <span className="block bg-surface-container-highest border border-outline-variant/30 shadow-xl rounded-lg px-2.5 py-2 text-[9px] text-on-surface leading-relaxed text-left whitespace-normal">
+          {text}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function ArchetypePhysicsSection({
+  data,
+  archetype,
+  update,
+}: {
+  data: TechNodeData;
+  archetype: ArchetypeSchema;
+  update: (patch: Partial<TechNodeData>) => void;
+}) {
+  // Physics inputs live in archetypeInputValues on the Zustand node
+  // so carrier panels can read/write the same values (e.g. tSourceC).
+  const storedValues = useMemo(
+    () => (data.archetypeInputValues ?? {}) as Record<string, number | string>,
+    [data.archetypeInputValues]
+  );
+  const defaults = useMemo(() => getDefaultValues(archetype), [archetype]);
+  const values   = useMemo(() => ({ ...defaults, ...storedValues }), [defaults, storedValues]);
+
+  // Seed defaults into the store on first mount if empty.
+  useEffect(() => {
+    if (Object.keys(storedValues).length === 0) {
+      update({ archetypeInputValues: defaults });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const derived = useMemo(() => archetype.derive(values), [archetype, values]);
+
+  // Keep derived technical outputs in sync on the node.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    update({ efficiencyPercent: derived.efficiencyPercent, co2FactorGPerKwh: derived.co2FactorGPerKwh });
+  }, [derived.efficiencyPercent, derived.co2FactorGPerKwh]);
+
+  const handleSlider = useCallback((id: string, val: number) => {
+    update({ archetypeInputValues: { ...(data.archetypeInputValues ?? {}), [id]: val } });
+  }, [data.archetypeInputValues, update]);
+
+  const handleSelect = useCallback((id: string, val: string) => {
+    update({ archetypeInputValues: { ...(data.archetypeInputValues ?? {}), [id]: val } });
+  }, [data.archetypeInputValues, update]);
+
+  // Decimal places inferred from step size.
+  function decimalPlaces(step: number) {
+    if (step >= 1) return 0;
+    return String(step).split(".")[1]?.length ?? 1;
+  }
+
+  return (
+    <PanelSection title="Physics Model" icon="calculate" defaultOpen>
+      {/* Archetype badge */}
+      <div className="flex items-start gap-2 rounded-lg bg-primary/5 border border-primary/15 px-3 py-2.5">
+        <span className="material-symbols-outlined text-[18px] text-primary flex-shrink-0 mt-0.5">
+          {archetype.icon}
+        </span>
+        <div>
+          <p className="text-[11px] font-bold text-primary">{archetype.label}</p>
+          <p className="text-[9px] text-on-surface-variant/60 leading-relaxed mt-0.5">
+            {archetype.description}
+          </p>
+        </div>
+      </div>
+
+      {/* Select inputs */}
+      {archetype.selects?.map((sel) => (
+        <div key={sel.id}>
+          <label className="flex items-center text-[10px] font-semibold text-on-surface-variant mb-1">
+            {sel.label}
+            {sel.tooltip && <InfoTooltip text={sel.tooltip} />}
+          </label>
+          <select
+            value={String(values[sel.id] ?? sel.defaultValue)}
+            onChange={(e) => handleSelect(sel.id, e.target.value)}
+            className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {sel.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {sel.description && (
+            <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">{sel.description}</p>
+          )}
+        </div>
+      ))}
+
+      {/* Slider inputs */}
+      {archetype.sliders.map((slider) => {
+        const currentVal = Number(values[slider.id] ?? slider.defaultValue);
+        const dp = decimalPlaces(slider.step);
+        return (
+          <div key={slider.id}>
+            <div className="flex justify-between items-baseline mb-1">
+              <span className="flex items-center text-[10px] font-semibold text-on-surface-variant">
+                {slider.label}
+                {slider.tooltip && <InfoTooltip text={slider.tooltip} />}
+              </span>
+              <span className="text-[11px] font-bold tabular-nums text-primary">
+                {currentVal.toFixed(dp)} {slider.unit}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={slider.min}
+              max={slider.max}
+              step={slider.step}
+              value={currentVal}
+              onChange={(e) => handleSlider(slider.id, parseFloat(e.target.value))}
+              className="w-full accent-primary"
+            />
+            <div className="flex justify-between text-[9px] text-on-surface-variant/40 mt-0.5">
+              <span>{slider.min} {slider.unit}</span>
+              <span>{slider.max} {slider.unit}</span>
+            </div>
+            {slider.presets && slider.presets.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {slider.presets.map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => handleSlider(slider.id, preset.value)}
+                    className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
+                      Math.abs(currentVal - preset.value) < slider.step / 2
+                        ? "bg-primary text-white border-primary"
+                        : "bg-surface-container border-outline-variant/30 text-on-surface-variant hover:border-primary/50 hover:text-primary"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {slider.description && (
+              <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">{slider.description}</p>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Derived output badges */}
+      <div>
+        <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">
+          Derived Values
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {derived.badges.map((badge) => (
+            <DerivedBadgeChip key={badge.label} badge={badge} />
+          ))}
+        </div>
+      </div>
+
+      {/* Lifetime — always required regardless of archetype */}
+      <div>
+        <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+          Technical Lifetime (years)
+        </label>
+        <input
+          type="number" min={1} max={100}
+          value={data.lifetimeYears}
+          onChange={(e) => update({ lifetimeYears: parseInt(e.target.value, 10) || 25 })}
+          className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </div>
+    </PanelSection>
   );
 }
 
@@ -347,6 +733,14 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
   const nodeType = selectedNode?.type ?? null;
+
+  // Resolve archetype schema for the selected tech node (null = no physics model for this OEO class yet).
+  const data_preliminary = nodeType === "techNode" ? selectedNode!.data as unknown as TechNodeData : null;
+  const archetype: ArchetypeSchema | null = useMemo(
+    () => data_preliminary ? getArchetypeForOeoClass(data_preliminary.oeoClass) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data_preliminary?.oeoClass]
+  );
 
   // Type-safe access to data based on node type
   const data         = nodeType === "techNode"    ? selectedNode!.data as unknown as TechNodeData    : null;
@@ -660,47 +1054,60 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
         </PanelSection>
 
         {/* ── 3. Technical Parameters ── */}
-        <PanelSection title="Technical Parameters" icon="engineering" defaultOpen={false}>
-          {/* Efficiency slider */}
-          <div>
-            <div className="flex justify-between text-[10px] text-on-surface-variant mb-1">
-              <span className="font-semibold">Conversion efficiency (η)</span>
-              <span className="font-bold tabular-nums">{data.efficiencyPercent}%</span>
+        {archetype ? (
+          // Physics-model section — sliders derive efficiency & CO₂ automatically.
+          // key={selectedNodeId} forces remount when the selected node changes,
+          // so local physics-input state resets to archetype defaults.
+          <ArchetypePhysicsSection
+            key={selectedNodeId!}
+            data={data}
+            archetype={archetype}
+            update={update}
+          />
+        ) : (
+          // Fallback: flat manual fields for techs without a physics model yet.
+          <PanelSection title="Technical Parameters" icon="engineering" defaultOpen={false}>
+            {/* Efficiency slider */}
+            <div>
+              <div className="flex justify-between text-[10px] text-on-surface-variant mb-1">
+                <span className="font-semibold">Conversion efficiency (η)</span>
+                <span className="font-bold tabular-nums">{data.efficiencyPercent}%</span>
+              </div>
+              <input
+                type="range" min={1} max={100} step={1}
+                value={data.efficiencyPercent}
+                onChange={(e) => update({ efficiencyPercent: parseFloat(e.target.value) })}
+                className="w-full accent-primary"
+              />
             </div>
-            <input
-              type="range" min={1} max={100} step={1}
-              value={data.efficiencyPercent}
-              onChange={(e) => update({ efficiencyPercent: parseFloat(e.target.value) })}
-              className="w-full accent-primary"
-            />
-          </div>
 
-          {/* Lifetime */}
-          <div>
-            <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
-              Technical Lifetime (years)
-            </label>
-            <input
-              type="number" min={1} max={100}
-              value={data.lifetimeYears}
-              onChange={(e) => update({ lifetimeYears: parseInt(e.target.value, 10) || 25 })}
-              className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
+            {/* Lifetime */}
+            <div>
+              <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+                Technical Lifetime (years)
+              </label>
+              <input
+                type="number" min={1} max={100}
+                value={data.lifetimeYears}
+                onChange={(e) => update({ lifetimeYears: parseInt(e.target.value, 10) || 25 })}
+                className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
 
-          {/* CO2 factor */}
-          <div>
-            <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
-              CO₂ Emission Factor (g/kWh)
-            </label>
-            <input
-              type="number" min={0} step="any"
-              value={data.co2FactorGPerKwh}
-              onChange={(e) => update({ co2FactorGPerKwh: parseFloat(e.target.value) || 0 })}
-              className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-        </PanelSection>
+            {/* CO2 factor */}
+            <div>
+              <label className="block text-[10px] font-semibold text-on-surface-variant mb-1">
+                CO₂ Emission Factor (g/kWh)
+              </label>
+              <input
+                type="number" min={0} step="any"
+                value={data.co2FactorGPerKwh}
+                onChange={(e) => update({ co2FactorGPerKwh: parseFloat(e.target.value) || 0 })}
+                className="w-full text-xs bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </PanelSection>
+        )}
 
         {/* ── 4. Cost Calculator ── */}
         <PanelSection title="Cost Calculator" icon="calculate" defaultOpen={false}>

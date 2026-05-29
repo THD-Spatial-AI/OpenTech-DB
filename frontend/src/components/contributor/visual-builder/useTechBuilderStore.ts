@@ -58,6 +58,13 @@ export interface TechNodeData extends Record<string, unknown> {
   capexUsdPerKw: number;
   opexFixedUsdPerKwYr: number;
   opexVarUsdPerMwh: number;
+
+  /**
+   * Physics model inputs — keyed by slider/select id from the archetype schema.
+   * Persisted in the store so both the tech-node panel and carrier panels can
+   * read/write the same values (e.g. tSourceC for heat pump).
+   */
+  archetypeInputValues: Record<string, number | string>;
 }
 
 // ── Carrier node data shape ─────────────────────────────────────────────────
@@ -585,7 +592,328 @@ export const CARRIER_COLORS: Record<string, string> = {
   nuclear_fuel:     "#7c3aed",
 };
 
-// ── Store factory ─────────────────────────────────────────────────────────────
+// ── Per-carrier field visibility config ──────────────────────────────────────
+// Controls which T/P/Q fields are shown in CarrierPropertiesContent,
+// and provides contextual labels, hints, and initial defaults.
+
+export interface CarrierFieldConfig {
+  showTemperature: boolean;
+  showPressure:    boolean;
+  showQualityNote: boolean;
+  temperatureLabel?: string;
+  pressureLabel?:    string;
+  qualityLabel?:     string;
+  temperatureHint?:  string;
+  pressureHint?:     string;
+  qualityHint?:      string;
+  defaultTemperatureC?: number;
+  defaultPressureBar?:  number;
+  defaultQualityNote?:  string;
+}
+
+export const CARRIER_FIELD_CONFIG: Record<string, CarrierFieldConfig> = {
+  electricity: {
+    showTemperature: false, showPressure: false, showQualityNote: false,
+  },
+  solar_irradiance: {
+    showTemperature: false, showPressure: false, showQualityNote: false,
+  },
+  wind: {
+    showTemperature: false, showPressure: false, showQualityNote: false,
+  },
+  natural_gas: {
+    showTemperature: false, showPressure: true, showQualityNote: true,
+    pressureLabel:   "Supply Pressure (bar)",
+    pressureHint:    "Transmission: 40–80 bar · Distribution: 4–10 bar · Appliance inlet: 20–50 mbar.",
+    qualityLabel:    "Gas Quality Note",
+    qualityHint:     "e.g. CH₄ %, H₂ blend %, Wobbe Index, gross calorific value.",
+    defaultPressureBar:  30,
+    defaultQualityNote:  "Pipeline quality NG (> 97 % CH₄)",
+  },
+  hydrogen: {
+    showTemperature: false, showPressure: true, showQualityNote: true,
+    pressureLabel:   "Delivery Pressure (bar)",
+    pressureHint:    "Pipeline: 30–100 bar · Tube trailer: 200–500 bar · FCEV fueling station: 700 bar.",
+    qualityLabel:    "Purity Class (ISO 14687)",
+    qualityHint:     "Fuel-cell grade: > 99.97 % (type D). Industrial grade: > 99.9 %.",
+    defaultPressureBar:  30,
+    defaultQualityNote:  "≥ 99.9 % purity (ISO 14687 type D)",
+  },
+  heat: {
+    showTemperature: true, showPressure: false, showQualityNote: false,
+    temperatureLabel: "Supply Temperature (°C)",
+    temperatureHint:  "Underfloor heating: 35–45 °C · Radiators: 55–70 °C · DHW: 60 °C · Industrial process: > 100 °C.",
+    defaultTemperatureC: 60,
+  },
+  cooling: {
+    showTemperature: true, showPressure: false, showQualityNote: false,
+    temperatureLabel: "Chilled-Water Temperature (°C)",
+    temperatureHint:  "Typical HVAC chilled water: 7 °C supply / 12 °C return. Industrial: varies.",
+    defaultTemperatureC: 7,
+  },
+  steam: {
+    showTemperature: true, showPressure: true, showQualityNote: false,
+    temperatureLabel: "Steam Temperature (°C)",
+    pressureLabel:    "Steam Pressure (bar)",
+    temperatureHint:  "Saturation at 10 bar = 180 °C · HP power cycle: 300–600 °C.",
+    pressureHint:     "LP: 2–4 bar · MP: 10–20 bar · HP power: 100–300 bar.",
+    defaultTemperatureC: 180,
+    defaultPressureBar:  10,
+  },
+  co2: {
+    showTemperature: false, showPressure: true, showQualityNote: true,
+    pressureLabel:   "CO₂ Pressure (bar)",
+    pressureHint:    "Dense-phase pipeline: 80–120 bar · Supercritical injection: 150+ bar.",
+    qualityLabel:    "CO₂ Quality",
+    qualityHint:     "Post-combustion: 95–99 % · Geological storage spec: > 99 %.",
+    defaultPressureBar:  100,
+    defaultQualityNote:  "> 99 % purity for geological storage",
+  },
+  biomass: {
+    showTemperature: false, showPressure: false, showQualityNote: true,
+    qualityLabel: "Biomass Specification",
+    qualityHint:  "Moisture content, ash content, net calorific value (NCV), pellet vs. chip grade.",
+    defaultQualityNote: "Moisture < 15 %, NCV ~ 16 MJ/kg",
+  },
+  coal: {
+    showTemperature: false, showPressure: false, showQualityNote: true,
+    qualityLabel: "Coal Specification",
+    qualityHint:  "Grade (bituminous, sub-bituminous, lignite), ash %, moisture %, calorific value.",
+    defaultQualityNote: "Sub-bituminous, CV ~ 22 MJ/kg",
+  },
+  biogas: {
+    showTemperature: false, showPressure: false, showQualityNote: true,
+    qualityLabel: "Biogas Composition",
+    qualityHint:  "Raw: 50–65 % CH₄, 35–50 % CO₂, < 1 % H₂S. State cleaning grade if upgraded.",
+    defaultQualityNote: "Raw biogas ~60 % CH₄, 40 % CO₂",
+  },
+  biomethane: {
+    showTemperature: false, showPressure: false, showQualityNote: true,
+    qualityLabel: "Biomethane Quality",
+    qualityHint:  "Grid injection: typically > 97 % CH₄ after upgrading.",
+    defaultQualityNote: "Grid-injected biomethane (> 97 % CH₄)",
+  },
+  oil: {
+    showTemperature: false, showPressure: true, showQualityNote: true,
+    pressureLabel:  "Pipeline Pressure (bar)",
+    pressureHint:   "Crude trunk lines: 10–80 bar. Pump discharge up to 100 bar.",
+    qualityLabel:   "Oil Grade / Specification",
+    defaultPressureBar: 10,
+  },
+  nuclear_fuel: {
+    showTemperature: false, showPressure: false, showQualityNote: true,
+    qualityLabel: "Fuel Assembly Specification",
+    qualityHint:  "Enrichment level (%), fuel type (UO₂, MOX), burnup target (GWd/tHM).",
+    defaultQualityNote: "Low-enriched UO₂ (~3.5 % U-235), 45 GWd/tHM burnup",
+  },
+  water: {
+    showTemperature: true, showPressure: true, showQualityNote: false,
+    temperatureLabel: "Water Temperature (°C)",
+    pressureLabel:    "Water Pressure (bar)",
+    temperatureHint:  "Cooling water: 10–25 °C · Geothermal brine: 100–300 °C.",
+    pressureHint:     "Hydro penstock: up to 60 bar. Pump outlet varies.",
+    defaultTemperatureC: 15,
+    defaultPressureBar:  5,
+  },
+  waste_heat: {
+    showTemperature: true, showPressure: false, showQualityNote: false,
+    temperatureLabel: "Waste Heat Temperature (°C)",
+    temperatureHint:  "< 100 °C: ORC or heat pump. 100–400 °C: process integration. > 400 °C: combined cycle.",
+    defaultTemperatureC: 80,
+  },
+  syngas: {
+    showTemperature: false, showPressure: true, showQualityNote: true,
+    pressureLabel:  "Syngas Pressure (bar)",
+    qualityLabel:   "Syngas Composition",
+    qualityHint:    "H₂:CO ratio, CH₄ content, inerts. FT synthesis feed: H₂:CO ≈ 2:1.",
+    defaultPressureBar:  15,
+    defaultQualityNote:  "H₂:CO ≈ 2:1 (FT synthesis grade)",
+  },
+  ammonia: {
+    showTemperature: false, showPressure: true, showQualityNote: true,
+    pressureLabel:  "Ammonia Pressure (bar)",
+    pressureHint:   "Liquid at ambient: 8–10 bar. Refrigerated liquid: 1 bar at −33 °C.",
+    qualityLabel:   "Purity / Grade",
+    defaultPressureBar:  10,
+    defaultQualityNote:  "≥ 99.5 % anhydrous NH₃",
+  },
+  methanol: {
+    showTemperature: false, showPressure: false, showQualityNote: true,
+    qualityLabel: "Methanol Specification",
+    defaultQualityNote: "Grade AA methanol (> 99.85 %)",
+  },
+  liquid_hydrogen: {
+    showTemperature: true, showPressure: true, showQualityNote: true,
+    temperatureLabel: "LH₂ Temperature (°C)",
+    pressureLabel:    "LH₂ Tank Pressure (bar)",
+    qualityLabel:     "Purity / Grade",
+    temperatureHint:  "Liquid H₂ boiling point: −253 °C at 1 bar. Sub-cooled for vaporisation margin.",
+    defaultTemperatureC: -253,
+    defaultPressureBar:   2,
+    defaultQualityNote:   "99.999 % purity (fuel-cell grade)",
+  },
+  geothermal: {
+    showTemperature: true, showPressure: true, showQualityNote: false,
+    temperatureLabel: "Brine Temperature (°C)",
+    pressureLabel:    "Well-Head Pressure (bar)",
+    temperatureHint:  "Flash steam: 180–300 °C. Binary/ORC: 100–170 °C.",
+    pressureHint:     "Flash steam well-head: 5–15 bar.",
+    defaultTemperatureC: 150,
+    defaultPressureBar:    8,
+  },
+};
+
+/** Returns field config for a given carrier, falling back to all-fields-visible. */
+export function getCarrierFieldConfig(carrier: string): CarrierFieldConfig {
+  return CARRIER_FIELD_CONFIG[carrier] ?? {
+    showTemperature: true, showPressure: true, showQualityNote: true,
+  };
+}
+
+// ── Per-archetype carrier seed values ────────────────────────────────────────
+// Pre-populates sensible initial values when carrier nodes are created.
+// Key = OEO short ID → { inputs/outputs: { carrier_name: partial data } }
+
+const ARCHETYPE_CARRIER_SEEDS: Record<string, {
+  inputs?:  Record<string, Partial<CarrierNodeData>>;
+  outputs?: Record<string, Partial<CarrierNodeData>>;
+}> = {
+  // Gas turbine / ICE
+  OEO_00000184: {
+    inputs:  { natural_gas: { pressureBar: 30, qualityNote: "Pipeline quality NG (> 97 % CH₄)" } },
+    outputs: { heat: { temperatureC: 400, qualityNote: "Exhaust gas waste heat (HRSG recovery)" } },
+  },
+  // Heat pump
+  OEO_00000009: {
+    outputs: { heat: { temperatureC: 55 } },
+  },
+  // Solar PV utility
+  OEO_00000165: {},
+  // Solar PV distributed
+  OEO_00000361: {},
+  // CSP
+  OEO_00000389: {
+    outputs: { steam: { temperatureC: 390, pressureBar: 100 } },
+  },
+  // Electrolyzer
+  OEO_00010021: {
+    inputs:  { water: { temperatureC: 20, pressureBar: 1, qualityNote: "Deionised process water (< 1 µS/cm)" } },
+    outputs: { hydrogen: { pressureBar: 30, qualityNote: "≥ 99.9 % purity (ISO 14687 type D)" } },
+  },
+  // SOFC fuel cell
+  OEO_00000016: {
+    inputs:  { hydrogen: { pressureBar: 3 } },
+    outputs: { heat: { temperatureC: 800, qualityNote: "High-temperature SOFC exhaust (> 700 °C)" } },
+  },
+  // PEM fuel cell
+  OEO_00140134: {
+    inputs:  { hydrogen: { pressureBar: 3 } },
+    outputs: { heat: { temperatureC: 80 } },
+  },
+  // Coal plant
+  OEO_00000089: {
+    outputs: { heat: { temperatureC: 300, qualityNote: "HP steam extraction" } },
+  },
+  // Nuclear
+  OEO_00000303: {
+    inputs:  { nuclear_fuel: { qualityNote: "Low-enriched UO₂ (~3.5 % U-235), 45 GWd/tHM burnup" } },
+    outputs: { heat: { temperatureC: 310, pressureBar: 15 } },
+  },
+  // Geothermal
+  OEO_00000192: {
+    inputs:  { water: { temperatureC: 180, pressureBar: 10 } },
+    outputs: { heat: { temperatureC: 90 } },
+  },
+  // Electric boiler
+  OEO_00310015: {
+    outputs: {
+      heat:  { temperatureC: 120 },
+      steam: { temperatureC: 180, pressureBar: 12 },
+    },
+  },
+  // Methanation
+  OEO_00000269: {
+    inputs:  { co2: { pressureBar: 20 }, hydrogen: { pressureBar: 20 } },
+    outputs: { biogas: { qualityNote: "Synthetic methane (SNG) > 95 % CH₄" } },
+  },
+  // Fischer-Tropsch
+  OEO_00010020: {
+    inputs:  { hydrogen: { pressureBar: 25 } },
+    outputs: { syngas: { pressureBar: 25 }, oil: { qualityNote: "Fischer-Tropsch syncrude" } },
+  },
+  // DAC
+  OEO_00010139: {
+    outputs: { co2: { pressureBar: 1, qualityNote: "Captured atmospheric CO₂ (≈ 415 ppm inlet)" } },
+  },
+  // CCS
+  OEO_00010141: {
+    inputs:  { co2: { pressureBar: 1, qualityNote: "Flue gas CO₂ stream" } },
+    outputs: { co2: { pressureBar: 150, qualityNote: "> 99 % purity for geological storage" } },
+  },
+  // H₂ underground storage
+  OEO_00000429: {
+    inputs:  { hydrogen: { pressureBar: 100 } },
+    outputs: { hydrogen: { pressureBar: 100 } },
+  },
+  // H₂ tank storage
+  OEO_00020363: {
+    inputs:  { hydrogen: { pressureBar: 200 } },
+    outputs: { hydrogen: { pressureBar: 30 } },
+  },
+  // H₂ pipeline
+  OEO_00020006: {
+    inputs:  { hydrogen: { pressureBar: 70 } },
+    outputs: { hydrogen: { pressureBar: 30 } },
+  },
+  // Sensible thermal storage
+  OEO_00310037: {
+    inputs:  { heat: { temperatureC: 80 } },
+    outputs: { heat: { temperatureC: 65 } },
+  },
+  // PCM thermal storage
+  OEO_00310043: {
+    inputs:  { heat: { temperatureC: 60 } },
+    outputs: { heat: { temperatureC: 55 } },
+  },
+  // Heat network substation
+  OEO_00000420: {
+    inputs:  { heat: { temperatureC: 90 } },
+    outputs: { heat: { temperatureC: 70 } },
+  },
+  // Haber-Bosch
+  OEO_00330010: {
+    inputs:  { hydrogen: { pressureBar: 200 } },
+    outputs: { ammonia: { pressureBar: 10, qualityNote: "≥ 99.5 % anhydrous NH₃" } },
+  },
+  // Pumped hydro
+  OEO_00010089: {
+    inputs:  { water: { pressureBar: 5 } },
+    outputs: { water: { pressureBar: 5 } },
+  },
+};
+
+/** Returns seed data for a specific carrier node being created. */
+function getCarrierSeed(
+  oeoId: string,
+  direction: "input" | "output",
+  carrier: string
+): Partial<CarrierNodeData> {
+  const archSeeds = ARCHETYPE_CARRIER_SEEDS[oeoId];
+  const archOverride = direction === "input"
+    ? archSeeds?.inputs?.[carrier]
+    : archSeeds?.outputs?.[carrier];
+  const cfgDefaults: Partial<CarrierNodeData> = {};
+  const cfg = CARRIER_FIELD_CONFIG[carrier];
+  if (cfg) {
+    if (cfg.showTemperature && cfg.defaultTemperatureC != null)
+      cfgDefaults.temperatureC = cfg.defaultTemperatureC;
+    if (cfg.showPressure && cfg.defaultPressureBar != null)
+      cfgDefaults.pressureBar = cfg.defaultPressureBar;
+    if (cfg.showQualityNote && cfg.defaultQualityNote)
+      cfgDefaults.qualityNote = cfg.defaultQualityNote;
+  }
+  return { ...cfgDefaults, ...archOverride };
+}
 
 export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
   nodes: [],
@@ -662,6 +990,7 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
     rawInputs.forEach((carrier, i) => {
       const cid     = `carrier-in-${nodeCounter++}`;
       const yOffset = (i - (rawInputs.length - 1) / 2) * 130;
+      const seed    = getCarrierSeed(oeoId, "input", carrier);
       carrierNodes.push({
         id: cid,
         type: "carrierNode",
@@ -670,10 +999,10 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
           carrier,
           direction: "input",
           label: carrier.replace(/_/g, " "),
-          flowRateKw: 0,
-          temperatureC: null,
-          pressureBar: null,
-          qualityNote: "",
+          flowRateKw:   0,
+          temperatureC: seed.temperatureC ?? null,
+          pressureBar:  seed.pressureBar  ?? null,
+          qualityNote:  seed.qualityNote  ?? "",
         },
       });
       carrierEdges.push({
@@ -688,6 +1017,7 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
     rawOutputs.forEach((carrier, i) => {
       const cid     = `carrier-out-${nodeCounter++}`;
       const yOffset = (i - (rawOutputs.length - 1) / 2) * 130;
+      const seed    = getCarrierSeed(oeoId, "output", carrier);
       carrierNodes.push({
         id: cid,
         type: "carrierNode",
@@ -696,10 +1026,10 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
           carrier,
           direction: "output",
           label: carrier.replace(/_/g, " "),
-          flowRateKw: 0,
-          temperatureC: null,
-          pressureBar: null,
-          qualityNote: "",
+          flowRateKw:   0,
+          temperatureC: seed.temperatureC ?? null,
+          pressureBar:  seed.pressureBar  ?? null,
+          qualityNote:  seed.qualityNote  ?? "",
         },
       });
       carrierEdges.push({
@@ -732,6 +1062,8 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
         capexUsdPerKw:       meta?.capexPerKw        ?? 0,
         opexFixedUsdPerKwYr: meta?.opexFixedPerKwYr  ?? 0,
         opexVarUsdPerMwh:    meta?.opexVarPerMwh     ?? 0,
+        // Physics model inputs — populated by ArchetypePhysicsSection on first render.
+        archetypeInputValues: {},
       },
     };
 

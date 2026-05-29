@@ -45,7 +45,7 @@ const NAV_LINKS = [
   },
   {
     label:  "Project Docs",
-    href:   `${API_BASE}/project-docs/content/01-introduction-goals.md`,
+    href:   `https://thd-spatial-ai.github.io/OpenTech-DB/`,
     icon:   "article",
     active: false,
     external: true,

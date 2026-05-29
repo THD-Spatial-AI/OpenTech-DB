@@ -180,10 +180,24 @@ def _is_catalogue(raw: dict) -> bool:
 # Catalogue-format instance mapper
 # ---------------------------------------------------------------------------
 
-def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> dict:
+def _map_catalogue_instance(
+    inst: dict,
+    source: str | None,
+    base_dir: Path,
+    *,
+    output_carriers: list[str] | None = None,
+) -> dict:
     """
     Convert one flat catalogue instance dict into a dict that matches
     the EquipmentInstance Pydantic schema (nested ParameterValue objects).
+
+    Parameters
+    ----------
+    output_carriers:
+        The technology's output carrier list (EnergyCarrier value strings).
+        Used to route ``efficiency_percent`` to the correct model field:
+        - Primary output is heat/steam/cooling → ``thermal_efficiency``
+        - Otherwise → ``electrical_efficiency``
     """
     extracted = inst.get("_extracted_params") if isinstance(inst.get("_extracted_params"), dict) else {}
 
@@ -196,8 +210,8 @@ def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> d
             return entry.get("value")
         return None
 
-    cap_mw    = _value_from_inst("typical_capacity_mw")
-    eff_pct   = _value_from_inst("efficiency_percent")
+    cap_mw  = _value_from_inst("typical_capacity_mw")
+    eff_pct = _value_from_inst("efficiency_percent")
     co2_g_kwh = _value_from_inst(
         "co2_emission_factor_operational_g_per_kwh",
         "co2_emission_factor_g_per_kwh",
@@ -209,6 +223,42 @@ def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> d
     co2_t_mwh    = co2_g_kwh / 1000 if co2_g_kwh is not None else None
     eff_fraction = eff_pct / 100 if eff_pct is not None else None
     label = inst.get("instance_name") or inst.get("instance_id", "Unknown")
+
+    # ------------------------------------------------------------------
+    # Per-output efficiency routing
+    # ------------------------------------------------------------------
+    # Explicit sub-efficiency fractions (direct fractions of input, not %)
+    el_eff_frac = inst.get("electrical_efficiency_fraction")
+    th_eff_frac = inst.get("thermal_efficiency_fraction")
+
+    # Is the technology's primary output a thermal carrier?
+    _THERMAL_CARRIERS = {"heat", "steam", "cooling"}
+    out_is_thermal = bool(
+        output_carriers and output_carriers[0] in _THERMAL_CARRIERS
+    )
+
+    # electrical_efficiency:
+    #   • explicit fraction wins ONLY for non-thermal-primary technologies
+    #     (for thermal-primary techs the fraction represents auxiliary consumption,
+    #      not the primary conversion efficiency — keep it in extra)
+    #   • else use efficiency_percent for non-thermal-primary technologies
+    if el_eff_frac is not None and not out_is_thermal:
+        electrical_efficiency = _pv(float(el_eff_frac), "fraction", ref)
+    elif not out_is_thermal:
+        electrical_efficiency = _pv(eff_fraction, "fraction", ref)
+    else:
+        electrical_efficiency = None
+
+    # thermal_efficiency:
+    #   • for thermal-primary techs: efficiency_percent IS the COP/thermal eff
+    #   • explicit th_eff_frac complements (used when primary output is NOT thermal)
+    if out_is_thermal:
+        thermal_efficiency = _pv(eff_fraction, "fraction", ref)
+    elif th_eff_frac is not None:
+        thermal_efficiency = _pv(float(th_eff_frac), "fraction", ref)
+    else:
+        thermal_efficiency = None
+    # ------------------------------------------------------------------
 
     explicit_extra = {
         "instance_id":                     inst.get("instance_id"),
@@ -229,6 +279,8 @@ def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> d
         "typical_capacity_mw", "capex_usd_per_kw", "opex_fixed_usd_per_kw_yr",
         "opex_var_usd_per_mwh", "efficiency_percent", "lifetime_years",
         "co2_emission_factor_operational_g_per_kwh", "ramping_rate_percent_per_min",
+        # Sub-efficiency fractions — mapped into electrical_efficiency / thermal_efficiency
+        "electrical_efficiency_fraction", "thermal_efficiency_fraction",
     }
     passthrough_extra = {k: v for k, v in inst.items() if k not in reserved}
 
@@ -242,7 +294,8 @@ def _map_catalogue_instance(inst: dict, source: str | None, base_dir: Path) -> d
         "opex_fixed_per_kw_yr":  _pv(_value_from_inst("opex_fixed_usd_per_kw_yr"),   "USD/kW/yr", ref),
         "opex_variable_per_mwh": _pv(_value_from_inst("opex_var_usd_per_mwh"),       "USD/MWh",   ref),
         "economic_lifetime_yr":  _pv(_value_from_inst("lifetime_years"),             "years",     ref),
-        "electrical_efficiency": _pv(eff_fraction,                                   "fraction",  ref),
+        "electrical_efficiency": electrical_efficiency,
+        "thermal_efficiency":    thermal_efficiency,
         "capacity_kw":           _pv(cap_mw * 1000 if cap_mw else None,             "kW",        ref),
         "co2_emission_factor":   _pv(co2_t_mwh,                                     "tCO2/MWh_fuel", ref),
         "ramp_up_rate":          _pv(ramp,  "%capacity/min", ref),
@@ -349,7 +402,10 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 or tech_raw.get("technology_name")
             )
             instances = [
-                _map_catalogue_instance(inst, source_name, path.parent)
+                _map_catalogue_instance(
+                    inst, source_name, path.parent,
+                    output_carriers=out_carriers,
+                )
                 for inst in tech_raw.get("instances", [])
             ]
 

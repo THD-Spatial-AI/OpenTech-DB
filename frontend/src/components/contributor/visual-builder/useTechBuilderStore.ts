@@ -84,6 +84,18 @@ export interface CarrierNodeData extends Record<string, unknown> {
   pressureBar: number | null;
   /** Free-text quality note (e.g. "H₂ purity > 99.9 %"). */
   qualityNote: string;
+  // ── Solid-fuel properties (biomass, coal, MSW) ────────────────────────────
+  /** Moisture content [%] — drives LHV and combustion performance. */
+  moisturePercent: number | null;
+  /** Lower Heating Value [MJ/kg] — net calorific value as-received. */
+  lhvMJPerKg: number | null;
+  /** Ash content [%] — affects fouling, grate loading, disposal cost. */
+  ashPercent: number | null;
+  // ── Gas composition (biogas, syngas, natural gas) ─────────────────────────
+  /** Methane content [vol-%] — determines Wobbe Index / calorific value. */
+  ch4Percent: number | null;
+  /** H₂S concentration [ppm] — determines cleaning/scrubbing requirement. */
+  h2sPpm: number | null;
 }
 
 // ── Store shape ───────────────────────────────────────────────────────────────
@@ -252,19 +264,19 @@ export const OEO_META: Record<string, OeoMeta> = {
     label: "Biogas Power Plant",
     domain: "generation",
     inputs:  ["biogas"],
-    outputs: ["electricity"],
-    efficiencyPct: 38, co2GPerKwh: 230, lifetimeYrs: 20,
+    outputs: ["electricity", "heat"],
+    efficiencyPct: 38, co2GPerKwh: 0, lifetimeYrs: 20,
     capexPerKw: 2200, opexFixedPerKwYr: 60, opexVarPerMwh: 8,
-    hint: "Anaerobic digestion biogas fed to gas engine or turbine for electricity generation.",
+    hint: "Anaerobic digestion biogas fed to gas engine or turbine for electricity generation. Waste heat recoverable from engine jacket and exhaust (combined ~50 % of fuel input).",
   },
   OEO_00000036: {
     label: "Biomass Power Plant",
     domain: "generation",
     inputs:  ["biomass"],
-    outputs: ["electricity"],
-    efficiencyPct: 35, co2GPerKwh: 230, lifetimeYrs: 25,
+    outputs: ["electricity", "heat"],
+    efficiencyPct: 35, co2GPerKwh: 15, lifetimeYrs: 25,
     capexPerKw: 2800, opexFixedPerKwYr: 75, opexVarPerMwh: 8,
-    hint: "Dedicated solid biomass steam-cycle power plant. Carbon-neutral when sustainably sourced.",
+    hint: "Solid biomass Rankine steam-cycle power plant. Net CO\u2082 \u224815 g/kWh (supply-chain only) when sustainably sourced. Waste heat from condenser or extraction turbine available for CHP.",
   },
   OEO_00000440: {
     label: "Waste-to-Energy",
@@ -600,6 +612,13 @@ export interface CarrierFieldConfig {
   showTemperature: boolean;
   showPressure:    boolean;
   showQualityNote: boolean;
+  // solid-fuel extras
+  showMoisture?:   boolean;
+  showLhv?:        boolean;
+  showAsh?:        boolean;
+  // gas-composition extras
+  showCh4Percent?: boolean;
+  showH2sPpm?:     boolean;
   temperatureLabel?: string;
   pressureLabel?:    string;
   qualityLabel?:     string;
@@ -609,6 +628,12 @@ export interface CarrierFieldConfig {
   defaultTemperatureC?: number;
   defaultPressureBar?:  number;
   defaultQualityNote?:  string;
+  // extra field defaults
+  defaultMoisturePercent?: number;
+  defaultLhvMJPerKg?:      number;
+  defaultAshPercent?:      number;
+  defaultCh4Percent?:      number;
+  defaultH2sPpm?:          number;
 }
 
 export const CARRIER_FIELD_CONFIG: Record<string, CarrierFieldConfig> = {
@@ -671,21 +696,35 @@ export const CARRIER_FIELD_CONFIG: Record<string, CarrierFieldConfig> = {
   },
   biomass: {
     showTemperature: false, showPressure: false, showQualityNote: true,
-    qualityLabel: "Biomass Specification",
-    qualityHint:  "Moisture content, ash content, net calorific value (NCV), pellet vs. chip grade.",
-    defaultQualityNote: "Moisture < 15 %, NCV ~ 16 MJ/kg",
+    showMoisture: true, showLhv: true, showAsh: true,
+    qualityLabel: "Biomass Grade / Origin",
+    qualityHint:  "Fuel type and certification: ENplus-A1 pellets, B-grade chips, agricultural residue, MSW. Certification (e.g. FSC, SBP) determines biogenic CO₂ credit eligibility.",
+    defaultQualityNote: "Wood chips, ENplus-B, sustainably certified",
+    defaultMoisturePercent: 30,
+    defaultLhvMJPerKg:      12,
+    defaultAshPercent:       2,
   },
   coal: {
     showTemperature: false, showPressure: false, showQualityNote: true,
-    qualityLabel: "Coal Specification",
-    qualityHint:  "Grade (bituminous, sub-bituminous, lignite), ash %, moisture %, calorific value.",
-    defaultQualityNote: "Sub-bituminous, CV ~ 22 MJ/kg",
+    showMoisture: true, showLhv: true, showAsh: true,
+    qualityLabel: "Coal Grade / Origin",
+    qualityHint:  "e.g. Indonesian sub-bituminous, Colombian bituminous, German lignite. Specify origin for supply-chain emission factor.",
+    defaultQualityNote: "Sub-bituminous, Indonesian coal",
+    defaultMoisturePercent: 15,
+    defaultLhvMJPerKg:      22,
+    defaultAshPercent:      10,
   },
   biogas: {
-    showTemperature: false, showPressure: false, showQualityNote: true,
-    qualityLabel: "Biogas Composition",
-    qualityHint:  "Raw: 50–65 % CH₄, 35–50 % CO₂, < 1 % H₂S. State cleaning grade if upgraded.",
-    defaultQualityNote: "Raw biogas ~60 % CH₄, 40 % CO₂",
+    showTemperature: false, showPressure: true, showQualityNote: true,
+    showCh4Percent: true, showH2sPpm: true,
+    pressureLabel:  "Supply Pressure (bar)",
+    pressureHint:   "Farm digester output: near atmospheric (0–0.05 bar). Cleaned biogas to burner: 0.5–1 bar. Upgraded biomethane grid injection: 4–8 bar.",
+    qualityLabel:   "Biogas Source / Grade",
+    qualityHint:    "Source substrate (manure, OFMSW, sewage sludge, energy crops) affects CH₄ yield and H₂S load. State if upgraded to biomethane.",
+    defaultQualityNote:  "Agricultural biogas (manure + energy crops)",
+    defaultPressureBar:  0.05,
+    defaultCh4Percent:   60,
+    defaultH2sPpm:       300,
   },
   biomethane: {
     showTemperature: false, showPressure: false, showQualityNote: true,
@@ -770,6 +809,16 @@ export function getCarrierFieldConfig(carrier: string): CarrierFieldConfig {
   };
 }
 
+// ── Per-archetype initial value overrides ────────────────────────────────────
+// Lets specific OEO classes start with non-default archetype slider values.
+// e.g. Biomass Power Plant defaults to CHP mode because it has a heat output.
+const ARCHETYPE_INIT_OVERRIDES: Record<string, Record<string, number | string>> = {
+  OEO_00000036: { operatingMode: "backpressure_chp", heatToPowerRatio: 1.0 }, // Biomass Power Plant
+  OEO_00240011: { operatingMode: "backpressure_chp", heatToPowerRatio: 1.5 }, // Biomass CHP
+  OEO_00000004: { operatingMode: "backpressure_chp", heatToPowerRatio: 1.0 }, // Biogas engine
+  OEO_00000440: { operatingMode: "backpressure_chp", heatToPowerRatio: 0.5 }, // WtE
+};
+
 // ── Per-archetype carrier seed values ────────────────────────────────────────
 // Pre-populates sensible initial values when carrier nodes are created.
 // Key = OEO short ID → { inputs/outputs: { carrier_name: partial data } }
@@ -810,10 +859,49 @@ const ARCHETYPE_CARRIER_SEEDS: Record<string, {
     inputs:  { hydrogen: { pressureBar: 3 } },
     outputs: { heat: { temperatureC: 80 } },
   },
+  // Biomass Power Plant (condensing — waste heat from condenser)
+  OEO_00000036: {
+    inputs:  { biomass: {
+      qualityNote: "Wood chips, ENplus-B, sustainably certified",
+      moisturePercent: 30, lhvMJPerKg: 12, ashPercent: 2,
+    }},
+    outputs: {
+      electricity: {},
+      heat: { temperatureC: 40, qualityNote: "Low-grade condenser waste heat (available if CHP retrofit applied; 0 kW in pure condensing mode)" },
+    },
+  },
+  // Waste-to-Energy (MSW incineration)
+  OEO_00000440: {
+    inputs:  { biomass: { qualityNote: "Mixed MSW: ~40 % fossil fraction, LHV ~8–10 MJ/kg, ash ~20–25 %" } },
+    outputs: { heat: { temperatureC: 150, qualityNote: "District heat or process steam from steam extraction" } },
+  },
+  // Biomass CHP (back-pressure)
+  OEO_00240011: {
+    inputs:  { biomass: {
+      qualityNote: "Wood chips ENplus-B, moisture < 30 %, LHV ~10 MJ/kg",
+      moisturePercent: 28, lhvMJPerKg: 10, ashPercent: 1.5,
+    }},
+    outputs: { heat: { temperatureC: 110, qualityNote: "Back-pressure steam for district heat or process heat" } },
+  },
+  // Biogas engine / turbine
+  OEO_00000004: {
+    inputs:  { biogas: {
+      pressureBar: 0.05, qualityNote: "Agricultural biogas (manure + energy crops)",
+      ch4Percent: 60, h2sPpm: 300,
+    }},
+    outputs: {
+      electricity: {},
+      heat: { temperatureC: 90, qualityNote: "Engine jacket water + exhaust heat exchanger (~50 % of fuel input recoverable)" },
+    },
+  },
   // Coal plant
   OEO_00000089: {
     outputs: { heat: { temperatureC: 300, qualityNote: "HP steam extraction" } },
   },
+  // Onshore wind
+  OEO_00000311: {},
+  // Offshore wind floating
+  OEO_00000308: {},
   // Nuclear
   OEO_00000303: {
     inputs:  { nuclear_fuel: { qualityNote: "Low-enriched UO₂ (~3.5 % U-235), 45 GWd/tHM burnup" } },
@@ -911,6 +999,16 @@ function getCarrierSeed(
       cfgDefaults.pressureBar = cfg.defaultPressureBar;
     if (cfg.showQualityNote && cfg.defaultQualityNote)
       cfgDefaults.qualityNote = cfg.defaultQualityNote;
+    if (cfg.showMoisture && cfg.defaultMoisturePercent != null)
+      cfgDefaults.moisturePercent = cfg.defaultMoisturePercent;
+    if (cfg.showLhv && cfg.defaultLhvMJPerKg != null)
+      cfgDefaults.lhvMJPerKg = cfg.defaultLhvMJPerKg;
+    if (cfg.showAsh && cfg.defaultAshPercent != null)
+      cfgDefaults.ashPercent = cfg.defaultAshPercent;
+    if (cfg.showCh4Percent && cfg.defaultCh4Percent != null)
+      cfgDefaults.ch4Percent = cfg.defaultCh4Percent;
+    if (cfg.showH2sPpm && cfg.defaultH2sPpm != null)
+      cfgDefaults.h2sPpm = cfg.defaultH2sPpm;
   }
   return { ...cfgDefaults, ...archOverride };
 }
@@ -979,9 +1077,10 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
     const label   = labelOverride ?? (meta?.label ?? shortLabel(oeoClass));
     const domain  = meta?.domain ?? "conversion";
 
-    // Use real carriers from drag payload first, then OEO_META, then sensible defaults
-    const rawInputs  = inputCarriers  ?? meta?.inputs  ?? (domain === "generation" ? ["solar_irradiance"] : ["electricity"]);
-    const rawOutputs = outputCarriers ?? meta?.outputs ?? ["electricity"];
+    // OEO_META is authoritative for carrier topology (it knows about CHP heat outputs etc).
+    // Fall back to drag-payload carriers only when no OEO_META entry exists for this tech.
+    const rawInputs  = meta?.inputs  ?? inputCarriers  ?? (domain === "generation" ? ["solar_irradiance"] : ["electricity"]);
+    const rawOutputs = meta?.outputs ?? outputCarriers ?? ["electricity"];
 
     // ── Carrier nodes + edges ────────────────────────────────────────────────
     const carrierNodes: Node[] = [];
@@ -999,10 +1098,15 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
           carrier,
           direction: "input",
           label: carrier.replace(/_/g, " "),
-          flowRateKw:   0,
-          temperatureC: seed.temperatureC ?? null,
-          pressureBar:  seed.pressureBar  ?? null,
-          qualityNote:  seed.qualityNote  ?? "",
+          flowRateKw:      0,
+          temperatureC:    seed.temperatureC    ?? null,
+          pressureBar:     seed.pressureBar     ?? null,
+          qualityNote:     seed.qualityNote     ?? "",
+          moisturePercent: seed.moisturePercent ?? null,
+          lhvMJPerKg:      seed.lhvMJPerKg      ?? null,
+          ashPercent:      seed.ashPercent      ?? null,
+          ch4Percent:      seed.ch4Percent      ?? null,
+          h2sPpm:          seed.h2sPpm          ?? null,
         },
       });
       carrierEdges.push({
@@ -1026,10 +1130,15 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
           carrier,
           direction: "output",
           label: carrier.replace(/_/g, " "),
-          flowRateKw:   0,
-          temperatureC: seed.temperatureC ?? null,
-          pressureBar:  seed.pressureBar  ?? null,
-          qualityNote:  seed.qualityNote  ?? "",
+          flowRateKw:      0,
+          temperatureC:    seed.temperatureC    ?? null,
+          pressureBar:     seed.pressureBar     ?? null,
+          qualityNote:     seed.qualityNote     ?? "",
+          moisturePercent: seed.moisturePercent ?? null,
+          lhvMJPerKg:      seed.lhvMJPerKg      ?? null,
+          ashPercent:      seed.ashPercent      ?? null,
+          ch4Percent:      seed.ch4Percent      ?? null,
+          h2sPpm:          seed.h2sPpm          ?? null,
         },
       });
       carrierEdges.push({
@@ -1042,6 +1151,7 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
     });
 
     // ── Tech node (centre) ──────────────────────────────────────────────────
+    const initOverrides = ARCHETYPE_INIT_OVERRIDES[oeoId] ?? {};
     const techNode: Node = {
       id: techId,
       type: "techNode",
@@ -1062,8 +1172,9 @@ export const useTechBuilderStore = create<TechBuilderState>((set, get) => ({
         capexUsdPerKw:       meta?.capexPerKw        ?? 0,
         opexFixedUsdPerKwYr: meta?.opexFixedPerKwYr  ?? 0,
         opexVarUsdPerMwh:    meta?.opexVarPerMwh     ?? 0,
-        // Physics model inputs — populated by ArchetypePhysicsSection on first render.
-        archetypeInputValues: {},
+        // Physics model inputs — seeded with OEO-specific overrides (e.g. biomass → CHP mode)
+        // so derived outputs are non-zero on first render without waiting for user interaction.
+        archetypeInputValues: initOverrides,
       },
     };
 

@@ -128,6 +128,33 @@ function CustomTechNode({ id, data, selected }: NodeProps<Node<TechNodeData>>) {
           <span className="text-[10px] font-semibold text-slate-700">{capexDisplay}</span>
         </div>
 
+        {/* CO₂ chip — only when meaningful */}
+        {data.co2FactorGPerKwh > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide"
+              style={{
+                background: data.co2FactorGPerKwh > 400 ? "#fef3c7" : "#dcfce7",
+                color:      data.co2FactorGPerKwh > 400 ? "#b45309" : "#15803d",
+              }}
+            >
+              CO₂
+            </span>
+            <span className="text-[10px] font-semibold text-slate-700 tabular-nums">
+              {data.co2FactorGPerKwh} g/kWh
+            </span>
+          </div>
+        )}
+        {data.co2FactorGPerKwh === 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide"
+              style={{ background: "#dcfce7", color: "#15803d" }}
+            >
+              CO₂
+            </span>
+            <span className="text-[10px] font-semibold text-emerald-600">0 g/kWh</span>
+          </div>
+        )}
+
         {/* Carrier flow hint */}
         <p className="text-[9px] text-slate-400 pt-0.5 truncate">
           {(data.inputPorts as Array<{carrier: string}>).map((p) => p.carrier.replace(/_/g, " ")).join(", ")}

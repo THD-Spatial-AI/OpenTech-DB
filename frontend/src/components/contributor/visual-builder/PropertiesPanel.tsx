@@ -257,6 +257,13 @@ function CarrierPropertiesContent({
     return outputFlows[data.carrier] ?? null;
   }, [isInput, archetype, techData, techNodeId, storeEdges, storeNodes, data.carrier]);
 
+  // ── Sync derived flow back to the carrier node so the canvas card shows it ──
+  useEffect(() => {
+    if (!isInput && derivedOutputKw != null && derivedOutputKw !== data.flowRateKw) {
+      update({ flowRateKw: derivedOutputKw });
+    }
+  }, [derivedOutputKw, isInput]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       {/* Header */}
@@ -474,6 +481,145 @@ function CarrierPropertiesContent({
                   )}
                 </div>
               )}
+
+              {/* ── Solid-fuel properties ───────────────────────────────── */}
+              {cfg.showMoisture && (
+                <div>
+                  <div className="flex justify-between items-baseline mb-1">
+                    <label className="text-[10px] font-semibold text-on-surface-variant">
+                      Moisture Content (%)
+                    </label>
+                    <span className="text-[11px] font-bold tabular-nums text-primary">
+                      {(data.moisturePercent ?? 30).toFixed(0)} %
+                    </span>
+                  </div>
+                  <input
+                    type="range" min={5} max={60} step={1}
+                    value={data.moisturePercent ?? 30}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      update({ moisturePercent: val });
+                      updateArchInput("moisturePercent", val);
+                    }}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-[9px] text-on-surface-variant/40 mt-0.5">
+                    <span>5 % (pellets)</span><span>60 % (green chips)</span>
+                  </div>
+                  <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">
+                    Every 10 pp extra moisture ≈ −1.5 MJ/kg LHV and +15 % transport cost per MWh.
+                  </p>
+                </div>
+              )}
+              {cfg.showLhv && (
+                <div>
+                  <div className="flex justify-between items-baseline mb-1">
+                    <label className="text-[10px] font-semibold text-on-surface-variant">
+                      LHV as-received (MJ/kg)
+                    </label>
+                    <span className="text-[11px] font-bold tabular-nums text-primary">
+                      {(data.lhvMJPerKg ?? 12).toFixed(1)} MJ/kg
+                    </span>
+                  </div>
+                  <input
+                    type="range" min={6} max={34} step={0.5}
+                    value={data.lhvMJPerKg ?? 12}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      update({ lhvMJPerKg: val });
+                      updateArchInput("lhvMJPerKg", val);
+                    }}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-[9px] text-on-surface-variant/40 mt-0.5">
+                    <span>6 (wet MSW)</span><span>34 (dry coal)</span>
+                  </div>
+                  <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">
+                    Wood chips ~12, pellets ~17, straw ~14, bituminous coal ~26 MJ/kg.
+                  </p>
+                </div>
+              )}
+              {cfg.showAsh && (
+                <div>
+                  <div className="flex justify-between items-baseline mb-1">
+                    <label className="text-[10px] font-semibold text-on-surface-variant">
+                      Ash Content (%)
+                    </label>
+                    <span className="text-[11px] font-bold tabular-nums text-primary">
+                      {(data.ashPercent ?? 2).toFixed(1)} %
+                    </span>
+                  </div>
+                  <input
+                    type="range" min={0} max={25} step={0.5}
+                    value={data.ashPercent ?? 2}
+                    onChange={(e) => update({ ashPercent: parseFloat(e.target.value) })}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-[9px] text-on-surface-variant/40 mt-0.5">
+                    <span>0 % (clean pellets)</span><span>25 % (lignite / MSW)</span>
+                  </div>
+                  <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">
+                    High ash → grate fouling, slag removal cost, and fly-ash disposal requirement.
+                  </p>
+                </div>
+              )}
+
+              {/* ── Gas composition ─────────────────────────────────────── */}
+              {cfg.showCh4Percent && (
+                <div>
+                  <div className="flex justify-between items-baseline mb-1">
+                    <label className="text-[10px] font-semibold text-on-surface-variant">
+                      CH₄ Content (vol-%)
+                    </label>
+                    <span className="text-[11px] font-bold tabular-nums text-primary">
+                      {(data.ch4Percent ?? 60).toFixed(0)} vol-%
+                    </span>
+                  </div>
+                  <input
+                    type="range" min={40} max={99} step={1}
+                    value={data.ch4Percent ?? 60}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      update({ ch4Percent: val });
+                      updateArchInput("ch4Percent", val);
+                    }}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-[9px] text-on-surface-variant/40 mt-0.5">
+                    <span>40 % (raw landfill gas)</span><span>99 % (biomethane)</span>
+                  </div>
+                  <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">
+                    Raw biogas: 50–65 %. After upgrading (pressure swing / membranes): &gt; 97 %.
+                  </p>
+                </div>
+              )}
+              {cfg.showH2sPpm && (
+                <div>
+                  <div className="flex justify-between items-baseline mb-1">
+                    <label className="text-[10px] font-semibold text-on-surface-variant">
+                      H₂S Concentration (ppm)
+                    </label>
+                    <span className="text-[11px] font-bold tabular-nums text-primary">
+                      {(data.h2sPpm ?? 300)} ppm
+                      {(data.h2sPpm ?? 300) > 500 && (
+                        <span className="ml-1 text-[9px] font-normal text-amber-600">⚠ scrubbing required</span>
+                      )}
+                    </span>
+                  </div>
+                  <input
+                    type="range" min={0} max={5000} step={50}
+                    value={data.h2sPpm ?? 300}
+                    onChange={(e) => update({ h2sPpm: parseFloat(e.target.value) })}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-[9px] text-on-surface-variant/40 mt-0.5">
+                    <span>0 (scrubbed)</span><span>5 000 ppm (pig manure)</span>
+                  </div>
+                  <p className="text-[9px] text-on-surface-variant/50 mt-0.5 leading-relaxed">
+                    Engines tolerate &lt; 200 ppm; fuel cells &lt; 1 ppm. H₂S scrubbing required above 500 ppm.
+                  </p>
+                </div>
+              )}
             </>
           );
         })()}
@@ -530,16 +676,22 @@ function InfoTooltip({ text }: { text: string }) {
 }
 
 function ArchetypePhysicsSection({
+  nodeId,
   data,
   archetype,
   update,
 }: {
+  nodeId: string;
   data: TechNodeData;
   archetype: ArchetypeSchema;
   update: (patch: Partial<TechNodeData>) => void;
 }) {
   // Physics inputs live in archetypeInputValues on the Zustand node
   // so carrier panels can read/write the same values (e.g. tSourceC).
+  const storeNodes        = useTechBuilderStore((s) => s.nodes);
+  const storeEdges        = useTechBuilderStore((s) => s.edges);
+  const updateCarrierNode = useTechBuilderStore((s) => s.updateCarrierNode);
+
   const storedValues = useMemo(
     () => (data.archetypeInputValues ?? {}) as Record<string, number | string>,
     [data.archetypeInputValues]
@@ -547,11 +699,10 @@ function ArchetypePhysicsSection({
   const defaults = useMemo(() => getDefaultValues(archetype), [archetype]);
   const values   = useMemo(() => ({ ...defaults, ...storedValues }), [defaults, storedValues]);
 
-  // Seed defaults into the store on first mount if empty.
+  // Seed defaults into the store on first mount — merge with any init overrides already set.
   useEffect(() => {
-    if (Object.keys(storedValues).length === 0) {
-      update({ archetypeInputValues: defaults });
-    }
+    // Always merge so defaults fill gaps, but init overrides (e.g. operatingMode:backpressure_chp) win.
+    update({ archetypeInputValues: { ...defaults, ...storedValues } });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -562,6 +713,31 @@ function ArchetypePhysicsSection({
   useEffect(() => {
     update({ efficiencyPercent: derived.efficiencyPercent, co2FactorGPerKwh: derived.co2FactorGPerKwh });
   }, [derived.efficiencyPercent, derived.co2FactorGPerKwh]);
+
+  // Push derived output carrier flows to connected output carrier nodes so
+  // the canvas cards update live without needing to open each output panel.
+  useEffect(() => {
+    if (!archetype.deriveOutputFlowKw) return;
+    const inputEdges  = storeEdges.filter((e) => e.target === nodeId);
+    let inputFlowKw = 0;
+    inputEdges.forEach((e) => {
+      const n = storeNodes.find((x) => x.id === e.source && x.type === "carrierNode");
+      if (n) inputFlowKw += ((n.data as unknown as CarrierNodeData).flowRateKw) || 0;
+    });
+    if (inputFlowKw <= 0) return;
+    const outputFlows = archetype.deriveOutputFlowKw(inputFlowKw, values);
+    const outputEdges = storeEdges.filter((e) => e.source === nodeId);
+    outputEdges.forEach((e) => {
+      const n = storeNodes.find((x) => x.id === e.target && x.type === "carrierNode");
+      if (!n) return;
+      const cData = n.data as unknown as CarrierNodeData;
+      const derived_kw = outputFlows[cData.carrier];
+      if (derived_kw !== undefined && derived_kw !== cData.flowRateKw) {
+        updateCarrierNode(n.id, { flowRateKw: derived_kw });
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [derived.efficiencyPercent, values, storeEdges, storeNodes]);
 
   const handleSlider = useCallback((id: string, val: number) => {
     update({ archetypeInputValues: { ...(data.archetypeInputValues ?? {}), [id]: val } });
@@ -1060,6 +1236,7 @@ export default function PropertiesPanel({ schema, onSubmitSuccess }: PropertiesP
           // so local physics-input state resets to archetype defaults.
           <ArchetypePhysicsSection
             key={selectedNodeId!}
+            nodeId={selectedNodeId!}
             data={data}
             archetype={archetype}
             update={update}

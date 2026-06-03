@@ -52,11 +52,7 @@ function CarrierNode({ id, data, selected }: NodeProps<Node<CarrierNodeData>>) {
   const isInput = data.direction === "input";
   const icon    = CARRIER_ICONS[data.carrier] ?? "electric_bolt";
 
-  // Summary of set parameters
-  const params: string[] = [];
-  if (data.flowRateKw > 0)        params.push(`${data.flowRateKw.toLocaleString()} kW`);
-  if (data.temperatureC !== null)  params.push(`${data.temperatureC} °C`);
-  if (data.pressureBar  !== null)  params.push(`${data.pressureBar} bar`);
+
 
   return (
     <div
@@ -131,7 +127,9 @@ function CarrierNode({ id, data, selected }: NodeProps<Node<CarrierNodeData>>) {
 
       {/* ── Body ── */}
       <div className="px-3 py-2">
-        {params.length > 0 ? (
+        {(data.flowRateKw > 0 || data.temperatureC !== null || data.pressureBar !== null
+          || data.moisturePercent !== null || data.lhvMJPerKg !== null || data.ashPercent !== null
+          || data.ch4Percent !== null || data.h2sPpm !== null || data.qualityNote) ? (
           <div className="space-y-0.5">
             {data.flowRateKw > 0 && (
               <div className="flex items-center gap-1.5">
@@ -160,6 +158,76 @@ function CarrierNode({ id, data, selected }: NodeProps<Node<CarrierNodeData>>) {
                 </span>
                 <span className="text-[10px] font-semibold text-slate-700 tabular-nums">
                   {data.pressureBar} bar
+                </span>
+              </div>
+            )}
+            {/* Solid-fuel rows */}
+            {data.moisturePercent !== null && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1 py-0.5 rounded uppercase tracking-wide">
+                  Moist
+                </span>
+                <span className="text-[10px] font-semibold text-slate-700 tabular-nums">
+                  {data.moisturePercent} %
+                </span>
+              </div>
+            )}
+            {data.lhvMJPerKg !== null && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1 py-0.5 rounded uppercase tracking-wide">
+                  LHV
+                </span>
+                <span className="text-[10px] font-semibold text-slate-700 tabular-nums">
+                  {data.lhvMJPerKg} MJ/kg
+                </span>
+              </div>
+            )}
+            {data.ashPercent !== null && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1 py-0.5 rounded uppercase tracking-wide">
+                  Ash
+                </span>
+                <span className="text-[10px] font-semibold text-slate-700 tabular-nums">
+                  {data.ashPercent} %
+                </span>
+              </div>
+            )}
+            {/* Gas-composition rows */}
+            {data.ch4Percent !== null && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1 py-0.5 rounded uppercase tracking-wide">
+                  CH₄
+                </span>
+                <span className="text-[10px] font-semibold text-slate-700 tabular-nums">
+                  {data.ch4Percent} vol-%
+                </span>
+              </div>
+            )}
+            {data.h2sPpm !== null && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1 py-0.5 rounded uppercase tracking-wide">
+                  H₂S
+                </span>
+                <span className="text-[10px] font-semibold text-slate-700 tabular-nums">
+                  {data.h2sPpm} ppm
+                </span>
+              </div>
+            )}
+            {data.qualityNote && (
+              <div className="flex items-start gap-1.5 pt-0.5">
+                <span
+                  className="text-[9px] font-bold px-1 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
+                  style={{ background: `${color}18`, color }}
+                >
+                  Spec
+                </span>
+                <span
+                  className="text-[9px] text-slate-500 leading-tight"
+                  title={data.qualityNote}
+                >
+                  {data.qualityNote.length > 48
+                    ? data.qualityNote.slice(0, 48) + "…"
+                    : data.qualityNote}
                 </span>
               </div>
             )}

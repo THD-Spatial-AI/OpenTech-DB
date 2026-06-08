@@ -22,7 +22,7 @@ import {
 } from "../../services/api";
 import type { CatalogueTechEntry, ProfileSubmissionRecord, ProfileSubmissionData } from "../../services/api";
 import { deleteTimeSeriesProfile, invalidateTimeSeriesCatalogue } from "../../services/timeseries";
-import type { TimeSeriesProfile } from "../../types/timeseries";
+import type { TimeSeriesProfile, ProfileType, ProfileResolution } from "../../types/timeseries";
 import { useAuth } from "../../context/AuthContext";
 import type { SubmissionRecord, CreateTechnologyInstancePayload } from "../../types/api";
 import ScraperPanel from "./ScraperPanel";
@@ -579,7 +579,7 @@ function InstanceEditor({
               <span className="font-mono">{Number(inst.capex_usd_per_kw).toLocaleString()} USD/kW</span>
             )}
             {inst.lifetime_years != null && (
-              <span className="font-mono">{inst.lifetime_years} yr</span>
+              <span className="font-mono">{String(inst.lifetime_years)} yr</span>
             )}
           </span>
         )}
@@ -676,219 +676,6 @@ function InstanceEditor({
         </div>
       )}
     </div>
-  );
-}
-
-function CatalogueTechDrawer({
-  tech,
-  token,
-  onSave,
-  onClose,
-}: {
-  tech: CatalogueTechEntry;
-  token: string;
-  onSave: () => void;
-  onClose: () => void;
-}) {
-  const [name,        setName]        = useState(tech.technology_name);
-  const [carrier,     setCarrier]     = useState(tech.carrier);
-  const [oeoClass,    setOeoClass]    = useState(tech.oeo_class);
-  const [description, setDescription] = useState(tech.description);
-  const [instances,   setInstances]   = useState<Record<string, unknown>[]>(
-    tech.instances.map((i) => ({ ...i }))
-  );
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<"metadata" | "variants">("metadata");
-
-  const updateInst = (idx: number, field: string, value: unknown) =>
-    setInstances((prev) => prev.map((inst, i) => i === idx ? { ...inst, [field]: value } : inst));
-
-  const removeInst = (idx: number) =>
-    setInstances((prev) => prev.filter((_, i) => i !== idx));
-
-  const addInst = () =>
-    setInstances((prev) => [...prev, blankInstance()]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      await adminEditTechnology(token, tech.technology_id, {
-        technology_name: name,
-        carrier,
-        oeo_class: oeoClass,
-        description,
-        instances,
-      });
-      onSave();
-      onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-[89] bg-black/30 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 z-[90] flex flex-col w-full max-w-xl bg-white shadow-2xl border-l border-slate-200">
-
-        {/* ── Drawer header ── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-          <div className="min-w-0">
-            <h2 className="text-base font-bold text-slate-800 truncate">{name || tech.technology_id}</h2>
-            <p className="text-[11px] font-mono text-slate-400 truncate">{tech.technology_id}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="ml-3 shrink-0 text-slate-400 hover:text-slate-700 transition-colors w-8 h-8
-                       rounded-full hover:bg-slate-100 flex items-center justify-center"
-          >
-            <span className="material-symbols-outlined text-[18px]">close</span>
-          </button>
-        </div>
-
-        {/* ── Section tabs ── */}
-        <div className="flex gap-1 px-4 py-2 border-b border-slate-100 shrink-0 bg-slate-50">
-          {([
-            { id: "metadata" as const, label: "Metadata",              icon: "info"        },
-            { id: "variants" as const, label: `Variants (${instances.length})`, icon: "tune" },
-          ]).map(({ id, label, icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveSection(id)}
-              className={[
-                "flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all",
-                activeSection === id
-                  ? "bg-white text-indigo-700 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700",
-              ].join(" ")}
-            >
-              <span className="material-symbols-outlined text-[14px]">{icon}</span>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Scrollable body ── */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-
-          {/* Metadata section */}
-          {activeSection === "metadata" && (
-            <div className="space-y-4">
-              <EditText label="Technology Name" value={name} onChange={setName} />
-              <div className="grid grid-cols-2 gap-4">
-                <EditText label="Carrier / Fuel" value={carrier} onChange={setCarrier} />
-                <EditText label="OEO Class URI"  value={oeoClass} onChange={setOeoClass} mono />
-              </div>
-              <EditText label="Description" value={description} onChange={setDescription} multiline />
-
-              {/* Read-only info chips */}
-              <div className="flex flex-wrap gap-2 pt-1">
-                <span className="flex items-center gap-1 text-[11px] bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full">
-                  <span className="material-symbols-outlined text-[12px]">category</span>
-                  {tech.domain}
-                </span>
-                <span className="flex items-center gap-1 text-[11px] bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full">
-                  <span className="material-symbols-outlined text-[12px]">stacks</span>
-                  {tech.instances.length} variant{tech.instances.length !== 1 ? "s" : ""}
-                </span>
-                {tech.source && (
-                  <span className="flex items-center gap-1 text-[11px] bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full">
-                    <span className="material-symbols-outlined text-[12px]">source</span>
-                    {tech.source}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Variants section */}
-          {activeSection === "variants" && (
-            <div className="space-y-4">
-              {instances.length === 0 && (
-                <div className="rounded-2xl border-2 border-dashed border-slate-200 py-12 flex flex-col items-center gap-3 text-center">
-                  <span className="material-symbols-outlined text-[36px] text-slate-300">tune</span>
-                  <p className="text-sm text-slate-400">No technical variants yet.</p>
-                  <button
-                    type="button"
-                    onClick={addInst}
-                    className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600
-                               bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[15px]">add_circle</span>
-                    Add first variant
-                  </button>
-                </div>
-              )}
-
-              {instances.map((inst, i) => (
-                <InstanceEditor
-                  key={String(inst.instance_id ?? i)}
-                  inst={inst}
-                  idx={i}
-                  onUpdate={updateInst}
-                  onRemove={removeInst}
-                />
-              ))}
-
-              {instances.length > 0 && (
-                <button
-                  type="button"
-                  onClick={addInst}
-                  className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-indigo-600
-                             border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50
-                             rounded-2xl py-3 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[16px]">add_circle</span>
-                  Add variant
-                </button>
-              )}
-            </div>
-          )}
-
-          {error && (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-              <span className="material-symbols-outlined text-[15px] text-red-500">error</span>
-              <p className="text-xs text-red-700 flex-1">{error}</p>
-            </div>
-          )}
-        </div>
-
-        {/* ── Sticky footer ── */}
-        <div className="shrink-0 flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white">
-          <p className="text-[10px] text-slate-300 font-mono truncate max-w-[180px]">{tech.technology_id}</p>
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-100 transition-colors"
-            >
-              Discard
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-1.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700
-                         px-5 py-2 rounded-xl transition-colors disabled:opacity-50 shadow-sm"
-            >
-              <span className={`material-symbols-outlined text-[15px] ${saving ? "animate-spin" : ""}`}>
-                {saving ? "progress_activity" : "save"}
-              </span>
-              {saving ? "Saving…" : "Save Changes"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
   );
 }
 
@@ -1203,8 +990,7 @@ function ProfileDetailPanel({
     const series: echarts.SeriesOption = chartType === "line"
       ? { type: "line",  name: pName, data: seriesData, symbol: "none",
           lineStyle: { color: hexColor, width: 1.8 },
-          areaStyle: { color: hexColor, opacity: 0.07 },
-          large: true, largeThreshold: 2000 }
+          areaStyle: { color: hexColor, opacity: 0.07 } }
       : { type: "bar",   name: pName, data: seriesData,
           itemStyle: { color: hexColor, borderRadius: [2, 2, 0, 0] },
           barMaxWidth: 6, large: true, largeThreshold: 2000 };
@@ -1418,7 +1204,7 @@ function ProfileDetailPanel({
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type</label>
                 <select
                   value={pType}
-                  onChange={(e) => setPType(e.target.value)}
+                  onChange={(e) => setPType(e.target.value as ProfileType)}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white"
                 >
                   {["capacity_factor","generation","load","weather","price"].map((t) => (
@@ -1430,7 +1216,7 @@ function ProfileDetailPanel({
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Resolution</label>
                 <select
                   value={pResolution}
-                  onChange={(e) => setPResolution(e.target.value)}
+                  onChange={(e) => setPResolution(e.target.value as ProfileResolution)}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white"
                 >
                   {["15min","30min","hourly","daily"].map((r) => (

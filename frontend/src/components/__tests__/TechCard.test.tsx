@@ -13,6 +13,8 @@ function makeTech(overrides: Partial<TechnologySummary> = {}): TechnologySummary
     oeo_class: 'OEO_00000165',
     oeo_uri: 'http://openenergy-platform.org/ontology/oeo/OEO_00000165',
     n_instances: 3,
+    input_carriers: [],
+    output_carriers: [],
     ...overrides,
   }
 }

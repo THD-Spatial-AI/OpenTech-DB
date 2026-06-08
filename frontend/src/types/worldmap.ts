@@ -61,15 +61,16 @@ export interface WorldMapTechMeta {
 
 export const PARAM_META: Record<TechMapParam, {
   label: string;
+  unit: string;
   /** Whether a higher value is better (e.g. capacity factor) */
   higherIsBetter: boolean;
   /** Format a number value for display */
   format: (v: number) => string;
 }> = {
-  capex:           { label: "CAPEX",           higherIsBetter: false, format: (v) => `$${v.toLocaleString()}` },
-  opex_fixed:      { label: "Fixed O&M",       higherIsBetter: false, format: (v) => `$${v.toFixed(1)}`      },
-  capacity_factor: { label: "Capacity Factor", higherIsBetter: true,  format: (v) => `${v.toFixed(1)}%`      },
-  co2_emissions:   { label: "CO₂ Emissions",   higherIsBetter: false, format: (v) => `${v.toFixed(1)} g/kWh` },
+  capex:           { label: "CAPEX",           unit: "USD/kW",     higherIsBetter: false, format: (v) => `$${v.toLocaleString()}` },
+  opex_fixed:      { label: "Fixed O&M",       unit: "USD/kW/yr",  higherIsBetter: false, format: (v) => `$${v.toFixed(1)}`      },
+  capacity_factor: { label: "Capacity Factor", unit: "%",           higherIsBetter: true,  format: (v) => `${v.toFixed(1)}%`      },
+  co2_emissions:   { label: "CO₂ Emissions",   unit: "g/kWh",      higherIsBetter: false, format: (v) => `${v.toFixed(1)} g/kWh` },
 };
 
 /** The exact years for which data points exist in the service. */

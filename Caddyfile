@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Caddy reverse proxy config for otdb.th-deg.de
+# Replace the domain below with your actual subdomain.
+# Caddy automatically provisions Let's Encrypt SSL certificates.
+# ─────────────────────────────────────────────────────────────────────────────
+
+otdb.th-deg.de {
+    # ── Backend API ──────────────────────────────────────────────────────────
+    reverse_proxy /api/* backend:8000
+    reverse_proxy /health backend:8000
+    reverse_proxy /docs backend:8000
+    reverse_proxy /redoc backend:8000
+    reverse_proxy /openapi.json backend:8000
+    reverse_proxy /project-docs/* backend:8000
+
+    # ── Static frontend (SPA) ───────────────────────────────────────────────
+    reverse_proxy frontend:80
+
+    # ── Security headers (applied to all routes) ─────────────────────────────
+    header / {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # ── Logs ────────────────────────────────────────────────────────────────
+    log {
+        output file /data/access.log
+        format json
+    }
+}
+
+# ── Dev / local override (uncomment for local testing) ─────────────────────
+# http://localhost {
+#     reverse_proxy /api/* backend:8000
+#     reverse_proxy /health backend:8000
+#     reverse_proxy /docs backend:8000
+#     reverse_proxy /redoc backend:8000
+#     reverse_proxy frontend:80
+# }

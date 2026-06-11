@@ -1,35 +1,4 @@
-/**
- * App.tsx
- * ────────
- * Root application shell for opentech-db frontend.
- *
- * Layout
- * ──────
- * ┌──────────────────────────────────────────────┐
- * │  SideNavBar (fixed, 256 px, hidden on mobile) │
- * │  ┌────────────────────────────────────────┐   │
- * │  │  TopNavBar (sticky, full width)        │   │
- * │  ├────────────────────────────────────────┤   │
- * │  │  <main>                                │   │
- * │  │    Hero title section                  │   │
- * │  │    <Suspense>                          │   │
- * │  │      CategoryContent                   │   │
- * │  │    </Suspense>                         │   │
- * │  │  </main>                               │   │
- * │  │  <footer>                              │   │
- * │  └────────────────────────────────────────┘   │
- * │  DetailsModal (fixed overlay)                  │
- * └──────────────────────────────────────────────┘
- *
- * React 19 patterns
- * ─────────────────
- * - startTransition wraps category changes so the current grid stays
- *   visible while the next category's data loads (no flicker).
- * - useDeferredValue defers the search query so typing stays responsive.
- * - <Suspense> + use() in TechGrid handles async data fetching.
- * - useOptimistic is used inside DetailsModal for share-button toast.
- * - Document metadata placed directly in the component (React 19 feature).
- */
+
 
 import { lazy, startTransition, Suspense, use, useDeferredValue, useState } from "react";
 import type { TechnologyCategory, TechnologySummary } from "./types/api";

@@ -30,6 +30,7 @@ import {
 } from "../../services/worldmap.ts";
 
 import TechGeoMap from "./TechGeoMap";
+import TechGeoGlobe from "./TechGeoGlobe";
 import CountryPanel from "./CountryPanel";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -97,6 +98,7 @@ export default function WorldMapView() {
   const [yearIdx,       setYearIdx]       = useState<number>(2); // 2024
   const [selectedIso3,  setSelectedIso3]  = useState<string | null>(null);
   const [, setSelectedName]  = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const techOptions = useMemo(() => getWorldMapTechnologies(), [catalogueVersion]);
@@ -218,13 +220,49 @@ export default function WorldMapView() {
         {/* Title row */}
         <div className="flex items-center gap-3 mb-4">
           <span className="material-symbols-outlined text-primary text-2xl">public</span>
-          <div>
+          <div className="flex-1">
             <h1 className="font-headline font-bold text-on-surface text-xl leading-tight">
               Technology World Map
             </h1>
             <p className="text-xs text-on-surface-variant mt-0.5">
               Explore energy technology parameters country by country
             </p>
+          </div>
+
+          {/* ── View mode toggle ──────────────────────────────────────── */}
+          <div
+            className="flex items-center bg-surface-container-lowest rounded-full
+                       border border-outline-variant/20 p-0.5 cursor-pointer select-none
+                       shrink-0"
+            role="switch"
+            aria-checked={viewMode === "3d"}
+            tabIndex={0}
+            onClick={() => setViewMode((v) => (v === "2d" ? "3d" : "2d"))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setViewMode((v) => (v === "2d" ? "3d" : "2d"));
+              }
+            }}
+          >
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                viewMode === "2d"
+                  ? "bg-primary text-on-primary shadow-sm"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              2D
+            </span>
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                viewMode === "3d"
+                  ? "bg-primary text-on-primary shadow-sm"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              3D
+            </span>
           </div>
         </div>
 
@@ -352,16 +390,26 @@ export default function WorldMapView() {
       {/* ── Map + panel row ────────────────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 relative">
 
-        {/* Map */}
+        {/* Map / Globe */}
         <div className="flex-1 min-h-0 p-4">
-          <TechGeoMap
-            tech={activeTech}
-            param={activeParam}
-            year={year}
-            selectedIso3={selectedIso3}
-            onCountrySelect={handleCountrySelect}
-            onCatalogueReady={() => setCatalogueVersion((v) => v + 1)}
-          />
+          {viewMode === "2d" ? (
+            <TechGeoMap
+              tech={activeTech}
+              param={activeParam}
+              year={year}
+              selectedIso3={selectedIso3}
+              onCountrySelect={handleCountrySelect}
+              onCatalogueReady={() => setCatalogueVersion((v) => v + 1)}
+            />
+          ) : (
+            <TechGeoGlobe
+              tech={activeTech}
+              param={activeParam}
+              year={year}
+              selectedIso3={selectedIso3}
+              onCountrySelect={handleCountrySelect}
+            />
+          )}
         </div>
 
         {/* Country panel — slide in from right */}

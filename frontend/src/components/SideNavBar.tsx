@@ -329,35 +329,6 @@ export default function SideNavBar({
 
         </div>
 
-        {/* ── Documentation quick-links ──────────────────────────────────── */}
-        <div className="border-t border-outline-variant/10 pt-4">
-          <SectionHeading icon="article" label="Documentation" />
-          {DOC_LINKS.map(({ label, file }) => (
-            <a
-              key={file}
-              href={`${API_BASE}/project-docs/content/${file}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-2 py-1.5 text-xs text-on-surface-variant
-                         hover:bg-surface-container hover:text-primary rounded transition-all hover:translate-x-0.5 group"
-            >
-              <span className="material-symbols-outlined text-sm opacity-50 group-hover:opacity-100">
-                chevron_right
-              </span>
-              {label}
-            </a>
-          ))}
-          <a
-            href={`${API_BASE}/docs`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-2 py-1.5 text-xs text-on-surface-variant
-                       hover:bg-surface-container hover:text-primary rounded transition-all hover:translate-x-0.5 group mt-1"
-          >
-            <span className="material-symbols-outlined text-sm opacity-50 group-hover:opacity-100">api</span>
-            API Reference (Swagger)
-          </a>
-        </div>
       </nav>
 
       {/* Footer */}
@@ -383,24 +354,6 @@ export default function SideNavBar({
             )}
           </button>
         )}
-        <a
-          href={`${API_BASE}/redoc`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-on-surface-variant
-                     hover:bg-surface-container rounded transition-all hover:translate-x-0.5"
-        >
-          <span className="material-symbols-outlined text-sm">description</span> ReDoc
-        </a>
-        <a
-          href="https://openenergyplatform.org/ontology/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-on-surface-variant
-                     hover:bg-surface-container rounded transition-all hover:translate-x-0.5"
-        >
-          <span className="material-symbols-outlined text-sm">hub</span> OEO Ontology
-        </a>
       </div>
     </aside>
   );

@@ -1780,7 +1780,7 @@ function CatalogueProfilesTab({ token }: { token: string }) {
   const toggleType = (t: string) =>
     setCollapsedTypes((prev) => {
       const next = new Set(prev);
-      next.has(t) ? next.delete(t) : next.add(t);
+      if (next.has(t)) { next.delete(t); } else { next.add(t); }
       return next;
     });
 
@@ -2263,7 +2263,7 @@ function CatalogueManager({ token }: { token: string }) {
   const toggleDomain = (d: string) =>
     setCollapsedDomains((prev) => {
       const next = new Set(prev);
-      next.has(d) ? next.delete(d) : next.add(d);
+      if (next.has(d)) { next.delete(d); } else { next.add(d); }
       return next;
     });
 

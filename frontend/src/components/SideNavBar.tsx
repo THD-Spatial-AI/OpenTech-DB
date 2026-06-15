@@ -19,7 +19,7 @@ import type { TechnologyCategory } from "../types/api";
 import { useAuth } from "../context/AuthContext";
 import logoIconOnly from "../assets/icon_no_title.png";
 
-const API_BASE =
+const _API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace("/api/v1", "") ??
   "http://localhost:8000";
 
@@ -53,7 +53,7 @@ const CATEGORIES: { icon: string; label: string; value: TechnologyCategory }[] =
 
 // ── Documentation quick-links ─────────────────────────────────────────────────
 
-const DOC_LINKS = [
+const _DOC_LINKS = [
   { label: "Introduction & Goals",    file: "01-introduction-goals.md"    },
   { label: "Context & Scope",         file: "03-context-scope.md"         },
   { label: "Solution Strategy",       file: "04-solution-strategy.md"     },

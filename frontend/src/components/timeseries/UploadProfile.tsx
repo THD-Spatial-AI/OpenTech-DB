@@ -24,7 +24,7 @@
  * useTransition / useState for isPending.
  */
 
-import { useActionState, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useActionState, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, startTransition } from "react";
 import { useFormStatus } from "react-dom";
 import { z } from "zod";
 import * as echarts from "echarts";
@@ -528,7 +528,7 @@ function DataPreview({ file, format }: { file: File; format: "csv" | "json" }) {
 
   // Parse file client-side (read up to 20 MB)
   useEffect(() => {
-    setPoints([]);
+    startTransition(() => setPoints([]));
     let cancelled = false;
     const reader = new FileReader();
     reader.onload = (e) => {

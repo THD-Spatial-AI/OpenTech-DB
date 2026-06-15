@@ -20,6 +20,7 @@ import {
   useRef,
   useTransition,
   useCallback,
+  startTransition,
 } from "react";
 import type { TimeSeriesProfile, ProfileType } from "../../types/timeseries";
 import { fetchTimeSeriesCatalogue, fetchTimeSeriesData } from "../../services/timeseries";
@@ -123,7 +124,7 @@ function ProfileBrowserDropdown({
     if (!q) return;
     for (const { value } of PROFILE_TYPES) {
       if ((groups.get(value) ?? []).length > 0) {
-        setOpenCategory(value);
+        startTransition(() => setOpenCategory(value));
         break;
       }
     }

@@ -88,3 +88,5 @@ docker-compose.yml
 /.agents
 CLAUDE.md
 /.claude
+
+node_modules

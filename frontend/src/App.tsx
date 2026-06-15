@@ -286,8 +286,8 @@ export default function App() {
               className="max-w-[1440px] mx-auto mt-8 pt-8 border-t border-outline-variant/15
                           flex justify-between text-[11px] text-on-surface-variant"
             >
-              <span>© 2024 OpenTech Energy Consortium</span>
-              <span>All data licensed under CC BY 4.0</span>
+              <span>© 2026 Technische Hochschule Deggendorf — BigGeoData & Spatial AI Research Group. All Rights Reserved.</span>
+              <span>All data licensed under MIT</span>
             </div>
           </footer>
         </div>

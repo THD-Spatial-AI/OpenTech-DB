@@ -24,9 +24,10 @@
  * useTransition / useState for isPending.
  */
 
-import { useActionState, useEffect, useRef, useState, useCallback } from "react";
+import { useActionState, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useFormStatus } from "react-dom";
 import { z } from "zod";
+import * as echarts from "echarts";
 import {
   uploadTimeSeriesProfile,
 } from "../../services/timeseries";
@@ -473,34 +474,182 @@ function SubmitButton() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// FilePreview — shows first few rows of the picked file
+// parseFilePoints — client-side extraction of {ts, val} pairs
 // ─────────────────────────────────────────────────────────────────────
-function FilePreview({ file }: { file: File }) {
-  const [preview, setPreview] = useState<string | null>(null);
+function parseFilePoints(
+  text: string,
+  format: "csv" | "json",
+): { ts: string; val: number }[] {
+  if (format === "json") {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw: any = JSON.parse(text);
+      if (Array.isArray(raw)) {
+        if (raw.length > 0 && Array.isArray(raw[0]))
+          return raw.map(([ts, val]: [unknown, unknown]) => ({ ts: String(ts), val: Number(val) }));
+        return raw
+          .filter((r: { timestamp?: unknown; value?: unknown }) => r.timestamp !== undefined && r.value !== undefined)
+          .map((r: { timestamp: unknown; value: unknown }) => ({ ts: String(r.timestamp), val: Number(r.value) }));
+      }
+      if (raw.points && Array.isArray(raw.points))
+        return (raw.points as { timestamp?: unknown; value?: unknown }[]).map((r) => ({
+          ts: String(r.timestamp ?? ""),
+          val: Number(r.value ?? 0),
+        }));
+      return Object.entries(raw as Record<string, number>).map(([ts, val]) => ({ ts, val: Number(val) }));
+    } catch {
+      return [];
+    }
+  }
 
+  // CSV — auto-detect delimiter
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return [];
+  const delim = lines[0].includes(";") ? ";" : ",";
+  const out: { ts: string; val: number }[] = [];
+  for (const line of lines) {
+    const parts = line.split(delim);
+    if (parts.length < 2) continue;
+    const val = Number(parts[1].trim());
+    if (isNaN(val)) continue; // skip header
+    out.push({ ts: parts[0].trim(), val });
+  }
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// DataPreview — Chart + Table view of the selected file
+// ─────────────────────────────────────────────────────────────────────
+function DataPreview({ file, format }: { file: File; format: "csv" | "json" }) {
+  const [points, setPoints] = useState<{ ts: string; val: number }[]>([]);
+  const [tab, setTab]       = useState<"chart" | "table">("chart");
+  const chartRef            = useRef<HTMLDivElement>(null);
+  const chartInst           = useRef<echarts.ECharts | null>(null);
+
+  // Parse file client-side (read up to 20 MB)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPreview(null);
+    setPoints([]);
     let cancelled = false;
     const reader = new FileReader();
     reader.onload = (e) => {
       if (cancelled) return;
-      const text = e.target?.result as string;
-      setPreview(text.split("\n").slice(0, 8).join("\n"));
+      setPoints(parseFilePoints(e.target?.result as string, format));
     };
-    reader.readAsText(file.slice(0, 2 * 1024 * 1024));
+    reader.readAsText(file.slice(0, 20 * 1024 * 1024));
     return () => { cancelled = true; };
-  }, [file]);
+  }, [file, format]);
 
-  if (!preview) return null;
+  // Downsample to max 1 000 pts for chart performance
+  const display = useMemo(() => {
+    if (points.length <= 1000) return points;
+    const step = Math.ceil(points.length / 1000);
+    return points.filter((_, i) => i % step === 0);
+  }, [points]);
+
+  // Init / update ECharts
+  useLayoutEffect(() => {
+    if (!chartRef.current || display.length === 0) return;
+    if (!chartInst.current)
+      chartInst.current = echarts.init(chartRef.current, null, { renderer: "canvas" });
+    chartInst.current.setOption({
+      animation: false,
+      grid: { top: 12, right: 16, bottom: 28, left: 52 },
+      tooltip: {
+        trigger: "axis",
+        formatter: (params: unknown) => {
+          const pt = display[(params as { dataIndex: number }[])[0].dataIndex];
+          return `<span style="font-size:10px;color:#888">${pt.ts}</span><br/><b>${pt.val}</b>`;
+        },
+      },
+      xAxis: {
+        type: "category",
+        data: display.map((_, i) => i),
+        axisLabel: { show: false },
+        axisTick: { show: false },
+        axisLine: { lineStyle: { color: "#e2e8f0" } },
+      },
+      yAxis: {
+        type: "value",
+        scale: true,
+        axisLabel: { fontSize: 10, color: "#94a3b8" },
+        splitLine: { lineStyle: { color: "#f1f5f9" } },
+      },
+      series: [{
+        type: "line",
+        data: display.map((p) => p.val),
+        lineStyle: { width: 1.5, color: "#6366f1" },
+        areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [{ offset: 0, color: "rgba(99,102,241,0.15)" }, { offset: 1, color: "rgba(99,102,241,0)" }] } },
+        showSymbol: false,
+      }],
+    });
+  }, [display]);
+
+  // Resize observer
+  useEffect(() => {
+    const obs = new ResizeObserver(() => chartInst.current?.resize());
+    if (chartRef.current) obs.observe(chartRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  // Cleanup
+  useEffect(() => () => { chartInst.current?.dispose(); chartInst.current = null; }, []);
+
+  if (points.length === 0) return null;
+
   return (
-    <div className="mt-3 bg-surface-container rounded-xl border border-outline-variant/20 p-3 overflow-x-auto">
-      <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1.5">
-        Preview (first 8 rows)
-      </p>
-      <pre className="text-[11px] font-mono text-on-surface/70 leading-relaxed whitespace-pre">
-        {preview}
-      </pre>
+    <div className="mt-3 bg-surface-container rounded-xl border border-outline-variant/20 overflow-hidden">
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 px-3 pt-2 pb-1 border-b border-outline-variant/10">
+        {(["chart", "table"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={[
+              "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors",
+              tab === t
+                ? "bg-primary text-on-primary"
+                : "text-on-surface-variant/60 hover:bg-surface-container-high",
+            ].join(" ")}
+          >
+            <span className="material-symbols-outlined text-[12px]">
+              {t === "chart" ? "show_chart" : "table_rows"}
+            </span>
+            {t === "chart" ? `Chart (${points.length.toLocaleString()} pts)` : "Table"}
+          </button>
+        ))}
+      </div>
+
+      {/* Chart — always mounted so ECharts doesn't get destroyed on tab switch */}
+      <div style={{ display: tab === "chart" ? "block" : "none" }}>
+        <div ref={chartRef} style={{ height: 192 }} />
+      </div>
+
+      {/* Table */}
+      {tab === "table" && (
+        <div className="overflow-x-auto px-3 py-2.5">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1.5">
+            First 8 rows
+          </p>
+          <table className="text-[11px] font-mono text-on-surface/70 w-full">
+            <thead>
+              <tr className="text-on-surface-variant/40">
+                <th className="text-left pb-1 pr-6">timestamp</th>
+                <th className="text-right pb-1">value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {points.slice(0, 8).map((p, i) => (
+                <tr key={i} className="border-t border-outline-variant/10">
+                  <td className="py-0.5 pr-6">{p.ts}</td>
+                  <td className="py-0.5 text-right">{p.val}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -588,7 +737,7 @@ function DropZone({
         </p>
       )}
 
-      {file && <FilePreview file={file} />}
+      {file && <DataPreview file={file} format={format} />}
     </div>
   );
 }
@@ -596,11 +745,12 @@ function DropZone({
 // ─────────────────────────────────────────────────────────────────────
 // Format samples
 // ─────────────────────────────────────────────────────────────────────
-const CSV_SAMPLE = `timestamp,value
+const CSV_SAMPLE = `timestamp,value          (comma or semicolon separator accepted)
 2019-01-01 00:00:00,0.142
 2019-01-01 01:00:00,0.198
 2019-01-01 02:00:00,0.231
-…`;
+…
+Also accepted: 2019-01-01T00:00:00Z, 01/01/2019, Unix epoch (seconds)`;
 
 const JSON_SAMPLE = `[
   { "timestamp": "2019-01-01 00:00:00", "value": 0.142 },

@@ -3,18 +3,19 @@
  *
  * Layout
  * ──────
- *  ┌─ page-wide top bar: title · search · type-chips ───────────────────┐
- *  ├─ profile selector strip (horizontal scroll, grouped by type) ───────┤
+ *  ┌─ top bar: title · search · [Browse profiles ▾] ───────────────────┐
  *  └─ chart pane  ← fills ALL remaining height, full width ─────────────┘
  *
- * The profile list is a compact horizontal strip at the top.
- * The chart is the hero — it takes every pixel below the strip.
+ * Profile selection is handled by a two-level cascading dropdown:
+ *   Level 1 — categories (Cap. Factor, Generation, Load, …)
+ *   Level 2 — profiles within the chosen category (vertical list)
  */
 
 import {
   Suspense,
   use,
   useState,
+  useEffect,
   useMemo,
   useRef,
   useTransition,
@@ -49,61 +50,211 @@ const tm = (t: string) => TYPE_META[t] ?? fallbackMeta;
 // ─────────────────────────────────────────────────────────────────────
 // Skeleton
 // ─────────────────────────────────────────────────────────────────────
-function StripSkeleton() {
+function PageSkeleton() {
   return (
-    <div className="animate-pulse">
-      {/* top bar */}
-      <div className="h-12 bg-surface-container-low border-b border-outline-variant/15" />
-      {/* strip */}
-      <div className="flex gap-2 px-4 py-2 border-b border-outline-variant/15">
-        {Array.from({ length: 10 }).map((_, i) => (
-          <div key={i} className="h-8 w-28 bg-surface-container rounded-lg flex-shrink-0" />
-        ))}
+    <div className="animate-pulse flex flex-col h-full">
+      <div className="h-10 bg-surface-container-low border-b border-outline-variant/15 flex items-center px-4">
+        <div className="h-5 w-44 bg-surface-container rounded-lg" />
       </div>
-      {/* chart area */}
       <div className="flex-1 bg-surface-container/30 m-4 rounded-2xl" style={{ minHeight: 400 }} />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// ProfileChip — single selectable item in the horizontal strip
+// ProfileBrowserDropdown — two-level cascading dropdown
 // ─────────────────────────────────────────────────────────────────────
-function ProfileChip({
-  profile,
-  isSelected,
-  isPending,
+function ProfileBrowserDropdown({
+  profiles,
+  query,
+  selectedProfileId,
   onSelect,
+  isPending,
 }: {
-  profile: TimeSeriesProfile;
-  isSelected: boolean;
+  profiles: TimeSeriesProfile[];
+  query: string;
+  selectedProfileId: string | null;
+  onSelect: (p: TimeSeriesProfile) => void;
   isPending: boolean;
-  onSelect: () => void;
 }) {
-  const meta = tm(profile.type);
+  const [open, setOpen]               = useState(false);
+  const [openCategory, setOpenCategory] = useState<ProfileType | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Filter by search query
+  const q = query.trim().toLowerCase();
+  const filtered = useMemo(
+    () => q
+      ? profiles.filter(
+          (p) =>
+            p.name.toLowerCase().includes(q) ||
+            p.location.toLowerCase().includes(q) ||
+            (p.carrier ?? "").toLowerCase().includes(q)
+        )
+      : profiles,
+    [profiles, q]
+  );
+
+  // Group by type
+  const groups = useMemo(() => {
+    const map = new Map<ProfileType, TimeSeriesProfile[]>();
+    for (const { value } of PROFILE_TYPES) map.set(value, []);
+    for (const p of filtered) {
+      const bucket = map.get(p.type as ProfileType) ?? [];
+      bucket.push(p);
+      map.set(p.type as ProfileType, bucket);
+    }
+    return map;
+  }, [filtered]);
+
+  // Auto-expand first matching category when searching
+  useEffect(() => {
+    if (!q) return;
+    for (const { value } of PROFILE_TYPES) {
+      if ((groups.get(value) ?? []).length > 0) {
+        setOpenCategory(value);
+        break;
+      }
+    }
+  }, [q, groups]);
+
+  const selectedProfile = profiles.find((p) => p.profile_id === selectedProfileId);
+
+  const handleProfileClick = (p: TimeSeriesProfile) => {
+    onSelect(p);
+    setOpen(false);
+  };
+
   return (
-    <button
-      onClick={onSelect}
-      aria-pressed={isSelected}
-      title={`${profile.name} · ${profile.location} · ${profile.unit}`}
-      className={[
-        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-left",
-        "transition-all flex-shrink-0 max-w-[180px] group",
-        isSelected
-          ? `${meta.chip} ${meta.border} ring-2 ring-offset-1 ring-current shadow-sm`
-          : "border-outline-variant/20 bg-surface-container-lowest hover:bg-surface-container hover:border-outline-variant/40",
-        isPending && isSelected ? "opacity-60" : "",
-      ].join(" ")}
-    >
-      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.dot}`} />
-      <span className={[
-        "text-[11px] font-semibold leading-tight truncate",
-        isSelected ? "" : "text-on-surface",
-      ].join(" ")}>
-        {profile.name}
-      </span>
-      <span className="text-[9px] font-mono opacity-50 flex-shrink-0 hidden sm:block">{profile.location}</span>
-    </button>
+    <div className="relative flex-shrink-0" ref={containerRef}>
+      {/* Trigger button */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={[
+          "flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all",
+          "min-w-[200px] max-w-[300px] justify-between",
+          open
+            ? "bg-surface-container border-outline-variant/50 text-on-surface"
+            : "bg-surface-container-lowest border-outline-variant/30 text-on-surface hover:bg-surface-container hover:border-outline-variant/50",
+        ].join(" ")}
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {selectedProfile ? (
+            <>
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${tm(selectedProfile.type).dot}`} />
+              <span className={`truncate ${isPending ? "opacity-50" : ""}`}>
+                {selectedProfile.name}
+              </span>
+            </>
+          ) : (
+            <span className="text-on-surface-variant/60">Browse profiles…</span>
+          )}
+        </div>
+        <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50 flex-shrink-0">
+          {open ? "expand_less" : "expand_more"}
+        </span>
+      </button>
+
+      {/* Dropdown — two panels side by side */}
+      {open && (
+        <div className="absolute top-full left-0 mt-1.5 z-50 flex items-start gap-1">
+
+          {/* ── Level 1: categories panel ── */}
+          <div className="w-52 bg-surface-container-lowest border border-outline-variant/25 rounded-2xl shadow-xl overflow-hidden">
+            {filtered.length === 0 ? (
+              <div className="flex items-center gap-2 px-4 py-3 text-xs text-on-surface-variant/50">
+                <span className="material-symbols-outlined text-[14px]">search_off</span>
+                No profiles match
+              </div>
+            ) : (
+              PROFILE_TYPES.map(({ value, label, icon }) => {
+                const items = groups.get(value) ?? [];
+                if (items.length === 0) return null;
+                const meta = tm(value);
+                const isActive = openCategory === value;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => setOpenCategory((prev) => (prev === value ? null : value))}
+                    className={[
+                      "flex items-center justify-between w-full px-4 py-2.5 transition-colors text-left",
+                      "border-b border-outline-variant/10 last:border-b-0",
+                      isActive
+                        ? "bg-surface-container"
+                        : "hover:bg-surface-container/60",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`material-symbols-outlined text-[14px] ${isActive ? "text-primary" : "text-on-surface-variant/60"}`}>
+                        {icon}
+                      </span>
+                      <span className={`text-xs font-semibold ${isActive ? "text-primary" : "text-on-surface"}`}>
+                        {label}
+                      </span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${meta.chip}`}>
+                        {items.length}
+                      </span>
+                    </div>
+                    <span className={`material-symbols-outlined text-[14px] ${isActive ? "text-primary" : "text-on-surface-variant/30"}`}>
+                      chevron_right
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* ── Level 2: profiles flyout panel ── */}
+          {openCategory && (groups.get(openCategory) ?? []).length > 0 && (() => {
+            const items = groups.get(openCategory)!;
+            const meta  = tm(openCategory);
+            return (
+              <div className="w-64 bg-surface-container-lowest border border-outline-variant/25 rounded-2xl shadow-xl max-h-[360px] overflow-y-auto">
+                {items.map((p) => {
+                  const isSelected = p.profile_id === selectedProfileId;
+                  return (
+                    <button
+                      key={p.profile_id}
+                      onClick={() => handleProfileClick(p)}
+                      className={[
+                        "flex items-start gap-3 w-full text-left px-4 py-2.5 transition-colors",
+                        "border-b border-outline-variant/10 last:border-b-0 border-l-2",
+                        isSelected
+                          ? "bg-primary/5 border-l-primary"
+                          : "border-l-transparent hover:bg-surface-container/60",
+                      ].join(" ")}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${meta.dot}`} />
+                      <div className="min-w-0">
+                        <p className={`text-[11px] font-semibold leading-tight truncate ${
+                          isSelected ? "text-primary" : "text-on-surface"
+                        }`}>
+                          {p.name}
+                        </p>
+                        <p className="text-[9px] font-mono text-on-surface-variant/50 mt-0.5">
+                          {p.location} · {p.resolution}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -113,7 +264,6 @@ function ProfileChip({
 function CatalogueContent({
   cataloguePromise,
   query,
-  activeType,
   selectedProfileId,
   onSelectProfile,
   onDeleteProfile,
@@ -121,7 +271,6 @@ function CatalogueContent({
 }: {
   cataloguePromise: Promise<{ total: number; profiles: TimeSeriesProfile[] }>;
   query: string;
-  activeType: ProfileType | null;
   selectedProfileId: string | null;
   onSelectProfile: (p: TimeSeriesProfile) => void;
   onDeleteProfile: (id: string) => void;
@@ -129,93 +278,30 @@ function CatalogueContent({
 }) {
   const { profiles } = use(cataloguePromise);
 
-  // Filter
-  const q = query.trim().toLowerCase();
-  const filtered = useMemo(() => {
-    let result = profiles;
-    if (activeType) result = result.filter((p) => p.type === activeType);
-    if (q) result = result.filter(
-      (p) => p.name.toLowerCase().includes(q) ||
-             p.location.toLowerCase().includes(q) ||
-             (p.carrier ?? "").toLowerCase().includes(q)
-    );
-    return result;
-  }, [profiles, activeType, q]);
-
-  // Group by type (preserve PROFILE_TYPES order)
-  const groups = useMemo(() => {
-    const map = new Map<ProfileType, TimeSeriesProfile[]>();
-    for (const pt of PROFILE_TYPES) map.set(pt.value, []);
-    for (const p of filtered) {
-      const arr = map.get(p.type as ProfileType) ?? [];
-      arr.push(p);
-      map.set(p.type as ProfileType, arr);
-    }
-    return map;
-  }, [filtered]);
-
-  // Selected profile + data promise
   const selectedProfile = useMemo(
     () => profiles.find((p) => p.profile_id === selectedProfileId) ?? null,
     [profiles, selectedProfileId]
   );
   const dataPromise = useMemo(
-    () => selectedProfileId ? fetchTimeSeriesData(selectedProfileId) : null,
+    () => (selectedProfileId ? fetchTimeSeriesData(selectedProfileId) : null),
     [selectedProfileId]
   );
-
-  // Horizontal scroll ref for strip
-  const stripRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
 
-      {/* ── PROFILE SELECTOR STRIP ──────────────────────────────── */}
-      <div
-        ref={stripRef}
-        className="flex-shrink-0 border-b border-outline-variant/15 bg-surface-container-low/50"
-      >
-        {filtered.length === 0 ? (
-          <div className="flex items-center gap-2 px-4 py-2 text-xs text-on-surface-variant/50">
-            <span className="material-symbols-outlined text-[14px]">search_off</span>
-            No profiles match
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            {/* Render each type group as a labeled horizontal row */}
-            <div className="flex flex-col gap-0 divide-y divide-outline-variant/10 min-w-0">
-              {PROFILE_TYPES.map(({ value: type, label, icon }) => {
-                const items = groups.get(type) ?? [];
-                if (items.length === 0) return null;
-                const meta = tm(type);
-                return (
-                  <div key={type} className="flex items-center gap-2 px-3 py-1.5 min-w-max">
-                    {/* Group label */}
-                    <div className={`flex items-center gap-1 flex-shrink-0 w-28 ${meta.chip} rounded-lg px-2 py-0.5`}>
-                      <span className="material-symbols-outlined text-[12px]">{icon}</span>
-                      <span className="text-[9px] font-bold uppercase tracking-widest leading-none">{label}</span>
-                    </div>
-                    {/* Chips */}
-                    <div className="flex items-center gap-1.5">
-                      {items.map((p) => (
-                        <ProfileChip
-                          key={p.profile_id}
-                          profile={p}
-                          isSelected={p.profile_id === selectedProfileId}
-                          isPending={isPending && p.profile_id === selectedProfileId}
-                          onSelect={() => onSelectProfile(p)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+      {/* ── DROPDOWN BAR ─────────────────────────────────────────── */}
+      <div className="flex-shrink-0 border-b border-outline-variant/15 bg-surface-container-low/50 px-4 py-2">
+        <ProfileBrowserDropdown
+          profiles={profiles}
+          query={query}
+          selectedProfileId={selectedProfileId}
+          onSelect={onSelectProfile}
+          isPending={isPending}
+        />
       </div>
 
-      {/* ── CHART PANE — fills all remaining space ──────────────── */}
+      {/* ── CHART PANE — fills all remaining space ───────────────── */}
       <main className={[
         "flex-1 min-h-0 overflow-hidden transition-opacity",
         isPending ? "opacity-70" : "opacity-100",
@@ -232,13 +318,12 @@ function CatalogueContent({
               <span className="material-symbols-outlined text-3xl text-primary/40">show_chart</span>
             </div>
             <div>
-              <p className="text-base font-bold text-on-surface mb-1">Select a profile above</p>
+              <p className="text-base font-bold text-on-surface mb-1">Select a profile</p>
               <p className="text-sm text-on-surface-variant/60 max-w-sm">
-                Click any chip in the selector strip to load its interactive chart with
-                zoom presets, aggregation controls, and live statistics.
+                Use the <strong>Browse profiles</strong> dropdown above to pick a category and
+                then a profile — the interactive chart will load here.
               </p>
             </div>
-            {/* Quick-start suggestions */}
             {profiles.length > 0 && (
               <div className="flex flex-wrap justify-center gap-2 mt-1">
                 {profiles.slice(0, 5).map((p) => {
@@ -266,17 +351,16 @@ function CatalogueContent({
 // Page root
 // ─────────────────────────────────────────────────────────────────────
 export default function TimeSeriesCatalogue() {
-  const [query, setQuery]                          = useState("");
-  const [activeType, setActiveType]                = useState<ProfileType | null>(null);
-  const [selectedProfileId, setSelectedProfileId]  = useState<string | null>(null);
-  const [catalogueVersion, setCatalogueVersion]    = useState(0);
-  const [isPending, startTransitionRaw]            = useTransition();
+  const [query, setQuery]                         = useState("");
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [catalogueVersion, setCatalogueVersion]   = useState(0);
+  const [isPending, startTransition]              = useTransition();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const cataloguePromise = useMemo(() => fetchTimeSeriesCatalogue(), [catalogueVersion]);
 
   const handleSelect = (p: TimeSeriesProfile) => {
-    startTransitionRaw(() => setSelectedProfileId(p.profile_id));
+    startTransition(() => setSelectedProfileId(p.profile_id));
   };
 
   const handleDelete = useCallback((id: string) => {
@@ -284,21 +368,15 @@ export default function TimeSeriesCatalogue() {
     setCatalogueVersion((v) => v + 1);
   }, []);
 
-  const handleTypeChip = (t: ProfileType) => {
-    setActiveType((prev) => (prev === t ? null : t));
-  };
-
   return (
     <>
       <title>OpenTech DB | Time Series & Profiles</title>
       <meta name="description" content="Browse and visualize energy time-series profiles." />
 
-      {/* Full viewport height minus TopNavBar (~57 px) */}
       <div className="flex flex-col overflow-hidden" style={{ height: "calc(100vh - 57px)" }}>
 
-        {/* ── TOP BAR: title + search + type filters ─────────────── */}
-        <div className="flex items-center gap-3 px-5 py-2.5 border-b border-outline-variant/15 flex-shrink-0 bg-surface-container-low flex-wrap">
-          {/* Icon + title */}
+        {/* ── TOP BAR: title + search ──────────────────────────────── */}
+        <div className="flex items-center gap-3 px-5 py-2.5 border-b border-outline-variant/15 flex-shrink-0 bg-surface-container-low">
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
               <span className="material-symbols-outlined text-base text-primary">show_chart</span>
@@ -308,11 +386,10 @@ export default function TimeSeriesCatalogue() {
             </span>
           </div>
 
-          {/* Search */}
           <div className="relative w-52 flex-shrink-0">
             <input
               type="search"
-              placeholder="Search…"
+              placeholder="Search profiles…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-surface-container-lowest border border-outline-variant/30
@@ -326,46 +403,23 @@ export default function TimeSeriesCatalogue() {
             </span>
           </div>
 
-          {/* Type filter chips */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {PROFILE_TYPES.map(({ value, label, icon }) => {
-              const active = activeType === value;
-              const meta   = tm(value);
-              return (
-                <button
-                  key={value}
-                  onClick={() => handleTypeChip(value)}
-                  className={[
-                    "flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full border transition-all",
-                    active
-                      ? `${meta.chip} ${meta.border}`
-                      : "border-outline-variant/20 text-on-surface-variant/60 hover:bg-surface-container hover:text-on-surface-variant",
-                  ].join(" ")}
-                >
-                  <span className="material-symbols-outlined text-[11px]">{icon}</span>
-                  {label}
-                </button>
-              );
-            })}
-            {(activeType || query) && (
-              <button
-                onClick={() => { setActiveType(null); setQuery(""); }}
-                className="text-[10px] font-bold text-on-surface-variant/50 hover:text-primary px-1 transition-colors"
-              >
-                ✕ clear
-              </button>
-            )}
-          </div>
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="text-[10px] font-bold text-on-surface-variant/50 hover:text-primary transition-colors"
+            >
+              ✕ clear
+            </button>
+          )}
         </div>
 
-        {/* ── Body: strip + chart ─────────────────────────────────── */}
+        {/* ── Body: dropdown bar + chart ───────────────────────────── */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <ErrorBoundary context="time series catalogue">
-            <Suspense fallback={<StripSkeleton />}>
+            <Suspense fallback={<PageSkeleton />}>
               <CatalogueContent
                 cataloguePromise={cataloguePromise}
                 query={query}
-                activeType={activeType}
                 selectedProfileId={selectedProfileId}
                 onSelectProfile={handleSelect}
                 onDeleteProfile={handleDelete}

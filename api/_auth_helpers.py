@@ -53,35 +53,13 @@ def _decode_supabase_jwt(token: str) -> dict:
     """
     Validate a Supabase JWT.
 
-    When SUPABASE_JWT_SECRET is set (recommended for production), the token
-    signature is verified cryptographically via HS256.
-
-    When SUPABASE_JWT_SECRET is absent (local dev only), structural checks are
-    performed instead and a warning is emitted.  This path accepts any
-    well-formed Supabase-looking JWT without verifying authenticity — do not
-    use in production without setting the secret.
+    Strategy:
+    1. Peek at the header to discover the signing algorithm.
+    2. If alg==HS256 and SUPABASE_JWT_SECRET is set → verify signature with PyJWT.
+    3. Otherwise → structural-only check (iss, aud, exp).  A warning is logged
+       when the secret is present but the token uses a non-HS256 algorithm (e.g.
+       RS256), because that means the signature cannot be verified locally.
     """
-    if _SUPABASE_JWT_SECRET:
-        from jose import JWTError, jwt as _jose_jwt
-        try:
-            payload = _jose_jwt.decode(
-                token,
-                _SUPABASE_JWT_SECRET,
-                algorithms=["HS256"],
-                audience="authenticated",
-            )
-        except JWTError as exc:
-            raise ValueError(f"Supabase JWT signature invalid: {exc}") from exc
-        iss = payload.get("iss", "")
-        if not iss or "supabase" not in iss:
-            raise ValueError("Not a Supabase JWT")
-        return payload
-
-    # --- structural-only path (local dev) ---
-    logger.warning(
-        "SUPABASE_JWT_SECRET is not set — Supabase token signatures are NOT "
-        "verified. Set SUPABASE_JWT_SECRET for production deployments."
-    )
     parts = token.split(".")
     if len(parts) != 3:
         raise ValueError("Malformed JWT — expected 3 parts")
@@ -90,15 +68,54 @@ def _decode_supabase_jwt(token: str) -> dict:
         return _b64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
 
     try:
+        header  = _json_mod.loads(_b64d(parts[0]))
         payload = _json_mod.loads(_b64d(parts[1]))
     except Exception as exc:
-        raise ValueError(f"Cannot decode JWT payload: {exc}") from exc
+        raise ValueError(f"Cannot decode JWT: {exc}") from exc
+
+    token_alg = header.get("alg", "").upper()
+
+    # ── Cryptographic path (HS256 + secret present) ──────────────────────────
+    if _SUPABASE_JWT_SECRET and token_alg == "HS256":
+        import jwt as _pyjwt
+        from jwt.exceptions import InvalidTokenError as _InvalidTokenError
+        aud = payload.get("aud")
+        audience = aud if isinstance(aud, list) else (aud or "authenticated")
+        try:
+            payload = _pyjwt.decode(
+                token,
+                _SUPABASE_JWT_SECRET,
+                algorithms=["HS256"],
+                audience=audience,
+            )
+        except _InvalidTokenError as exc:
+            raise ValueError(f"Supabase JWT signature invalid: {exc}") from exc
+        iss = payload.get("iss", "")
+        if not iss or "supabase" not in iss:
+            raise ValueError("Not a Supabase JWT")
+        return payload
+
+    # ── Structural-only path ─────────────────────────────────────────────────
+    if _SUPABASE_JWT_SECRET and token_alg != "HS256":
+        logger.warning(
+            "Supabase token uses alg=%s — cannot verify with SUPABASE_JWT_SECRET "
+            "(HS256 only). Falling back to structural check.", token_alg,
+        )
+    else:
+        logger.warning(
+            "SUPABASE_JWT_SECRET not set — Supabase token signatures are NOT "
+            "verified. Set SUPABASE_JWT_SECRET for production deployments."
+        )
 
     iss = payload.get("iss", "")
     if not iss or "supabase" not in iss:
         raise ValueError("Not a Supabase JWT")
 
-    if payload.get("aud") != "authenticated":
+    aud = payload.get("aud")
+    authenticated = (
+        (isinstance(aud, list) and "authenticated" in aud) or aud == "authenticated"
+    )
+    if not authenticated:
         raise ValueError("JWT audience is not 'authenticated'")
 
     exp = payload.get("exp", 0)

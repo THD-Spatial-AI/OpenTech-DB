@@ -135,6 +135,64 @@ class ProfileSubmissionRecord(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Timestamp normaliser
+# ---------------------------------------------------------------------------
+
+_TS_PATTERNS = [
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d %H:%M",
+    "%Y-%m-%d",
+    "%d/%m/%Y %H:%M:%S",
+    "%d/%m/%Y %H:%M",
+    "%d/%m/%Y",
+    "%m/%d/%Y %H:%M:%S",
+    "%m/%d/%Y %H:%M",
+    "%m/%d/%Y",
+    "%d.%m.%Y %H:%M:%S",
+    "%d.%m.%Y %H:%M",
+    "%d.%m.%Y",
+    "%Y/%m/%d %H:%M:%S",
+    "%Y/%m/%d %H:%M",
+    "%Y/%m/%d",
+]
+
+
+def _parse_timestamp(raw: str) -> str:
+    """
+    Accept any common timestamp format and return ``YYYY-MM-DD HH:MM:SS``.
+    Raises ValueError with a descriptive message on failure.
+    """
+    s = raw.strip()
+
+    # 1. Unix epoch (integer or float string)
+    try:
+        epoch = float(s)
+        dt = datetime.fromtimestamp(epoch, tz=timezone.utc).replace(tzinfo=None)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        pass
+
+    # 2. ISO-8601 family (T separator, Z suffix, ±HH:MM offset, microseconds)
+    iso = s.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(iso)
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        pass
+
+    # 3. strptime patterns
+    for pattern in _TS_PATTERNS:
+        try:
+            return datetime.strptime(s, pattern).strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+
+    raise ValueError(f"Unrecognised timestamp format: '{s}'")
+
+
+# ---------------------------------------------------------------------------
 # Catalogue loader (cached)
 # ---------------------------------------------------------------------------
 
@@ -426,21 +484,36 @@ async def upload_profile(
             else:
                 raise HTTPException(status_code=422, detail=f"Row {idx}: cannot extract timestamp/value.")
             try:
-                points.append({"timestamp": str(ts).strip(), "value": round(float(val), 6)})
+                norm_ts = _parse_timestamp(str(ts))
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=f"Row {idx}: {exc}") from exc
+            try:
+                points.append({"timestamp": norm_ts, "value": round(float(val), 6)})
             except (TypeError, ValueError):
                 raise HTTPException(status_code=422, detail=f"Row {idx}: value '{val}' is not a number.")
     else:
-        reader = csv.reader(io.StringIO(text))
+        # Auto-detect delimiter (comma, semicolon, tab, pipe)
+        sniffer = csv.Sniffer()
+        try:
+            dialect = sniffer.sniff(text[:4096], delimiters=",;\t|")
+            delimiter = dialect.delimiter
+        except csv.Error:
+            delimiter = ","
+        reader = csv.reader(io.StringIO(text), delimiter=delimiter)
         for row_num, row in enumerate(reader, start=1):
             if not row or row[0].strip().lower() in {"timestamp", "time", "datetime", "date"}:
                 continue
             if len(row) < 2:
                 raise HTTPException(status_code=422, detail=f"Row {row_num}: expected 2 columns, got {len(row)}.")
             try:
+                norm_ts = _parse_timestamp(row[0].strip())
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=f"Row {row_num}: {exc}") from exc
+            try:
                 value = float(row[1].strip())
             except ValueError:
                 raise HTTPException(status_code=422, detail=f"Row {row_num}: value '{row[1].strip()}' is not a number.")
-            points.append({"timestamp": row[0].strip(), "value": round(value, 6)})
+            points.append({"timestamp": norm_ts, "value": round(value, 6)})
 
     if len(points) < 2:
         raise HTTPException(status_code=422, detail="File must contain at least 2 data rows.")

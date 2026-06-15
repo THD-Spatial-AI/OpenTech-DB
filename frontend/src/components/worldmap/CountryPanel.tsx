@@ -19,7 +19,6 @@ import {
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
-import type { ECElementEvent } from "echarts";
 import type { TechMapType, TechMapParam } from "../../types/worldmap";
 
 type EChartsPieTooltipParams = { name: string; value: number; percent?: number; dataIndex: number };
@@ -264,13 +263,13 @@ export default function CountryPanel({
   }, [crossTechValues, param, tech]);
 
   // Stable ref so the click proxy never needs to be re-attached to ECharts
-  const crossTechClickRef = useRef<((p: ECElementEvent) => void) | null>(null);
+  const crossTechClickRef = useRef<((p: { dataIndex: number }) => void) | null>(null);
   const crossTechRows = useMemo(
     () => crossTechValues.filter((r) => r.value != null).sort((a, b) => (b.value ?? 0) - (a.value ?? 0)),
     [crossTechValues],
   );
   crossTechClickRef.current = onTechSelect
-    ? (p: ECElementEvent) => { const row = crossTechRows[p.dataIndex]; if (row) onTechSelect(row.tech); }
+    ? (p: { dataIndex: number }) => { const row = crossTechRows[p.dataIndex]; if (row) onTechSelect(row.tech); }
     : null;
 
   const crossTechRef = useEChart(crossTechOption);
@@ -281,7 +280,7 @@ export default function CountryPanel({
     if (!el) return;
     const chart = echarts.getInstanceByDom(el);
     if (!chart) return;
-    const proxy = (p: ECElementEvent) => crossTechClickRef.current?.(p);
+    const proxy = (p: unknown) => crossTechClickRef.current?.(p as { dataIndex: number });
     chart.on("click", proxy);
     return () => { chart.off("click", proxy); };
   // eslint-disable-next-line react-hooks/exhaustive-deps

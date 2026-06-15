@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Globe from "globe.gl";
+import type { GlobeInstance } from "globe.gl";
 import * as THREE from "three";
 
 import type { TechMapType, TechMapParam } from "../../types/worldmap";
@@ -41,8 +42,6 @@ interface GeoFeature {
   properties?: { name?: string };
   geometry?: GeoJSON.Geometry;
 }
-
-type GlobeInstance = InstanceType<ReturnType<typeof Globe>>;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -169,7 +168,7 @@ export default function TechGeoGlobe({
     const outerDiv    = containerRef.current;
     if (!globeDiv || !outerDiv || globeRef.current) return;
 
-    const globe = new (Globe())(globeDiv);
+    const globe = new Globe(globeDiv);
 
     globe
       .width(outerDiv.clientWidth  || 600)

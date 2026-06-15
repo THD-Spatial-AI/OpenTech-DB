@@ -19,10 +19,6 @@ import type { TechnologyCategory } from "../types/api";
 import { useAuth } from "../context/AuthContext";
 import logoIconOnly from "../assets/icon_no_title.png";
 
-const _API_BASE =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace("/api/v1", "") ??
-  "http://localhost:8000";
-
 // ── Exported types ────────────────────────────────────────────────────────────
 
 /** Kept for TechGrid compatibility — always passed as empty sets from App.tsx. */
@@ -50,16 +46,6 @@ const CATEGORIES: { icon: string; label: string; value: TechnologyCategory }[] =
   { icon: "flowchart",              label: "Conversion",   value: "conversion"   },
   { icon: "cable",                 label: "Transmission", value: "transmission" },
 ];
-
-// ── Documentation quick-links ─────────────────────────────────────────────────
-
-const _DOC_LINKS = [
-  { label: "Introduction & Goals",    file: "01-introduction-goals.md"    },
-  { label: "Context & Scope",         file: "03-context-scope.md"         },
-  { label: "Solution Strategy",       file: "04-solution-strategy.md"     },
-  { label: "Architectural Decisions", file: "09-architectural-decisions.md" },
-  { label: "Glossary",               file: "12-glossary.md"              },
-] as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -19,9 +19,10 @@ import {
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
+import type { ECElementEvent } from "echarts";
 import type { TechMapType, TechMapParam } from "../../types/worldmap";
 
-type EChartsPieParams = { name: string; value: number; percent?: number; dataIndex: number };
+type EChartsPieTooltipParams = { name: string; value: number; percent?: number; dataIndex: number };
 import { PARAM_META, MAP_YEARS } from "../../types/worldmap";
 import { getCountryByIso3, getParamValues, getTechnologyMeta, getWorldMapTechnologies } from "../../services/worldmap.ts";
 
@@ -219,7 +220,7 @@ export default function CountryPanel({
       tooltip: {
         ...BASE_TOOLTIP,
         trigger: "item",
-        formatter: (p: EChartsPieParams) => {
+        formatter: (p: EChartsPieTooltipParams) => {
           const val = pInfo?.format(p.value as number) ?? p.value;
           const unit = pInfo?.unit ?? "";
           return `${p.name}<br/><b>${val}</b> ${unit} (${p.percent?.toFixed(1)}%)`;
@@ -263,13 +264,13 @@ export default function CountryPanel({
   }, [crossTechValues, param, tech]);
 
   // Stable ref so the click proxy never needs to be re-attached to ECharts
-  const crossTechClickRef = useRef<((p: EChartsPieParams) => void) | null>(null);
+  const crossTechClickRef = useRef<((p: ECElementEvent) => void) | null>(null);
   const crossTechRows = useMemo(
     () => crossTechValues.filter((r) => r.value != null).sort((a, b) => (b.value ?? 0) - (a.value ?? 0)),
     [crossTechValues],
   );
   crossTechClickRef.current = onTechSelect
-    ? (p: EChartsPieParams) => { const row = crossTechRows[p.dataIndex]; if (row) onTechSelect(row.tech); }
+    ? (p: ECElementEvent) => { const row = crossTechRows[p.dataIndex]; if (row) onTechSelect(row.tech); }
     : null;
 
   const crossTechRef = useEChart(crossTechOption);
@@ -280,7 +281,7 @@ export default function CountryPanel({
     if (!el) return;
     const chart = echarts.getInstanceByDom(el);
     if (!chart) return;
-    const proxy = (p: EChartsPieParams) => crossTechClickRef.current?.(p);
+    const proxy = (p: ECElementEvent) => crossTechClickRef.current?.(p);
     chart.on("click", proxy);
     return () => { chart.off("click", proxy); };
   // eslint-disable-next-line react-hooks/exhaustive-deps

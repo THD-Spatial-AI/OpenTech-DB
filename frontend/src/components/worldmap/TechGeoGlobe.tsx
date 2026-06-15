@@ -42,7 +42,7 @@ interface GeoFeature {
   geometry?: GeoJSON.Geometry;
 }
 
-type GlobeInstance = ReturnType<ReturnType<typeof Globe>>;
+type GlobeInstance = InstanceType<ReturnType<typeof Globe>>;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -169,7 +169,7 @@ export default function TechGeoGlobe({
     const outerDiv    = containerRef.current;
     if (!globeDiv || !outerDiv || globeRef.current) return;
 
-    const globe = Globe()(globeDiv);
+    const globe = new (Globe())(globeDiv);
 
     globe
       .width(outerDiv.clientWidth  || 600)

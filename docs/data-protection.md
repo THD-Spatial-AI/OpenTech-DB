@@ -11,8 +11,8 @@
 | **System / Application** | OpenTech-DB |
 | **Module** | Web Application (FastAPI Backend + React 19 SPA + Supabase Auth + Scraper Pipeline) |
 | **Prepared by** | Ricardo Miranda - THD Spatial AI |
-| **Date** | 2026-06-15 |
-| **Version** | 1.0 |
+| **Date** | 2026-06-17 |
+| **Version** | 1.1 |
 
 **Purpose of Processing:** Operation of an OEO-aligned (Open Energy Ontology) energy technology parameter database including user authentication, technology catalogue management, automated parameter extraction from academic and regulatory sources, and export to energy modelling frameworks.
 
@@ -172,3 +172,106 @@ No `sessionStorage` entries are set.
 | Admin credentials in environment variables | `ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH` are env-var-based; no UI to rotate them | Use a strong bcrypt hash (cost factor ≥ 12); avoid default credentials; redeploy to rotate; document rotation procedure |
 | LLM providers receive paper text | When enabled, OpenAI or Anthropic receive text extracted from academic PDFs | LLM extraction is disabled by default; no user personal data is included in prompts; establish a data processing agreement with the LLM provider before enabling in production |
 | Session token in `sessionStorage` | `sessionStorage` is accessible to JavaScript on the same origin (XSS risk) | Enforce a strict `Content-Security-Policy` header; validate all JWT signatures server-side on every authenticated request |
+
+---
+
+## 7. Controller and Processor Roles
+
+### 7.1 Data Controller
+
+| Field | Value |
+|---|---|
+| **Organisation** | Technische Hochschule Deggendorf (THD) — THD Spatial AI |
+| **Contact person** | Ricardo Miranda |
+| **Email** | ric.ignaciom@gmail.com |
+| **Role** | Data Controller — determines purposes and means of processing |
+
+### 7.2 Data Processors
+
+Third parties that process personal data on behalf of the controller under documented instructions. A Data Processing Agreement (DPA) must be in place before any personal data is transferred to a processor.
+
+| Processor | Service | Personal Data Transferred | DPA Status | Legal Safeguard (if outside EEA) |
+|---|---|---|---|---|
+| **Supabase, Inc.** (US) | Auth, PostgreSQL database | Email, display name, GitHub profile, ORCID iD, submission payloads, admin review metadata | Supabase standard DPA (accepted via Terms of Service) | EU Standard Contractual Clauses (Supabase ToS, Annex) |
+| **GitHub, Inc. / Microsoft** (US) | CDN (GeoJSON), Git repository, Pull Request API | IP address (CDN), submitter email in PR metadata, admin GitHub token | GitHub Data Protection Agreement (enterprise) | EU–US Data Privacy Framework adequacy |
+| **Google LLC** (US) | Fonts CDN | IP address | Google Workspace DPA (if applicable); no explicit DPA for Fonts CDN public endpoint | EU–US Data Privacy Framework adequacy |
+| **OpenAI, Inc.** (US) — *optional/disabled* | LLM parameter extraction | Paper text only — **no personal data** | OpenAI API data processing addendum | EU–US Data Privacy Framework adequacy |
+
+> **Action required:** Before enabling the OpenAI/Anthropic LLM extraction feature in a production environment, confirm a Data Processing Agreement is signed and the processing is recorded in this document.
+
+### 7.3 Sub-processors (Supabase)
+
+Supabase's sub-processor list is published at [supabase.com/legal/privacy](https://supabase.com/legal/privacy). Key sub-processors relevant to this system: AWS (database hosting), Cloudflare (CDN/DDoS), Fly.io (edge functions). The controller acknowledges these sub-processors via acceptance of Supabase's Terms of Service.
+
+---
+
+## 8. Data Subject Rights
+
+Under Chapter III of the GDPR, data subjects (registered users of OpenTech-DB) hold the following rights. Requests must be responded to within **one calendar month** (Art. 12(3) GDPR); this may be extended by two further months for complex or numerous requests, with written notice to the data subject.
+
+**How to submit a request:** Data subjects contact the controller at **ric.ignaciom@gmail.com** with the subject line `[OpenTech-DB] Data Subject Request`. Identity will be verified against the registered email address or ORCID iD before any data is released or deleted.
+
+| Right | Article | Scope within OpenTech-DB | Fulfilment procedure |
+|---|---|---|---|
+| **Right of access** | Art. 15 | User may request a copy of all personal data held: Supabase `auth.users` record, all rows in `technology_submissions` linked to their `user_id`, admin review metadata | Controller exports the data via Supabase dashboard and provides it in a machine-readable format (JSON) within one month |
+| **Right to rectification** | Art. 16 | User may correct their display name, email address, or ORCID iD | Controller updates the relevant Supabase record; JWT re-issued if email changes |
+| **Right to erasure** | Art. 17 | User may request deletion of their account and associated personal data | Controller deletes the Supabase `auth.users` record; submission records are anonymised (nullify `submitter_email`, replace `user_id` with a tombstone value) rather than hard-deleted, to preserve catalogue audit trail. Residual audit trail is retained under Art. 17(3)(b) (statistical/scientific purpose and legitimate interest) |
+| **Right to restriction** | Art. 18 | User may request that their data not be actively processed while a dispute is pending | Controller marks the user record as `restricted` and suspends any processing beyond storage |
+| **Right to data portability** | Art. 20 | Applies to data provided by the data subject under contract (Art. 6(1)(b)): account profile, technology submissions | Controller provides data as a structured JSON export |
+| **Right to object** | Art. 21 | Applies to processing based on legitimate interest (Art. 6(1)(f)): authentication metadata, scraper audit logs, admin review audit | Controller assesses whether compelling grounds override the objection; if not, processing is ceased |
+| **Right not to be subject to automated decisions** | Art. 22 | No solely automated decisions producing legal or similarly significant effects are made in OpenTech-DB | N/A — the scraper pipeline produces *candidates* that require human admin review before any effect on the catalogue |
+
+**Complaints:** Data subjects who consider that processing infringes the GDPR may lodge a complaint with the competent supervisory authority. For Bavaria (Germany): **Bayerisches Landesamt für Datenschutzaufsicht (BayLDA)**, Promenade 18, 91522 Ansbach — [www.lda.bayern.de](https://www.lda.bayern.de).
+
+---
+
+## 9. Technical and Organisational Measures (TOMs)
+
+Measures implemented to ensure a level of security appropriate to the risk (Art. 32 GDPR).
+
+### 9.1 Confidentiality
+
+| Measure | Implementation |
+|---|---|
+| Encryption in transit | All external communication uses HTTPS/TLS 1.2+. Supabase endpoints enforce TLS. The FastAPI backend must be deployed behind a reverse proxy (nginx/Caddy) with TLS termination |
+| Encryption at rest | Supabase PostgreSQL storage is encrypted at rest by the cloud provider (AWS AES-256) |
+| Access control — backend | Role-based: `is_admin` and `is_contributor` flags in JWT claims; server-side validation on every authenticated endpoint. Admin endpoints reject non-admin tokens with HTTP 403 |
+| Access control — database | Supabase Row Level Security (RLS) policies restrict data access by `auth.uid()`. The service-role key (bypasses RLS) is held only on the backend; never exposed to the frontend |
+| Secrets management | `JWT_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD_HASH`, `ORCID_CLIENT_SECRET`, `GITHUB_TOKEN` are stored as environment variables / deployment secrets — never committed to the repository |
+| Password hashing | Built-in admin password stored as bcrypt hash (cost factor ≥ 12). No plaintext passwords stored anywhere |
+| Session lifetime | Custom JWTs expire after 24 hours. Supabase tokens expire after ~1 hour (auto-refreshed). All tokens are stored in `sessionStorage` and cleared on browser tab close |
+
+### 9.2 Integrity
+
+| Measure | Implementation |
+|---|---|
+| Input validation | All API request bodies validated by Pydantic v2 models before processing; invalid payloads rejected with HTTP 422 |
+| JWT signature verification | Every authenticated request validates the JWT signature server-side using `JWT_SECRET_KEY`; expired or tampered tokens are rejected |
+| Contribution workflow | Scraper-sourced and user-submitted technology data require explicit admin approval before merging into the JSON catalogue; no automated writes to the catalogue |
+| Audit trail | `technology_submissions` and `scraper_candidates` record `reviewed_by` (admin email) and `reviewed_at` timestamp for every approval or rejection decision |
+
+### 9.3 Availability
+
+| Measure | Implementation |
+|---|---|
+| Database | Supabase provides automated daily backups with point-in-time recovery (Pro plan) |
+| JSON catalogue | `data/` directory is version-controlled in Git; full history of catalogue changes is retained |
+| Scraper resilience | Pipeline errors are caught per-source; a single-source failure does not abort the full run. Errors are logged to `scraper_runs.errors` |
+
+### 9.4 Resilience and Recovery
+
+| Measure | Implementation |
+|---|---|
+| Stateless backend | FastAPI backend is stateless (session data held client-side); any instance can be restarted without loss of user sessions beyond the active tab |
+| Cache invalidation | In-memory LRU cache can be cleared via `POST /debug/reload` without a full service restart |
+| Incident response | In the event of a suspected personal data breach, the controller will notify BayLDA within 72 hours (Art. 33 GDPR) and affected data subjects without undue delay if high risk is identified (Art. 34 GDPR) |
+
+### 9.5 Measures Not Yet Implemented (Planned)
+
+| Measure | Priority | Notes |
+|---|---|---|
+| Content-Security-Policy header | High | Mitigates XSS risk to `sessionStorage` tokens; implement in reverse proxy config |
+| Self-hosted fonts | Medium | Eliminates Google Fonts CDN IP address transfer |
+| Self-hosted GeoJSON | Medium | Eliminates GitHub CDN IP address transfer |
+| Secrets manager | Medium | Move secrets from env vars to Supabase Vault or equivalent |
+| Retention TTL for rejected candidates | Low | Auto-archive after 12 months |

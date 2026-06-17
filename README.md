@@ -11,7 +11,7 @@
 [![OEO](https://img.shields.io/badge/ontology-OEO-green)](https://openenergy-platform.org/ontology/oeo/)
 
 
-📖 **[Full documentation](https://thd-spatial-ai.github.io/OpenTech-DB/)**
+**[Full documentation](https://thd-spatial-ai.github.io/OpenTech-DB/)**
 
 ---
 

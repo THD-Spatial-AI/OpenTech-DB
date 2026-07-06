@@ -103,26 +103,34 @@ export function fetchTechnology(id: string): Promise<Technology> {
  * NOT cached — every call hits the API fresh so instance_index changes are honoured.
  */
 export type ModelFormat = "calliope" | "pypsa" | "osemosys" | "adoptnet0";
+/** Calliope model-definition version ("0.6" nested / "0.7" flat). */
+export type CalliopeVersion = "0.6" | "0.7";
 
 export async function fetchTechModelExport(
   techId: string,
   format: ModelFormat,
   instanceIndex = 0,
+  calliopeVersion?: CalliopeVersion,
 ): Promise<Record<string, unknown>> {
+  const version =
+    format === "calliope" && calliopeVersion ? `&version=${calliopeVersion}` : "";
   return apiFetch<Record<string, unknown>>(
-    `/technologies/${techId}/${format}?instance_index=${instanceIndex}`
+    `/technologies/${techId}/${format}?instance_index=${instanceIndex}${version}`
   );
 }
 
 /**
  * Fetch ALL technologies translated to a modeling-framework format (full catalog export).
  * For Calliope the response shape is `{ techs: {...}, meta: {...} }`.
- * For PyPSA / OSeMOSYS / ADOPTNet0 the shape is `{ technologies: {...}, meta: {...} }`.
+ * For PyPSA / OSeMOSYS / AdOpT-NET0 the shape is `{ technologies: {...}, meta: {...} }`.
  */
 export async function fetchAllTechsModelExport(
   format: ModelFormat,
+  calliopeVersion?: CalliopeVersion,
 ): Promise<Record<string, unknown>> {
-  return apiFetch<Record<string, unknown>>(`/technologies/${format}`);
+  const version =
+    format === "calliope" && calliopeVersion ? `?version=${calliopeVersion}` : "";
+  return apiFetch<Record<string, unknown>>(`/technologies/${format}${version}`);
 }
 
 /**

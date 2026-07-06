@@ -235,7 +235,7 @@ export default function WorldMapView() {
                        border border-outline-variant/20 p-0.5 cursor-pointer select-none
                        shrink-0"
             role="switch"
-            aria-checked={viewMode === "3d"}
+            aria-checked={viewMode === "2d"}
             tabIndex={0}
             onClick={() => setViewMode((v) => (v === "2d" ? "3d" : "2d"))}
             onKeyDown={(e) => {

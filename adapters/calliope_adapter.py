@@ -2,9 +2,43 @@
 adapters/calliope_adapter.py
 ============================
 Translates OEO-aligned Technology / EquipmentInstance objects into the
-YAML-compatible parameter dictionaries expected by Calliope 0.6.x.
+YAML-compatible parameter dictionaries expected by Calliope.
 
-Calliope reference docs: https://calliope.readthedocs.io/en/v0.6.9/
+Two output versions are supported via ``to_calliope(..., version=...)``:
+
+* ``"0.6"`` (default) — the classic nested ``essentials`` / ``constraints`` /
+  ``costs`` structure of Calliope 0.6.x.
+  Reference: https://calliope.readthedocs.io/en/v0.6.9/
+* ``"0.7"`` — the flat technology definition of Calliope 0.7:
+  ``base_tech`` instead of ``parent``, ``flow_*`` parameter names, and
+  costs as ``cost_*`` keys with ``{data, index, dims: costs}`` blocks.
+  Reference: https://calliope.readthedocs.io/en/latest/migrating/
+
+v0.6 → v0.7 key renames applied (per the official migration guide):
+
+  energy_cap_max               → flow_cap_max
+  energy_eff                   → flow_out_eff  (storage: flow_in_eff + flow_out_eff)
+  energy_ramping               → flow_ramping
+  energy_cap_min_use           → flow_out_min_relative
+  energy_cap_per_storage_cap_max → flow_cap_per_storage_cap_max
+  energy_eff_per_distance      → flow_out_eff_per_distance
+  resource_eff                 → source_eff
+  parasitic_eff                → flow_out_parasitic_eff
+  resource_area_max            → area_use_max
+  resource_area_per_energy_cap → area_use_per_flow_cap
+  parent: supply_plus          → base_tech: supply       (class removed in 0.7)
+  parent: conversion_plus      → base_tech: conversion   (class removed in 0.7)
+  carrier                      → carrier_in + carrier_out (alias removed in 0.7)
+  carrier_ratios               → flow_out_eff indexed over carriers
+  costs.monetary.energy_cap    → cost_flow_cap    {data, index: monetary, dims: costs}
+  costs.monetary.om_annual     → cost_om_annual   (same pattern)
+  costs.monetary.om_prod       → cost_flow_out
+  costs.monetary.om_con        → cost_flow_in
+  costs.monetary.storage_cap   → cost_storage_cap
+  costs.monetary.interest_rate → cost_interest_rate
+  costs.co2.om_prod            → merged into cost_flow_out index [monetary, co2]
+  resource: file=… / force_resource → dropped (0.7 loads timeseries via
+  top-level ``data_tables``; a migration hint is left in ``opentech_note``)
 
 Calliope technology parents handled
 -------------------------------------
@@ -147,6 +181,7 @@ def to_calliope(
     *,
     instance_index: int | None = 0,
     cost_class: str = "monetary",
+    version: str = "0.6",
 ) -> dict[str, Any]:
     """
     Translate a Technology and one EquipmentInstance into a Calliope
@@ -163,16 +198,29 @@ def to_calliope(
         Primary Calliope cost class name (default: ``monetary``).  A secondary
         ``co2`` cost class is generated automatically when CO2 emission data
         are present.
+    version:
+        Target Calliope version: ``"0.6"`` (default) or ``"0.7"``.
 
     Returns
     -------
     dict
-        Nested dict matching Calliope's ``techs.<name>`` YAML structure::
+        For ``version="0.6"``, a nested dict matching Calliope 0.6.x's
+        ``techs.<name>`` YAML structure::
 
             {
               "essentials":  { "name": ..., "parent": ..., ... },
               "constraints": { "energy_cap_max": ..., "energy_eff": ..., ... },
               "costs":       { "monetary": { "energy_cap": ..., ... }, ... }
+            }
+
+        For ``version="0.7"``, a flat dict matching Calliope 0.7's
+        technology definition::
+
+            {
+              "name": ..., "base_tech": "supply", "carrier_out": ...,
+              "flow_out_eff": ..., "flow_cap_max": ..., "lifetime": ...,
+              "cost_flow_cap": { "data": ..., "index": "monetary", "dims": "costs" },
+              ...
             }
 
         Can be serialised directly with ``yaml.dump()``.
@@ -187,24 +235,34 @@ def to_calliope(
     * ``energy_cap_per_storage_cap_max``      h⁻¹  (= 1 / E2P_hours)
     * ``energy_eff_per_distance``             fraction/km  (= 1 − loss_per_km)
     * ``energy_ramping``                      fraction/h   (= ramp_%cap/min ÷ 100 × 60)
+
+    All units carry over unchanged to ``version="0.7"`` (capacity fields stay
+    in kW / kWh); 0.7 does not prescribe units.
     """
+    if version not in ("0.6", "0.7"):
+        raise ValueError(f"Unsupported Calliope version {version!r}; use '0.6' or '0.7'.")
+
     inst = _resolve_instance(tech, instance_index)
 
     if tech.category == TechnologyCategory.GENERATION:
-        return _supply_tech(tech, inst, cost_class)       # type: ignore[arg-type]
-    if tech.category == TechnologyCategory.STORAGE:
-        return _storage_tech(tech, inst, cost_class)      # type: ignore[arg-type]
-    if tech.category == TechnologyCategory.TRANSMISSION:
-        return _transmission_tech(tech, inst, cost_class) # type: ignore[arg-type]
-    if tech.category == TechnologyCategory.CONVERSION:
-        return _conversion_tech(tech, inst, cost_class)   # type: ignore[arg-type]
+        result = _supply_tech(tech, inst, cost_class)       # type: ignore[arg-type]
+    elif tech.category == TechnologyCategory.STORAGE:
+        result = _storage_tech(tech, inst, cost_class)      # type: ignore[arg-type]
+    elif tech.category == TechnologyCategory.TRANSMISSION:
+        result = _transmission_tech(tech, inst, cost_class) # type: ignore[arg-type]
+    elif tech.category == TechnologyCategory.CONVERSION:
+        result = _conversion_tech(tech, inst, cost_class)   # type: ignore[arg-type]
+    else:
+        # Fallback for unknown categories
+        result = {
+            "essentials":  {"name": tech.name, "oeo_class": tech.oeo_class},
+            "constraints": {},
+            "costs":       {},
+        }
 
-    # Fallback for unknown categories
-    return {
-        "essentials":  {"name": tech.name, "oeo_class": tech.oeo_class},
-        "constraints": {},
-        "costs":       {},
-    }
+    if version == "0.7":
+        return _to_v07(result, tech, inst)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -670,3 +728,162 @@ def _conversion_tech(
         "constraints": constraints,
         "costs":       costs,
     }
+
+
+# ---------------------------------------------------------------------------
+# Calliope 0.7 transform
+# ---------------------------------------------------------------------------
+
+# v0.6 constraint key → v0.7 parameter name (identity renames omitted:
+# lifetime, storage_cap_max, storage_loss, storage_initial,
+# storage_discharge_depth are unchanged in 0.7).
+_V07_CONSTRAINT_RENAMES: dict[str, str] = {
+    "energy_cap_max":                 "flow_cap_max",
+    "energy_ramping":                 "flow_ramping",
+    "energy_cap_min_use":             "flow_out_min_relative",
+    "energy_cap_per_storage_cap_max": "flow_cap_per_storage_cap_max",
+    "energy_eff_per_distance":        "flow_out_eff_per_distance",
+    "resource_eff":                   "source_eff",
+    "parasitic_eff":                  "flow_out_parasitic_eff",
+    "resource_area_max":              "area_use_max",
+    "resource_area_per_energy_cap":   "area_use_per_flow_cap",
+}
+
+# v0.6 cost key (within a cost class) → v0.7 top-level cost parameter name.
+_V07_COST_RENAMES: dict[str, str] = {
+    "energy_cap":    "cost_flow_cap",
+    "om_annual":     "cost_om_annual",
+    "om_prod":       "cost_flow_out",
+    "om_con":        "cost_flow_in",
+    "storage_cap":   "cost_storage_cap",
+    "interest_rate": "cost_interest_rate",
+}
+
+# 0.6 base classes removed in 0.7.
+_V07_BASE_TECH: dict[str, str] = {
+    "supply_plus":     "supply",
+    "conversion_plus": "conversion",
+}
+
+
+def _to_v07(
+    v06: dict[str, Any],
+    tech: Technology,
+    inst: EquipmentInstance | None,
+) -> dict[str, Any]:
+    """
+    Convert a v0.6 export (essentials/constraints/costs) into the flat
+    Calliope 0.7 technology definition.
+
+    Follows https://calliope.readthedocs.io/en/latest/migrating/ — see the
+    module docstring for the full rename table.  Timeseries references
+    (``resource: file=…`` / ``force_resource``) cannot be expressed inside a
+    0.7 tech definition (they moved to top-level ``data_tables``); they are
+    dropped and a migration hint is left in ``opentech_note``.
+    """
+    essentials  = v06.get("essentials", {})
+    constraints = v06.get("constraints", {})
+    costs       = v06.get("costs", {})
+
+    parent = essentials.get("parent")
+    out: dict[str, Any] = {}
+    notes: list[str] = []
+
+    # --- identity ------------------------------------------------------------
+    for key in ("name", "color"):
+        if key in essentials:
+            out[key] = essentials[key]
+
+    if parent:
+        out["base_tech"] = _V07_BASE_TECH.get(parent, parent)
+        if parent == "supply_plus":
+            notes.append("supply_plus was removed in 0.7; using base_tech: supply.")
+        if parent == "conversion_plus":
+            notes.append("conversion_plus was removed in 0.7; using base_tech: conversion "
+                         "with carrier_out as a list.")
+
+    # --- carriers (0.7 requires explicit carrier_in / carrier_out) ------------
+    if "carrier" in essentials:  # 0.6 alias for same in/out (storage, transmission)
+        out["carrier_in"]  = essentials["carrier"]
+        out["carrier_out"] = essentials["carrier"]
+    else:
+        # 0.7 supply techs have no carrier_in — the resource enters via
+        # source_use, not as a carrier (0.6 supply/supply_plus listed it).
+        if "carrier_in" in essentials and parent not in ("supply", "supply_plus"):
+            out["carrier_in"] = essentials["carrier_in"]
+        if "carrier_out" in essentials:
+            if len(tech.output_carriers) > 1:
+                out["carrier_out"] = [c.value for c in tech.output_carriers]
+            else:
+                out["carrier_out"] = essentials["carrier_out"]
+
+    # Provenance strings — 0.7 treats unknown keys as user-defined parameters.
+    for key in ("oeo_class", "oeo_uri"):
+        if essentials.get(key) is not None:
+            out[key] = essentials[key]
+
+    # --- constraints → flat parameters ----------------------------------------
+    eff    = constraints.get("energy_eff")
+    ratios = constraints.get("carrier_ratios")
+
+    for key, value in constraints.items():
+        if key in ("energy_eff", "carrier_ratios"):
+            continue  # handled below
+        if key in ("resource", "resource_unit"):
+            if key == "resource":
+                notes.append(
+                    f"Timeseries resource ({value!r}) must be loaded via the "
+                    "top-level data_tables key in 0.7 "
+                    "(rows: timesteps, add_dims.parameters: source_use_max)."
+                )
+            continue
+        if key == "force_resource":
+            notes.append("force_resource → supply the profile as source_use_equals "
+                         "via data_tables in 0.7.")
+            continue
+        out[_V07_CONSTRAINT_RENAMES.get(key, key)] = value
+
+    # Efficiency: 0.7 splits inflow/outflow; storage can carry both sides.
+    if eff is not None:
+        if parent == "storage":
+            eta_in, eta_out = eff, eff
+            extra = inst.extra if inst and inst.extra else {}
+            if isinstance(extra.get("charge_efficiency_fraction"), (int, float)):
+                eta_in = float(extra["charge_efficiency_fraction"])
+            if isinstance(extra.get("discharge_efficiency_fraction"), (int, float)):
+                eta_out = float(extra["discharge_efficiency_fraction"])
+            out["flow_in_eff"]  = eta_in
+            out["flow_out_eff"] = eta_out
+        elif ratios and isinstance(ratios, dict):
+            # carrier_ratios removed in 0.7 → flow_out_eff indexed over carriers
+            primary_carrier = essentials.get("carrier_out")
+            data, index = [eff], [primary_carrier]
+            for rkey, ratio in ratios.items():
+                if isinstance(ratio, (int, float)):
+                    data.append(round(eff * ratio, 6))
+                    index.append(str(rkey).split(".")[-1])
+            out["flow_out_eff"] = {"data": data, "index": index, "dims": "carriers"}
+        else:
+            out["flow_out_eff"] = eff
+    elif ratios:
+        notes.append("carrier_ratios could not be converted: no primary energy_eff set.")
+
+    # --- costs → cost_* parameters with {data, index, dims} -------------------
+    merged: dict[str, tuple[list[Any], list[str]]] = {}
+    for cls, block in costs.items():
+        for key, value in block.items():
+            target = _V07_COST_RENAMES.get(key, f"cost_{key}")
+            data, index = merged.setdefault(target, ([], []))
+            data.append(value)
+            index.append(cls)
+    for target, (data, index) in merged.items():
+        out[target] = {
+            "data":  data[0]  if len(data)  == 1 else data,
+            "index": index[0] if len(index) == 1 else index,
+            "dims":  "costs",
+        }
+
+    if notes:
+        out["opentech_note"] = " ".join(notes)
+
+    return out

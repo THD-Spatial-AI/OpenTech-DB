@@ -53,7 +53,7 @@ import logging
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -693,15 +693,23 @@ def get_all_calliope(
         int,
         Query(ge=0, description="Which equipment instance to use for every technology (0-based)."),
     ] = 0,
+    version: Annotated[
+        Literal["0.6", "0.7"],
+        Query(description="Target Calliope version: 0.6 (nested essentials/constraints/costs) or 0.7 (flat, base_tech, flow_* keys)."),
+    ] = "0.6",
 ) -> dict[str, Any]:
     """
     Return **all** technologies formatted as a Calliope ``techs:`` configuration block.
+
+    ``version=0.6`` (default) yields the nested 0.6.x structure;
+    ``version=0.7`` yields the flat Calliope 0.7 definition
+    (``base_tech``, ``flow_*`` parameters, ``cost_*`` blocks).
 
     The response is ready to be serialised directly to YAML and included in a
     Calliope model configuration file::
 
         import yaml, requests
-        resp = requests.get(".../technologies/calliope?category=generation")
+        resp = requests.get(".../technologies/calliope?category=generation&version=0.7")
         with open("techs.yaml", "w") as f:
             yaml.dump({"techs": resp.json()["techs"]}, f, sort_keys=False)
 
@@ -718,7 +726,7 @@ def get_all_calliope(
     for tech in all_techs:
         try:
             idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
-            result = to_calliope(tech, instance_index=idx, cost_class=cost_class)
+            result = to_calliope(tech, instance_index=idx, cost_class=cost_class, version=version)
             key = re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
             techs_block[key] = result
         except Exception as exc:  # noqa: BLE001
@@ -730,6 +738,7 @@ def get_all_calliope(
             "total":          len(techs_block),
             "cost_class":     cost_class,
             "instance_index": instance_index,
+            "calliope_version": version,
             "errors":         errors,
         },
     }
@@ -749,13 +758,17 @@ def get_calliope(
         str,
         Query(description="Calliope cost class name."),
     ] = "monetary",
+    version: Annotated[
+        Literal["0.6", "0.7"],
+        Query(description="Target Calliope version: 0.6 (nested essentials/constraints/costs) or 0.7 (flat, base_tech, flow_* keys)."),
+    ] = "0.6",
 ) -> dict[str, Any]:
     tech = _get_all().get(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
         idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
-        return to_calliope(tech, instance_index=idx, cost_class=cost_class)
+        return to_calliope(tech, instance_index=idx, cost_class=cost_class, version=version)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -770,6 +783,9 @@ def post_calliope_with_overrides(
 ) -> dict[str, Any]:
     """
     Return a Calliope tech config with user-supplied overrides merged on top.
+
+    Overrides target the Calliope **0.6** structure (``constraints`` /
+    ``costs`` blocks); this endpoint always returns the 0.6 format.
 
     Any ``constraints`` or ``costs`` key can be overridden or extended
     without modifying the database.  New keys not present in the stored data
@@ -985,8 +1001,8 @@ def get_osemosys(
 
 @router.get(
     "/adoptnet0",
-    summary="All technologies in ADOPTNet0 format",
-    response_description="ADOPTNet0-ready JSON parameter blocks for all loaded technologies.",
+    summary="All technologies in AdOpT-NET0 format",
+    response_description="AdOpT-NET0 technology/network JSON files for all loaded technologies.",
 )
 def get_all_adoptnet0(
     category: Annotated[
@@ -999,18 +1015,20 @@ def get_all_adoptnet0(
     ] = 0,
 ) -> dict[str, Any]:
     """
-    Return **all** technologies formatted for ADOPTNet0 ingestion.
+    Return **all** technologies as AdOpT-NET0 input JSON dicts.
 
-    Every parameter is wrapped in a provenance envelope
-    ``{"value": …, "unit": …, "min": …, "max": …, "source": …, "year": …}``
-    preserving full OEO traceability in the export.
+    Each entry matches an AdOpT-NET0 technology JSON file (``tec_type``
+    RES / CONV2 / STOR) — transmission technologies are exported as
+    AdOpT-NET0 *network* JSON instead.  Provenance is kept in the extra
+    ``OpenTechDB`` block, which AdOpT-NET0 ignores.
 
     Usage example (Python)::
 
         import requests, json
-        resp = requests.get(".../technologies/adoptnet0?category=conversion")
-        with open("adoptnet0_techs.json", "w") as f:
-            json.dump(resp.json(), f, indent=2)
+        resp = requests.get(".../technologies/adoptnet0?category=storage")
+        for name, tec in resp.json()["technologies"].items():
+            with open(f"technology_data/{name}.json", "w") as f:
+                json.dump(tec, f, indent=2)
     """
     all_techs = list(_get_all().values())
     if category:
@@ -1033,7 +1051,7 @@ def get_all_adoptnet0(
         "meta": {
             "total":          len(result),
             "instance_index": instance_index,
-            "format":         "ADOPTNet0",
+            "format":         "AdOpT-NET0",
             "errors":         errors,
         },
     }
@@ -1041,7 +1059,7 @@ def get_all_adoptnet0(
 
 @router.get(
     "/{tech_id}/adoptnet0",
-    summary="Single technology in ADOPTNet0 format",
+    summary="Single technology in AdOpT-NET0 format",
 )
 def get_adoptnet0(
     tech_id: Annotated[str, FPath(description="UUID of the technology.")],

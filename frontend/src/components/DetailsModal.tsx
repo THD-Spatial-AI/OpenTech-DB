@@ -42,7 +42,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { EquipmentInstance, Technology, TechnologySummary } from "../types/api";
-import { fetchTechnology, fetchTechModelExport, fetchAllTechsModelExport, type ModelFormat } from "../services/api";
+import { fetchTechnology, fetchTechModelExport, fetchAllTechsModelExport, type ModelFormat, type CalliopeVersion } from "../services/api";
 
 // Lazy-load ECharts (large library) so it doesn't bloat the initial bundle
 const TechCharts = lazy(() =>
@@ -337,11 +337,12 @@ function downloadInstanceJSON(inst: EquipmentInstance, techName: string): void {
 // ── Per-instance model-format download menu ─────────────────────────────────────────
 
 const INSTANCE_EXPORT_OPTIONS = [
-  { id: "raw",       label: "Raw JSON",  ext: "json", icon: "data_object" },
-  { id: "calliope",  label: "Calliope",  ext: "yaml", icon: "description" },
-  { id: "pypsa",     label: "PyPSA",     ext: "json", icon: "electrical_services" },
-  { id: "osemosys",  label: "OSeMOSYS",  ext: "json", icon: "table_chart" },
-  { id: "adoptnet0", label: "ADOPTNet0", ext: "json", icon: "hub" },
+  { id: "raw",        label: "Raw JSON",     ext: "json", icon: "data_object" },
+  { id: "calliope",   label: "Calliope 0.6", ext: "yaml", icon: "description" },
+  { id: "calliope07", label: "Calliope 0.7", ext: "yaml", icon: "description" },
+  { id: "pypsa",      label: "PyPSA",        ext: "json", icon: "electrical_services" },
+  { id: "osemosys",   label: "OSeMOSYS",     ext: "json", icon: "table_chart" },
+  { id: "adoptnet0",  label: "AdOpT-NET0",   ext: "json", icon: "hub" },
 ] as const;
 
 type InstanceExportId = (typeof INSTANCE_EXPORT_OPTIONS)[number]["id"];
@@ -394,13 +395,18 @@ function InstanceDownloadMenu({
       if (id === "raw") {
         downloadInstanceJSON(inst, techName);
       } else {
-        const data = await fetchTechModelExport(techId, id as ModelFormat, originalIndex);
+        const isCalliope = id === "calliope" || id === "calliope07";
+        const format = (isCalliope ? "calliope" : id) as ModelFormat;
+        const version: CalliopeVersion | undefined = isCalliope
+          ? (id === "calliope07" ? "0.7" : "0.6")
+          : undefined;
+        const data = await fetchTechModelExport(techId, format, originalIndex, version);
         const safe = `${techName.replace(/\s+/g, "_")}_inst${originalIndex}`;
-        if (id === "calliope") {
+        if (isCalliope) {
           const key = techName.toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
           triggerDownload(
             new Blob([`techs:\n${toYaml({ [key]: data }, 1)}`], { type: "text/yaml" }),
-            `${safe}_calliope.yaml`,
+            `${safe}_calliope_v${version === "0.7" ? "07" : "06"}.yaml`,
           );
         } else {
           triggerDownload(
@@ -696,19 +702,21 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
   );
 
   // ── Full-catalog model export ──────────────────────────────────────────────────
-  const [bulkDownloading, setBulkDownloading] = useState<ModelFormat | null>(null);
+  // Keyed by format (+ Calliope version) so the two Calliope buttons spin independently.
+  const [bulkDownloading, setBulkDownloading] = useState<string | null>(null);
 
-  async function handleBulkExport(format: ModelFormat) {
+  async function handleBulkExport(format: ModelFormat, version?: CalliopeVersion) {
+    const dlKey = version ? `${format}_${version}` : format;
     if (bulkDownloading) return;
-    setBulkDownloading(format);
+    setBulkDownloading(dlKey);
     try {
-      const data = await fetchAllTechsModelExport(format);
+      const data = await fetchAllTechsModelExport(format, version);
       if (format === "calliope") {
         // Response: { techs: {...}, meta: {...} }
         const techs = (data as Record<string, unknown>).techs ?? data;
         triggerDownload(
           new Blob([`techs:\n${toYaml(techs, 1)}`], { type: "text/yaml" }),
-          `opentech_catalog_calliope.yaml`,
+          `opentech_catalog_calliope_v${version === "0.7" ? "07" : "06"}.yaml`,
         );
       } else {
         triggerDownload(
@@ -717,7 +725,7 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
         );
       }
     } catch (err) {
-      console.error(`Bulk export failed (${format}):`, err);
+      console.error(`Bulk export failed (${dlKey}):`, err);
     } finally {
       setBulkDownloading(null);
     }
@@ -907,15 +915,18 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
               <div className="grid grid-cols-2 gap-1.5">
                 {(
                   [
-                    { format: "calliope"  as ModelFormat, label: "Calliope",  ext: "yaml", icon: "description"        },
-                    { format: "pypsa"     as ModelFormat, label: "PyPSA",     ext: "json", icon: "electrical_services" },
-                    { format: "osemosys"  as ModelFormat, label: "OSeMOSYS",  ext: "json", icon: "table_chart"         },
-                    { format: "adoptnet0" as ModelFormat, label: "ADOPTNet0", ext: "json", icon: "hub"                 },
+                    { format: "calliope"  as ModelFormat, version: "0.6" as CalliopeVersion, label: "Calliope 0.6", ext: "yaml", icon: "description"         },
+                    { format: "calliope"  as ModelFormat, version: "0.7" as CalliopeVersion, label: "Calliope 0.7", ext: "yaml", icon: "description"         },
+                    { format: "pypsa"     as ModelFormat, version: undefined,                label: "PyPSA",        ext: "json", icon: "electrical_services" },
+                    { format: "osemosys"  as ModelFormat, version: undefined,                label: "OSeMOSYS",     ext: "json", icon: "table_chart"         },
+                    { format: "adoptnet0" as ModelFormat, version: undefined,                label: "AdOpT-NET0",   ext: "json", icon: "hub"                 },
                   ] as const
-                ).map(({ format, label, ext, icon }) => (
+                ).map(({ format, version, label, ext, icon }) => {
+                  const dlKey = version ? `${format}_${version}` : format;
+                  return (
                   <button
-                    key={format}
-                    onClick={() => handleBulkExport(format)}
+                    key={dlKey}
+                    onClick={() => handleBulkExport(format, version)}
                     disabled={bulkDownloading !== null}
                     title={`Download full catalog – ${label} (.${ext})`}
                     className="flex flex-col items-center justify-center gap-0.5 px-2 py-2.5
@@ -924,7 +935,7 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                                hover:bg-surface-container hover:border-secondary/40 hover:text-secondary
                                disabled:opacity-40 disabled:cursor-not-allowed transition-all group"
                   >
-                    {bulkDownloading === format ? (
+                    {bulkDownloading === dlKey ? (
                       <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
                     ) : (
                       <span className="material-symbols-outlined text-base group-hover:text-secondary">{icon}</span>
@@ -932,7 +943,8 @@ function InnerPanel({ techId, onClose, labelId, descId }: InnerPanelProps) {
                     <span className="leading-none">{label}</span>
                     <span className="text-[8px] opacity-50 font-normal">.{ext}</span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

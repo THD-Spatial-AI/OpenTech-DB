@@ -5,10 +5,11 @@ FastAPI router for the Time Series & Profiles catalogue.
 
 Endpoints
 ---------
-GET  /timeseries                         → list catalogue metadata (paginated)
-GET  /timeseries/{profile_id}/data       → full data points for one profile
+GET  /timeseries                         → list catalogue metadata (paginated; ETag)
+GET  /timeseries/{profile_id}/data       → data points for one profile (ETag;
+                                           optional start/end window + max_points downsampling)
 POST /timeseries/upload                  → contributor upload (multipart CSV/JSON) → pending review
-DELETE /timeseries/{profile_id}          → delete an approved profile
+DELETE /timeseries/{profile_id}          → delete an approved profile (admin only)
 
 Admin endpoints (require admin JWT)
 ------------------------------------
@@ -38,7 +39,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request, UploadFile, File, Form
+from fastapi import APIRouter, Header, HTTPException, Query, Request, Response, UploadFile, File, Form
 from fastapi.responses import ORJSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -95,6 +96,8 @@ class TimeSeriesDataResponse(BaseModel):
     name:       str
     unit:       str
     points:     list[TimeSeriesDataPoint]
+    n_points_total: int | None = None
+    downsampled:    bool       = False
 
 
 class TimeSeriesUploadResponse(BaseModel):
@@ -211,6 +214,24 @@ def _load_catalogue() -> list[dict]:
 def _reload_catalogue() -> None:
     """Clear the catalogue cache so the next request re-reads the file."""
     _load_catalogue.cache_clear()
+    _catalogue_etag.cache_clear()
+
+
+@lru_cache(maxsize=1)
+def _catalogue_etag() -> str:
+    """Fingerprint of the timeseries catalogue; every write path calls
+    _reload_catalogue(), which also clears this cache."""
+    import hashlib
+    payload = json.dumps(_load_catalogue(), sort_keys=True).encode()
+    return f'"{hashlib.md5(payload).hexdigest()}"'
+
+
+def _etag_precheck(request: Request, response: Response, etag: str) -> Response | None:
+    """304 when If-None-Match matches; otherwise stamp ETag and return None."""
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={"ETag": etag})
+    response.headers["ETag"] = etag
+    return None
 
 
 def _load_profile_data(profile_id: str) -> dict | None:
@@ -240,13 +261,17 @@ router = APIRouter(prefix="/timeseries", tags=["Time Series"])
     response_description="Paginated catalogue of available time-series profiles (metadata only).",
 )
 def list_profiles(
+    request:  Request,
+    response: Response,
     skip:       Annotated[int, Query(ge=0, description="Offset for pagination")]   = 0,
     limit:      Annotated[int, Query(ge=1, le=500, description="Max items to return")] = 50,
     type:       Annotated[str | None, Query(description="Filter by profile type (e.g. capacity_factor, load)")] = None,
     resolution: Annotated[str | None, Query(description="Filter by temporal resolution (e.g. hourly)")] = None,
     location:   Annotated[str | None, Query(description="Filter by location code (e.g. DE, FR)")] = None,
     carrier:    Annotated[str | None, Query(description="Filter by energy carrier")] = None,
-) -> TimeSeriesCatalogueResponse:
+) -> TimeSeriesCatalogueResponse | Response:
+    if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
+        return not_modified
     profiles = _load_catalogue()
 
     # --- Apply filters ---
@@ -268,22 +293,75 @@ def list_profiles(
     "/{profile_id}/data",
     response_model=TimeSeriesDataResponse,
     summary="Fetch data points for a single profile",
-    response_description="Full time series with one {timestamp, value} pair per row.",
+    response_description="Time series with one {timestamp, value} pair per row; "
+                         "optionally windowed (start/end) and downsampled (max_points).",
 )
-def get_profile_data(profile_id: str) -> TimeSeriesDataResponse:
+def get_profile_data(
+    request:  Request,
+    response: Response,
+    profile_id: str,
+    start: Annotated[str | None, Query(description="Return only points at/after this timestamp (any common format).")] = None,
+    end:   Annotated[str | None, Query(description="Return only points at/before this timestamp (any common format).")] = None,
+    max_points: Annotated[
+        int | None,
+        Query(ge=2, description="Downsample by uniform striding to at most this many points (for previews/plots)."),
+    ] = None,
+) -> TimeSeriesDataResponse | Response:
     # Guard: validate profile_id format before loading
     if not re.fullmatch(r"[a-z0-9_\-]+", profile_id):
         raise HTTPException(status_code=400, detail="Invalid profile_id format.")
+
+    # ETag from the data file's mtime — catches PUT-replaced values even when
+    # the catalogue metadata is unchanged. Checked before the (heavy) load.
+    data_path = _DATA_DIR / f"{profile_id}.json"
+    if not data_path.exists():
+        raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
+    import hashlib
+    etag = f'"{hashlib.md5(f"{profile_id}:{data_path.stat().st_mtime_ns}".encode()).hexdigest()}"'
+    if (not_modified := _etag_precheck(request, response, etag)) is not None:
+        return not_modified
 
     data = _load_profile_data(profile_id)
     if data is None:
         raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
 
+    points = data["points"]
+    n_total = len(points)
+
+    # Window by timestamp. Stored formats vary between profiles (ISO-8601
+    # with T/Z vs "YYYY-MM-DD HH:MM:SS"), so compare as datetimes, not strings.
+    def _point_dt(ts: str) -> datetime | None:
+        try:
+            dt = datetime.fromisoformat(ts.strip().replace(" ", "T").replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
+
+    try:
+        if start is not None:
+            start_dt = datetime.strptime(_parse_timestamp(start), "%Y-%m-%d %H:%M:%S")
+            points = [p for p in points if (dt := _point_dt(p["timestamp"])) is None or dt >= start_dt]
+        if end is not None:
+            end_dt = datetime.strptime(_parse_timestamp(end), "%Y-%m-%d %H:%M:%S")
+            points = [p for p in points if (dt := _point_dt(p["timestamp"])) is None or dt <= end_dt]
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    downsampled = False
+    if max_points is not None and len(points) > max_points:
+        stride = (len(points) + max_points - 1) // max_points
+        points = points[::stride]
+        downsampled = True
+
     return TimeSeriesDataResponse(
-        profile_id = data["profile_id"],
-        name       = data["name"],
-        unit       = data["unit"],
-        points     = data["points"],
+        profile_id     = data["profile_id"],
+        name           = data["name"],
+        unit           = data["unit"],
+        points         = points,
+        n_points_total = n_total,
+        downsampled    = downsampled,
     )
 
 
@@ -575,7 +653,7 @@ async def upload_profile(
 @router.delete(
     "/{profile_id}",
     status_code=204,
-    summary="Delete a time-series profile",
+    summary="Delete a time-series profile (admin only)",
     response_description="Profile metadata and data file removed.",
 )
 def delete_profile(
@@ -585,6 +663,9 @@ def delete_profile(
     """
     Remove a profile from the catalogue index and delete its data file.
     """
+    from api.routes import _require_admin  # noqa: PLC0415
+    _require_admin(authorization)
+
     # Guard against path traversal
     safe_id = re.sub(r"[^a-z0-9_\-]", "", profile_id)
     if safe_id != profile_id:

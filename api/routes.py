@@ -13,19 +13,28 @@ Catalogue-merge and GitHub PR helpers live in api/_catalogue_ops.py.
 
 Endpoints
 ---------
-GET  /technologies                                 → list all technologies (summary)
-GET  /technologies/{tech_id}                       → full OEO technology detail
+GET  /technologies                                 → list all technologies (summary; ETag)
+GET  /technologies/{tech_id}                       → full OEO technology detail (ETag;
+                                                     ?include_profile_values=false strips
+                                                     inline profile value arrays)
+GET  /technologies/{tech_id}/profiles              → embedded generation profiles +
+                                                     linked /timeseries catalogue entries
 GET  /technologies/category/{cat}                  → technologies by category
 GET  /technologies/{tech_id}/instances             → all equipment instances
 GET  /technologies/{tech_id}/instances/{iid}       → a specific instance
 
+Bulk framework exports are keyed by the stable catalogue ``technology_id``
+slug (falling back to a sanitised display name) and support ETag /
+If-None-Match conditional requests.
+
 Calliope adapter endpoints
 --------------------------
 GET  /technologies/calliope                        → ALL techs as Calliope techs: block
+GET  /technologies/calliope?version=0.6|0.7        → target Calliope version (default 0.6)
 GET  /technologies/calliope?category=generation    → filtered by category
 GET  /technologies/{tech_id}/calliope              → single tech, Calliope format
-GET  /technologies/{tech_id}/calliope?instance_index=1  → specific instance
-POST /technologies/{tech_id}/calliope              → single tech + constraint overrides
+GET  /technologies/{tech_id}/calliope?instance_index=1&version=0.7  → specific instance/version
+POST /technologies/{tech_id}/calliope              → single tech + constraint overrides (0.6 only)
 
 PyPSA adapter endpoints
 -----------------------
@@ -39,15 +48,18 @@ GET  /technologies/osemosys                        → ALL techs as OSeMOSYS par
 GET  /technologies/osemosys?category=generation    → filtered by category
 GET  /technologies/{tech_id}/osemosys              → single tech, OSeMOSYS format
 
-ADOPTNet0 adapter endpoints
----------------------------
-GET  /technologies/adoptnet0                       → ALL techs as ADOPTNet0 JSON dicts
+AdOpT-NET0 adapter endpoints
+----------------------------
+GET  /technologies/adoptnet0                       → ALL techs as AdOpT-NET0 input JSON
+                                                     (tec_type RES/CONV2/STOR; transmission
+                                                     exported as network JSON)
 GET  /technologies/adoptnet0?category=generation   → filtered by category
-GET  /technologies/{tech_id}/adoptnet0             → single tech, ADOPTNet0 format
+GET  /technologies/{tech_id}/adoptnet0             → single tech, AdOpT-NET0 format
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -57,7 +69,7 @@ from typing import Annotated, Any, Literal
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, Body, HTTPException, Query, Path as FPath, Header, Request
+from fastapi import APIRouter, Body, HTTPException, Query, Path as FPath, Header, Request, Response
 from fastapi.responses import ORJSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -589,6 +601,57 @@ def get_worldmap_country_values() -> WorldMapCountryValuesResponse:
 
 
 # ---------------------------------------------------------------------------
+# Export keys & HTTP caching helpers
+# ---------------------------------------------------------------------------
+
+def _export_key(tech: Technology) -> str:
+    """
+    Stable key for bulk-export blocks: the catalogue ``technology_id`` slug
+    (stored on the category-specific *_type field by the loader) when present,
+    else a sanitised snake_case version of the display name.  Slugs survive
+    display-name changes, so external references stay valid.
+    """
+    slug = (
+        getattr(tech, "technology_type", None)
+        or getattr(tech, "storage_type", None)
+        or getattr(tech, "conversion_type", None)
+        or getattr(tech, "transmission_type", None)
+    )
+    return slug or re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
+
+
+# ETag for the technology catalogue: cached against the identity of the
+# loaded dict, so any cache_clear()+reload (debug/reload, admin edits,
+# scraper approvals) automatically yields a fresh tag.
+_ETAG_STATE: tuple[Any, str] | None = None
+
+
+def _catalogue_etag() -> str:
+    global _ETAG_STATE
+    techs = _get_all()
+    if _ETAG_STATE is not None and _ETAG_STATE[0] is techs:
+        return _ETAG_STATE[1]
+    h = hashlib.md5()
+    for tid in sorted(techs):
+        h.update(tid.encode())
+        h.update(techs[tid].model_dump_json().encode())
+    etag = f'"{h.hexdigest()}"'
+    _ETAG_STATE = (techs, etag)
+    return etag
+
+
+def _etag_precheck(request: Request, response: Response, etag: str) -> Response | None:
+    """
+    Return a 304 response when the client's If-None-Match matches ``etag``;
+    otherwise stamp the ETag header on the outgoing response and return None.
+    """
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={"ETag": etag})
+    response.headers["ETag"] = etag
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -599,6 +662,8 @@ def get_worldmap_country_values() -> WorldMapCountryValuesResponse:
     response_description="Paginated catalogue of all available technologies.",
 )
 def list_technologies(
+    request: Request,
+    response: Response,
     skip: Annotated[int, Query(ge=0, description="Offset for pagination.")] = 0,
     limit: Annotated[int, Query(ge=1, le=100, description="Max items to return (max 100).")] = 50,
     tag: Annotated[str | None, Query(description="Filter by tag.")] = None,
@@ -606,7 +671,9 @@ def list_technologies(
         TechnologyCategory | None,
         Query(description="Filter by category (generation | storage | transmission | conversion)."),
     ] = None,
-) -> TechnologyCatalogue:
+) -> TechnologyCatalogue | Response:
+    if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
+        return not_modified
     all_techs = list(_get_all().values())
 
     if tag:
@@ -681,6 +748,8 @@ def list_by_category(
     response_description="Calliope-ready techs: configuration block for all loaded technologies.",
 )
 def get_all_calliope(
+    request: Request,
+    response: Response,
     category: Annotated[
         TechnologyCategory | None,
         Query(description="Filter by category (generation | storage | transmission | conversion)."),
@@ -713,9 +782,11 @@ def get_all_calliope(
         with open("techs.yaml", "w") as f:
             yaml.dump({"techs": resp.json()["techs"]}, f, sort_keys=False)
 
-    Each key in ``techs`` is a sanitised snake_case version of the technology name.
+    Each key in ``techs`` is the stable catalogue ``technology_id`` slug.
     ``meta.errors`` lists any technologies that failed to translate (with reasons).
     """
+    if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
+        return not_modified
     all_techs = list(_get_all().values())
     if category:
         all_techs = [t for t in all_techs if t.category == category]
@@ -727,7 +798,7 @@ def get_all_calliope(
         try:
             idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
             result = to_calliope(tech, instance_index=idx, cost_class=cost_class, version=version)
-            key = re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
+            key = _export_key(tech)
             techs_block[key] = result
         except Exception as exc:  # noqa: BLE001
             errors.append({"tech": tech.name, "error": str(exc)})
@@ -831,6 +902,8 @@ def post_calliope_with_overrides(
     response_description="PyPSA-ready component parameter dicts for all loaded technologies.",
 )
 def get_all_pypsa(
+    request: Request,
+    response: Response,
     category: Annotated[
         TechnologyCategory | None,
         Query(description="Filter by category (generation | storage | transmission | conversion)."),
@@ -860,6 +933,8 @@ def get_all_pypsa(
             ct = params.pop("component_type", "Generator")
             network.add(ct, name, **{k: v for k, v in params.items() if not k.startswith("_")})
     """
+    if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
+        return not_modified
     all_techs = list(_get_all().values())
     if category:
         all_techs = [t for t in all_techs if t.category == category]
@@ -871,7 +946,7 @@ def get_all_pypsa(
         try:
             idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
             params = to_pypsa(tech, instance_index=idx, discount_rate=discount_rate)
-            key = re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
+            key = _export_key(tech)
             result[key] = params
         except Exception as exc:  # noqa: BLE001
             errors.append({"tech": tech.name, "error": str(exc)})
@@ -922,6 +997,8 @@ def get_pypsa(
     response_description="OSeMOSYS-ready parameter dicts for all loaded technologies.",
 )
 def get_all_osemosys(
+    request: Request,
+    response: Response,
     category: Annotated[
         TechnologyCategory | None,
         Query(description="Filter by category (generation | storage | transmission | conversion)."),
@@ -947,6 +1024,8 @@ def get_all_osemosys(
         with open("otoole_params.yaml", "w") as f:
             yaml.dump(resp.json()["technologies"], f, sort_keys=False)
     """
+    if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
+        return not_modified
     all_techs = list(_get_all().values())
     if category:
         all_techs = [t for t in all_techs if t.category == category]
@@ -958,7 +1037,7 @@ def get_all_osemosys(
         try:
             idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
             params = to_osemosys(tech, instance_index=idx)
-            key = re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
+            key = _export_key(tech)
             result[key] = params
         except Exception as exc:  # noqa: BLE001
             errors.append({"tech": tech.name, "error": str(exc)})
@@ -1005,6 +1084,8 @@ def get_osemosys(
     response_description="AdOpT-NET0 technology/network JSON files for all loaded technologies.",
 )
 def get_all_adoptnet0(
+    request: Request,
+    response: Response,
     category: Annotated[
         TechnologyCategory | None,
         Query(description="Filter by category (generation | storage | transmission | conversion)."),
@@ -1030,6 +1111,8 @@ def get_all_adoptnet0(
             with open(f"technology_data/{name}.json", "w") as f:
                 json.dump(tec, f, indent=2)
     """
+    if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
+        return not_modified
     all_techs = list(_get_all().values())
     if category:
         all_techs = [t for t in all_techs if t.category == category]
@@ -1041,7 +1124,7 @@ def get_all_adoptnet0(
         try:
             idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
             params = to_adoptnet0(tech, instance_index=idx)
-            key = re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
+            key = _export_key(tech)
             result[key] = params
         except Exception as exc:  # noqa: BLE001
             errors.append({"tech": tech.name, "error": str(exc)})
@@ -1080,16 +1163,111 @@ def get_adoptnet0(
 
 @router.get(
     "/{tech_id}",
-    response_model=Technology,
+    # response_model deliberately disabled: the catalogue serves Technology
+    # *subclasses* (PowerPlant, EnergyStorage, …) and a base-class response
+    # model would strip every subclass field (technology_type, storage_type,
+    # generation_profile, fleet_* …) from the response.
+    response_model=None,
     summary="Get a technology by ID",
 )
 def get_technology(
+    request: Request,
+    response: Response,
     tech_id: Annotated[str, FPath(description="UUID of the technology.")],
-) -> Technology:
+    include_profile_values: Annotated[
+        bool,
+        Query(description="Include inline generation-profile value arrays (can be ~8760 floats). "
+                          "Set false for a lightweight metadata-only response."),
+    ] = True,
+) -> Technology | Response:
     tech = _get_all().get(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
+    if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
+        return not_modified
+
+    if not include_profile_values:
+        tech = tech.model_copy(deep=True)
+        tech_profile = getattr(tech, "generation_profile", None)
+        if tech_profile is not None:
+            tech_profile.values = []
+        for inst in tech.instances:
+            if inst.generation_profile is not None:
+                inst.generation_profile.values = []
     return tech
+
+
+@router.get(
+    "/{tech_id}/profiles",
+    summary="Profiles linked to a technology",
+    response_description="Embedded generation-profile metadata plus matching /timeseries catalogue entries.",
+)
+def get_technology_profiles(
+    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+) -> dict[str, Any]:
+    """
+    Return every profile associated with a technology, joined across the two
+    profile stores:
+
+    * ``embedded_profiles`` — generation profiles stored inside the technology
+      record itself (technology-level and per-instance).  Metadata only; fetch
+      the values via ``GET /technologies/{tech_id}?include_profile_values=true``.
+    * ``timeseries_profiles`` — entries of the ``/timeseries`` catalogue that
+      reference this technology, matched by (a) an explicit ``technology_id``
+      field on the catalogue entry, or (b) a profile_id the technology itself
+      references (``generation_profile.profile_id`` / VRE ``profile_key``).
+      Fetch the data via ``GET /timeseries/{profile_id}/data``.
+    """
+    tech = _get_all().get(tech_id)
+    if not tech:
+        raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
+
+    slug = _export_key(tech)
+
+    def _profile_meta(profile, level: str) -> dict[str, Any]:
+        return {
+            "profile_id":      profile.profile_id,
+            "level":           level,
+            "kind":            profile.kind,
+            "time_resolution": profile.time_resolution,
+            "unit":            profile.unit,
+            "n_values":        len(profile.values),
+            "source":          profile.source,
+            "year":            profile.year,
+        }
+
+    embedded: list[dict[str, Any]] = []
+    referenced_ids: set[str] = set()
+
+    tech_profile = getattr(tech, "generation_profile", None)
+    if tech_profile is not None:
+        embedded.append(_profile_meta(tech_profile, "technology"))
+        if tech_profile.profile_id:
+            referenced_ids.add(tech_profile.profile_id)
+    for inst in tech.instances:
+        if inst.generation_profile is not None:
+            embedded.append(_profile_meta(inst.generation_profile, f"instance:{inst.label}"))
+            if inst.generation_profile.profile_id:
+                referenced_ids.add(inst.generation_profile.profile_id)
+
+    profile_key = getattr(tech, "profile_key", None)
+    if profile_key:
+        referenced_ids.add(profile_key)
+
+    from api.timeseries import _load_catalogue  # noqa: PLC0415 (avoid circular import)
+    linked = [
+        p for p in _load_catalogue()
+        if p.get("technology_id") in (slug, str(tech.id))
+        or p.get("profile_id") in referenced_ids
+    ]
+
+    return {
+        "technology_id":       str(tech.id),
+        "technology_slug":     slug,
+        "technology_name":     tech.name,
+        "embedded_profiles":   embedded,
+        "timeseries_profiles": linked,
+    }
 
 
 @router.get(

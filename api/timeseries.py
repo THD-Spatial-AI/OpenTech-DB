@@ -405,20 +405,26 @@ def list_profiles(
 ) -> TimeSeriesCatalogueResponse | Response:
     sb = _ts_sb()
     if sb:
-        profiles = _sb_list_profiles(type_=type, resolution=resolution, location=location, carrier=carrier)
-    else:
-        if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
-            return not_modified
-        profiles = _load_catalogue()
-        if type:
-            profiles = [p for p in profiles if p.get("type") == type]
-        if resolution:
-            profiles = [p for p in profiles if p.get("resolution") == resolution]
-        if location:
-            profiles = [p for p in profiles if p.get("location", "").upper() == location.upper()]
-        if carrier:
-            profiles = [p for p in profiles if p.get("carrier", "").lower() == carrier.lower()]
+        try:
+            profiles = _sb_list_profiles(type_=type, resolution=resolution, location=location, carrier=carrier)
+            total = len(profiles)
+            page  = profiles[skip : skip + limit]
+            return TimeSeriesCatalogueResponse(total=total, profiles=page, has_more=skip + limit < total)
+        except Exception as exc:
+            logger.warning("Supabase list_profiles failed, falling back to filesystem: %s", exc)
 
+    # Filesystem fallback
+    if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
+        return not_modified
+    profiles = _load_catalogue()
+    if type:
+        profiles = [p for p in profiles if p.get("type") == type]
+    if resolution:
+        profiles = [p for p in profiles if p.get("resolution") == resolution]
+    if location:
+        profiles = [p for p in profiles if p.get("location", "").upper() == location.upper()]
+    if carrier:
+        profiles = [p for p in profiles if p.get("carrier", "").lower() == carrier.lower()]
     total = len(profiles)
     page  = profiles[skip : skip + limit]
     return TimeSeriesCatalogueResponse(total=total, profiles=page, has_more=skip + limit < total)
@@ -951,28 +957,31 @@ def list_profile_submissions(
 
     sb = _ts_sb()
     if sb:
-        rows = _sb_list_submissions(status)
-        return [
-            ProfileSubmissionRecord(
-                submission_id    = r["submission_id"],
-                name             = r.get("name", "—"),
-                type             = r.get("type", ""),
-                resolution       = r.get("resolution", ""),
-                location         = r.get("location", ""),
-                source           = r.get("source", ""),
-                carrier          = r.get("carrier", ""),
-                year             = r.get("year", 0),
-                unit             = r.get("unit", ""),
-                description      = r.get("description", ""),
-                n_timesteps      = r.get("n_timesteps", 0),
-                submitted_at     = r.get("submitted_at", ""),
-                submitter_email  = r.get("submitter_email"),
-                status           = r.get("status", "pending_review"),
-                rejection_reason = r.get("rejection_reason"),
-                stats            = r.get("stats"),
-            )
-            for r in rows
-        ]
+        try:
+            rows = _sb_list_submissions(status)
+            return [
+                ProfileSubmissionRecord(
+                    submission_id    = r["submission_id"],
+                    name             = r.get("name", "—"),
+                    type             = r.get("type", ""),
+                    resolution       = r.get("resolution", ""),
+                    location         = r.get("location", ""),
+                    source           = r.get("source", ""),
+                    carrier          = r.get("carrier", ""),
+                    year             = r.get("year", 0),
+                    unit             = r.get("unit", ""),
+                    description      = r.get("description", ""),
+                    n_timesteps      = r.get("n_timesteps", 0),
+                    submitted_at     = r.get("submitted_at", ""),
+                    submitter_email  = r.get("submitter_email"),
+                    status           = r.get("status", "pending_review"),
+                    rejection_reason = r.get("rejection_reason"),
+                    stats            = r.get("stats"),
+                )
+                for r in rows
+            ]
+        except Exception as exc:
+            logger.warning("Supabase submissions query failed, falling back to filesystem: %s", exc)
 
     # Filesystem fallback
     _PENDING_DIR.mkdir(parents=True, exist_ok=True)
@@ -1020,10 +1029,12 @@ def get_profile_submission_data(
 
     sb = _ts_sb()
     if sb:
-        row = _sb_get_submission(safe_id)
-        if row is None:
-            raise HTTPException(status_code=404, detail="Submission not found.")
-        return {"submission_id": safe_id, "name": row.get("name",""), "unit": row.get("unit",""), "points": row.get("points", [])}
+        try:
+            row = _sb_get_submission(safe_id)
+            if row is not None:
+                return {"submission_id": safe_id, "name": row.get("name",""), "unit": row.get("unit",""), "points": row.get("points", [])}
+        except Exception as exc:
+            logger.warning("Supabase submission data query failed, falling back to filesystem: %s", exc)
 
     path = _PENDING_DIR / f"{safe_id}.json"
     if not path.exists():
@@ -1057,14 +1068,19 @@ def act_on_profile_submission(
 
     sb = _ts_sb()
     if sb:
-        if body.action == "approve":
-            profile_id = _sb_approve_submission(safe_id, admin_email)
-            logger.info("Admin approved profile submission %s → %s", safe_id, profile_id)
-            return {"status": "approved", "submission_id": safe_id, "profile_id": profile_id}
-        else:
-            _sb_reject_submission(safe_id, admin_email, body.reason)
-            logger.info("Admin rejected profile submission %s", safe_id)
-            return {"status": "rejected", "submission_id": safe_id}
+        try:
+            if body.action == "approve":
+                profile_id = _sb_approve_submission(safe_id, admin_email)
+                logger.info("Admin approved profile submission %s → %s", safe_id, profile_id)
+                return {"status": "approved", "submission_id": safe_id, "profile_id": profile_id}
+            else:
+                _sb_reject_submission(safe_id, admin_email, body.reason)
+                logger.info("Admin rejected profile submission %s", safe_id)
+                return {"status": "rejected", "submission_id": safe_id}
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning("Supabase act_on_submission failed, falling back to filesystem: %s", exc)
 
     # Filesystem fallback
     path = _PENDING_DIR / f"{safe_id}.json"

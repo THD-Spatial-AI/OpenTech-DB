@@ -164,6 +164,7 @@ app.add_middleware(
         "http://localhost:5173",    # Vite default
         "http://localhost:5174",    # Vite fallback
         "http://localhost:5175",    # Vite fallback (further)
+        "http://localhost:5176",    # Vite fallback
         "http://localhost:4173",    # Vite `npm run preview`
     ],
     allow_credentials=True,

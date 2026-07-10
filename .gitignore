@@ -52,10 +52,14 @@ desktop.ini
 
 # ──────────────────────────────────────────────────────────────────
 # Timeseries data files
-# These are large generated/uploaded JSON blobs that must NOT be
-# committed.  The directory is kept via data/timeseries/.gitkeep.
+# Profile data and pending submissions are stored in Supabase
+# (migration 010).  timeseries_catalogue.json is kept only as a
+# local-dev fallback — the per-profile and pending JSON blobs are
+# ignored to keep the repo lean.
 # ──────────────────────────────────────────────────────────────────
+data/timeseries/pending/
 data/timeseries/*.json
+!data/timeseries/timeseries_catalogue.json
 
 # Node / frontend (already covered by frontend/.gitignore too)
 frontend/node_modules/

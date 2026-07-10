@@ -19,6 +19,8 @@ import {
   stopScraperRun,
   approveScraperCandidate,
   rejectScraperCandidate,
+  fetchAdminProfileSubmissions,
+  runTimeseriesPipeline,
 } from "../../services/api";
 import type {
   ScraperStatus,
@@ -1360,9 +1362,166 @@ function CandidatesTab({ token }: { token: string }) {
   );
 }
 
+// ── Timeseries Pipeline Tab ───────────────────────────────────────────────────
+
+function TimeseriesPipelineTab({ token }: { token: string }) {
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [loadError,    setLoadError]    = useState<string | null>(null);
+  const [loadingCount, setLoadingCount] = useState(false);
+  const [running,      setRunning]      = useState(false);
+  const [runMsg,       setRunMsg]       = useState<string | null>(null);
+  const [runError,     setRunError]     = useState<string | null>(null);
+
+  const loadCount = useCallback(() => {
+    setLoadingCount(true);
+    setLoadError(null);
+    fetchAdminProfileSubmissions(token, "pending_review")
+      .then((subs) => setPendingCount(subs.length))
+      .catch((e) => setLoadError(e instanceof Error ? e.message : "Failed to load count."))
+      .finally(() => setLoadingCount(false));
+  }, [token]);
+
+  useEffect(() => { loadCount(); }, [loadCount]);
+
+  const handleRun = async () => {
+    setRunning(true);
+    setRunMsg(null);
+    setRunError(null);
+    try {
+      const res = await runTimeseriesPipeline(token);
+      setRunMsg(res.message ?? "Pipeline started.");
+      setTimeout(loadCount, 3000);
+    } catch (e) {
+      setRunError(e instanceof Error ? e.message : "Failed to start pipeline.");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+
+      {/* Header card */}
+      <div className="bg-gradient-to-r from-teal-600 to-cyan-600 rounded-2xl p-5 text-white shadow-sm">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="material-symbols-outlined text-[28px]">ssid_chart</span>
+          <div>
+            <p className="font-bold text-base leading-none">Timeseries Acquisition Pipeline</p>
+            <p className="text-teal-200 text-xs mt-1">PVGIS + Open-Meteo ERA5 | Hourly capacity factor, wind speed, solar irradiance</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={handleRun}
+            disabled={running}
+            className="flex items-center gap-2 px-4 py-2 bg-white text-teal-700 font-bold text-sm
+                       rounded-xl hover:bg-teal-50 transition-colors disabled:opacity-60"
+          >
+            <span className={`material-symbols-outlined text-[16px] ${running ? "animate-spin" : ""}`}>
+              {running ? "progress_activity" : "play_arrow"}
+            </span>
+            {running ? "Starting…" : "Run Now"}
+          </button>
+          <p className="text-teal-100 text-xs">
+            Fetches new profiles for all configured locations and writes them to pending review.
+          </p>
+        </div>
+      </div>
+
+      {/* Status messages */}
+      {runMsg && (
+        <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-xl px-4 py-3">
+          <span className="material-symbols-outlined text-teal-600 text-[18px]">check_circle</span>
+          <p className="text-sm text-teal-800">{runMsg}</p>
+        </div>
+      )}
+      {runError && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <span className="material-symbols-outlined text-red-500 text-[18px]">error</span>
+          <p className="text-sm text-red-700">{runError}</p>
+        </div>
+      )}
+      {loadError && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <span className="material-symbols-outlined text-red-500 text-[18px]">error</span>
+          <p className="text-sm text-red-700">{loadError}</p>
+        </div>
+      )}
+
+      {/* Pending submissions count */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+            <span className="material-symbols-outlined text-amber-600 text-[20px]">pending</span>
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Pending Review</p>
+            <p className="text-2xl font-bold text-slate-800 leading-none mt-1">
+              {loadingCount ? "…" : (pendingCount ?? "—")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={loadCount}
+            disabled={loadingCount}
+            className="ml-auto text-slate-300 hover:text-indigo-500 transition-colors"
+            title="Refresh count"
+          >
+            <span className={`material-symbols-outlined text-[16px] ${loadingCount ? "animate-spin" : ""}`}>refresh</span>
+          </button>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center">
+            <span className="material-symbols-outlined text-teal-600 text-[20px]">cloud_download</span>
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Sources</p>
+            <p className="text-sm font-bold text-slate-700 mt-1">PVGIS · Open-Meteo</p>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center">
+            <span className="material-symbols-outlined text-cyan-600 text-[20px]">public</span>
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Coverage</p>
+            <p className="text-sm font-bold text-slate-700 mt-1">EU-30 + Global 20</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Info about the pipeline */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
+        <p className="text-sm font-semibold text-slate-700">Pipeline details</p>
+        <ul className="text-sm text-slate-500 space-y-1.5">
+          <li className="flex gap-2">
+            <span className="material-symbols-outlined text-[14px] text-teal-500 mt-0.5">solar_power</span>
+            <span><strong>PVGIS v5.2</strong> — Solar PV capacity factors for EU-30 (years 2005–2020, SARAH-2 dataset)</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="material-symbols-outlined text-[14px] text-teal-500 mt-0.5">air</span>
+            <span><strong>Open-Meteo ERA5</strong> — Wind speed (100m), wind CF (IEC Class II curve), solar irradiance (GHI) for 50 countries</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="material-symbols-outlined text-[14px] text-teal-500 mt-0.5">check_circle</span>
+            <span>All fetched profiles go to <strong>pending review</strong> — approve them in the Profile Submissions tab</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="material-symbols-outlined text-[14px] text-amber-500 mt-0.5">schedule</span>
+            <span>Runtime: approximately <strong>20–40 minutes</strong> for a full run (810 fetches with rate limiting). Pipeline runs in the background.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 // ── ScraperPanel (exported) ───────────────────────────────────────────────────
 
-type ScraperTab = "dashboard" | "candidates";
+type ScraperTab = "dashboard" | "candidates" | "timeseries";
 
 export default function ScraperPanel({ token }: { token: string }) {
   const [tab,          setTab]          = useState<ScraperTab>("dashboard");
@@ -1496,8 +1655,9 @@ export default function ScraperPanel({ token }: { token: string }) {
       {/* Sub-tabs */}
       <div className="flex gap-1 border-b border-slate-100">
         {([
-          { id: "dashboard"  as ScraperTab, label: "Dashboard",  icon: "dashboard"   },
-          { id: "candidates" as ScraperTab, label: "Candidates", icon: "rate_review" },
+          { id: "dashboard"  as ScraperTab, label: "Dashboard",           icon: "dashboard"   },
+          { id: "candidates" as ScraperTab, label: "Candidates",          icon: "rate_review" },
+          { id: "timeseries" as ScraperTab, label: "Timeseries Pipeline", icon: "ssid_chart"  },
         ]).map(({ id, label, icon }) => (
           <button
             key={id}
@@ -1539,6 +1699,10 @@ export default function ScraperPanel({ token }: { token: string }) {
 
       {tab === "candidates" && (
         <CandidatesTab token={token} />
+      )}
+
+      {tab === "timeseries" && (
+        <TimeseriesPipelineTab token={token} />
       )}
     </div>
   );

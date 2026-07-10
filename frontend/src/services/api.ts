@@ -660,3 +660,20 @@ export async function rejectScraperCandidate(
   const data = await response.json() as { status: string; candidate: unknown };
   return { status: data.status, candidate: normalizeCandidate(data.candidate) };
 }
+
+// ── Timeseries pipeline trigger ───────────────────────────────────────────────
+
+export async function runTimeseriesPipeline(
+  token: string,
+): Promise<{ status: string; message: string }> {
+  const response = await fetch(`${BASE_URL}/admin/timeseries/pipeline/run`, {
+    method: "POST",
+    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    let detail = `Error ${response.status}`;
+    try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<{ status: string; message: string }>;
+}

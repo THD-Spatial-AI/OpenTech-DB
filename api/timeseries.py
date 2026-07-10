@@ -61,6 +61,139 @@ _ALLOWED_TYPES       = {"capacity_factor", "load", "generation", "weather", "pri
 _ALLOWED_RESOLUTIONS = {"15min", "30min", "hourly", "daily"}
 
 # ---------------------------------------------------------------------------
+# Storage layer — Supabase-first, filesystem fallback for local dev
+# ---------------------------------------------------------------------------
+# When SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are set the backend reads/writes
+# timeseries_profiles and timeseries_submissions tables (migration 010).
+# Without those env vars the old filesystem layout under data/timeseries/ is
+# used — this keeps local dev working without a Supabase project.
+# ---------------------------------------------------------------------------
+
+
+def _ts_sb():
+    """Return a Supabase service-role client, or None when not configured."""
+    from api._auth_helpers import _get_sb  # noqa: PLC0415
+    return _get_sb()
+
+
+# -- Approved profiles (catalogue) ------------------------------------------
+
+_CATALOGUE_META_COLS = (
+    "profile_id,name,type,resolution,location,source,carrier,"
+    "year,n_timesteps,description,uploaded_at,unit"
+)
+
+
+def _sb_list_profiles(
+    type_: str | None = None,
+    resolution: str | None = None,
+    location: str | None = None,
+    carrier: str | None = None,
+) -> list[dict]:
+    sb = _ts_sb()
+    q  = sb.table("timeseries_profiles").select(_CATALOGUE_META_COLS)
+    if type_:       q = q.eq("type", type_)
+    if resolution:  q = q.eq("resolution", resolution)
+    if location:    q = q.ilike("location", location)
+    if carrier:     q = q.ilike("carrier", carrier)
+    return q.order("uploaded_at", desc=True).execute().data or []
+
+
+def _sb_get_profile(profile_id: str) -> dict | None:
+    sb  = _ts_sb()
+    res = sb.table("timeseries_profiles").select("*").eq("profile_id", profile_id).execute()
+    return res.data[0] if res.data else None
+
+
+def _sb_delete_profile(profile_id: str) -> None:
+    _ts_sb().table("timeseries_profiles").delete().eq("profile_id", profile_id).execute()
+
+
+def _sb_update_profile_meta(profile_id: str, updates: dict) -> dict | None:
+    res = _ts_sb().table("timeseries_profiles").update(updates).eq("profile_id", profile_id).execute()
+    return res.data[0] if res.data else None
+
+
+def _sb_replace_profile_points(profile_id: str, points: list[dict]) -> dict | None:
+    res = _ts_sb().table("timeseries_profiles").update({
+        "points": points, "n_timesteps": len(points),
+    }).eq("profile_id", profile_id).execute()
+    return res.data[0] if res.data else None
+
+
+# -- Pending submissions ------------------------------------------------------
+
+_SUBMISSION_META_COLS = (
+    "submission_id,name,type,resolution,location,source,carrier,year,unit,description,"
+    "n_timesteps,submitted_at,submitter_email,status,rejection_reason,stats"
+)
+
+
+def _sb_insert_submission(record: dict) -> None:
+    _ts_sb().table("timeseries_submissions").insert(record).execute()
+
+
+def _sb_list_submissions(status: str | None = None) -> list[dict]:
+    sb = _ts_sb()
+    q  = sb.table("timeseries_submissions").select(_SUBMISSION_META_COLS).order("submitted_at", desc=True)
+    if status:
+        q = q.eq("status", status)
+    return q.execute().data or []
+
+
+def _sb_get_submission(submission_id: str) -> dict | None:
+    res = _ts_sb().table("timeseries_submissions").select("*").eq("submission_id", submission_id).execute()
+    return res.data[0] if res.data else None
+
+
+def _sb_approve_submission(submission_id: str, admin_email: str) -> str:
+    """Promote pending submission → timeseries_profiles. Returns profile_id."""
+    record = _sb_get_submission(submission_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Submission not found.")
+    if record["status"] != "pending_review":
+        raise HTTPException(status_code=409, detail=f"Submission already {record['status']}.")
+
+    safe_name  = re.sub(r"[^a-z0-9]+", "_", record["name"].lower()).strip("_")[:40]
+    profile_id = f"{safe_name}_{submission_id[:8]}"
+    now_str    = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+    _ts_sb().table("timeseries_profiles").upsert({
+        "profile_id":  profile_id,
+        "name":        record["name"],
+        "type":        record["type"],
+        "resolution":  record["resolution"],
+        "location":    record["location"],
+        "source":      record.get("source", ""),
+        "source_name": record.get("source_name"),
+        "carrier":     record["carrier"],
+        "year":        record.get("year", 0),
+        "n_timesteps": record["n_timesteps"],
+        "description": record.get("description", ""),
+        "uploaded_at": now_str,
+        "unit":        record["unit"],
+        "points":      record.get("points", []),
+    }).execute()
+
+    _ts_sb().table("timeseries_submissions").update({
+        "status":      "approved",
+        "profile_id":  profile_id,
+        "reviewed_at": now_str,
+        "reviewed_by": admin_email,
+    }).eq("submission_id", submission_id).execute()
+
+    return profile_id
+
+
+def _sb_reject_submission(submission_id: str, admin_email: str, reason: str | None) -> None:
+    _ts_sb().table("timeseries_submissions").update({
+        "status":           "rejected",
+        "rejection_reason": reason or "",
+        "reviewed_at":      datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        "reviewed_by":      admin_email,
+    }).eq("submission_id", submission_id).execute()
+
+# ---------------------------------------------------------------------------
 # Pydantic response models
 # ---------------------------------------------------------------------------
 
@@ -270,19 +403,21 @@ def list_profiles(
     location:   Annotated[str | None, Query(description="Filter by location code (e.g. DE, FR)")] = None,
     carrier:    Annotated[str | None, Query(description="Filter by energy carrier")] = None,
 ) -> TimeSeriesCatalogueResponse | Response:
-    if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
-        return not_modified
-    profiles = _load_catalogue()
-
-    # --- Apply filters ---
-    if type:
-        profiles = [p for p in profiles if p.get("type") == type]
-    if resolution:
-        profiles = [p for p in profiles if p.get("resolution") == resolution]
-    if location:
-        profiles = [p for p in profiles if p.get("location", "").upper() == location.upper()]
-    if carrier:
-        profiles = [p for p in profiles if p.get("carrier", "").lower() == carrier.lower()]
+    sb = _ts_sb()
+    if sb:
+        profiles = _sb_list_profiles(type_=type, resolution=resolution, location=location, carrier=carrier)
+    else:
+        if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
+            return not_modified
+        profiles = _load_catalogue()
+        if type:
+            profiles = [p for p in profiles if p.get("type") == type]
+        if resolution:
+            profiles = [p for p in profiles if p.get("resolution") == resolution]
+        if location:
+            profiles = [p for p in profiles if p.get("location", "").upper() == location.upper()]
+        if carrier:
+            profiles = [p for p in profiles if p.get("carrier", "").lower() == carrier.lower()]
 
     total = len(profiles)
     page  = profiles[skip : skip + limit]
@@ -307,23 +442,25 @@ def get_profile_data(
         Query(ge=2, description="Downsample by uniform striding to at most this many points (for previews/plots)."),
     ] = None,
 ) -> TimeSeriesDataResponse | Response:
-    # Guard: validate profile_id format before loading
     if not re.fullmatch(r"[a-z0-9_\-]+", profile_id):
         raise HTTPException(status_code=400, detail="Invalid profile_id format.")
 
-    # ETag from the data file's mtime — catches PUT-replaced values even when
-    # the catalogue metadata is unchanged. Checked before the (heavy) load.
-    data_path = _DATA_DIR / f"{profile_id}.json"
-    if not data_path.exists():
-        raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
-    import hashlib
-    etag = f'"{hashlib.md5(f"{profile_id}:{data_path.stat().st_mtime_ns}".encode()).hexdigest()}"'
-    if (not_modified := _etag_precheck(request, response, etag)) is not None:
-        return not_modified
-
-    data = _load_profile_data(profile_id)
-    if data is None:
-        raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
+    sb = _ts_sb()
+    if sb:
+        data = _sb_get_profile(profile_id)
+        if data is None:
+            raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
+    else:
+        data_path = _DATA_DIR / f"{profile_id}.json"
+        if not data_path.exists():
+            raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
+        import hashlib
+        etag = f'"{hashlib.md5(f"{profile_id}:{data_path.stat().st_mtime_ns}".encode()).hexdigest()}"'
+        if (not_modified := _etag_precheck(request, response, etag)) is not None:
+            return not_modified
+        data = _load_profile_data(profile_id)
+        if data is None:
+            raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
 
     points = data["points"]
     n_total = len(points)
@@ -400,21 +537,29 @@ def update_profile_metadata(
     if body.resolution is not None and body.resolution not in _ALLOWED_RESOLUTIONS:
         raise HTTPException(status_code=422, detail=f"Invalid resolution. Allowed: {sorted(_ALLOWED_RESOLUTIONS)}")
 
+    update_data = body.model_dump(exclude_none=True)
+    if not update_data:
+        raise HTTPException(status_code=422, detail="No fields to update.")
+
+    sb = _ts_sb()
+    if sb:
+        updated = _sb_update_profile_meta(profile_id, update_data)
+        if updated is None:
+            raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
+        # Return without points (metadata only)
+        updated.pop("points", None)
+        return updated
+
+    # Filesystem fallback
     if not _CATALOGUE_FILE.exists():
         raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
-
     with _CATALOGUE_FILE.open(encoding="utf-8") as fh:
         catalogue_doc = json.load(fh)
-
     profiles = catalogue_doc.get("profiles", [])
     idx = next((i for i, p in enumerate(profiles) if p.get("profile_id") == profile_id), None)
     if idx is None:
         raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found.")
-
-    update_data = body.model_dump(exclude_none=True)
     profiles[idx].update(update_data)
-
-    # Sync unit into the data file if it changed
     if "unit" in update_data:
         data_path = _DATA_DIR / f"{profile_id}.json"
         if data_path.exists():
@@ -423,10 +568,8 @@ def update_profile_metadata(
             data_file["unit"] = update_data["unit"]
             with data_path.open("w", encoding="utf-8") as fh:
                 json.dump(data_file, fh)
-
     with _CATALOGUE_FILE.open("w", encoding="utf-8") as fh:
         json.dump(catalogue_doc, fh, indent=2)
-
     _reload_catalogue()
     return profiles[idx]
 
@@ -461,30 +604,32 @@ def replace_profile_data(
     if len(body.points) < 2:
         raise HTTPException(status_code=422, detail="Must supply at least 2 data points.")
 
-    data_path = _DATA_DIR / f"{profile_id}.json"
-    if not data_path.exists():
-        raise HTTPException(status_code=404, detail=f"Data file for '{profile_id}' not found.")
-
-    with data_path.open(encoding="utf-8") as fh:
-        existing = json.load(fh)
-
     new_points = [{"timestamp": p.timestamp, "value": round(p.value, 6)} for p in body.points]
-    existing["points"] = new_points
 
-    with data_path.open("w", encoding="utf-8") as fh:
-        json.dump(existing, fh)
-
-    # Update n_timesteps in catalogue index
-    if _CATALOGUE_FILE.exists():
-        with _CATALOGUE_FILE.open(encoding="utf-8") as fh:
-            catalogue_doc = json.load(fh)
-        profiles = catalogue_doc.get("profiles", [])
-        ci = next((i for i, p in enumerate(profiles) if p.get("profile_id") == profile_id), None)
-        if ci is not None:
-            profiles[ci]["n_timesteps"] = len(new_points)
-            with _CATALOGUE_FILE.open("w", encoding="utf-8") as fh:
-                json.dump(catalogue_doc, fh, indent=2)
-        _reload_catalogue()
+    sb = _ts_sb()
+    if sb:
+        if _sb_get_profile(profile_id) is None:
+            raise HTTPException(status_code=404, detail=f"Data file for '{profile_id}' not found.")
+        _sb_replace_profile_points(profile_id, new_points)
+    else:
+        data_path = _DATA_DIR / f"{profile_id}.json"
+        if not data_path.exists():
+            raise HTTPException(status_code=404, detail=f"Data file for '{profile_id}' not found.")
+        with data_path.open(encoding="utf-8") as fh:
+            existing = json.load(fh)
+        existing["points"] = new_points
+        with data_path.open("w", encoding="utf-8") as fh:
+            json.dump(existing, fh)
+        if _CATALOGUE_FILE.exists():
+            with _CATALOGUE_FILE.open(encoding="utf-8") as fh:
+                catalogue_doc = json.load(fh)
+            profiles = catalogue_doc.get("profiles", [])
+            ci = next((i for i, p in enumerate(profiles) if p.get("profile_id") == profile_id), None)
+            if ci is not None:
+                profiles[ci]["n_timesteps"] = len(new_points)
+                with _CATALOGUE_FILE.open("w", encoding="utf-8") as fh:
+                    json.dump(catalogue_doc, fh, indent=2)
+            _reload_catalogue()
 
     return {"profile_id": profile_id, "n_timesteps": len(new_points)}
 
@@ -616,29 +761,37 @@ async def upload_profile(
 
     # --- Build submission_id ---
     submission_id = str(_uuid_mod.uuid4())
-    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    now_str       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    stats         = _compute_stats(points)
 
-    # --- Write pending submission file (includes full data points) ---
-    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
-    pending_path = _PENDING_DIR / f"{submission_id}.json"
-    with pending_path.open("w", encoding="utf-8") as fh:
-        json.dump({
-            "submission_id":   submission_id,
-            "submitted_at":    now_str,
-            "status":          "pending_review",
-            "submitter_email": submitter_email,
-            "name":            name,
-            "type":            type,
-            "resolution":      resolution,
-            "location":        location.upper(),
-            "source":          source,
-            "carrier":         carrier,
-            "year":            year,
-            "unit":            unit,
-            "description":     description,
-            "n_timesteps":     len(points),
-            "points":          points,
-        }, fh, indent=2)
+    record: dict = {
+        "submission_id":   submission_id,
+        "submitted_at":    now_str,
+        "status":          "pending_review",
+        "submitter_email": submitter_email,
+        "name":            name,
+        "type":            type,
+        "resolution":      resolution,
+        "location":        location.upper(),
+        "source":          source,
+        "carrier":         carrier,
+        "year":            year,
+        "unit":            unit,
+        "description":     description,
+        "n_timesteps":     len(points),
+        "points":          points,
+        "stats":           stats.model_dump() if stats else None,
+    }
+
+    # --- Persist ---
+    sb = _ts_sb()
+    if sb:
+        _sb_insert_submission(record)
+    else:
+        _PENDING_DIR.mkdir(parents=True, exist_ok=True)
+        pending_path = _PENDING_DIR / f"{submission_id}.json"
+        with pending_path.open("w", encoding="utf-8") as fh:
+            json.dump(record, fh, indent=2)
 
     logger.info("Timeseries submission queued for review: %s (%d points)", submission_id, len(points))
 
@@ -666,30 +819,31 @@ def delete_profile(
     from api.routes import _require_admin  # noqa: PLC0415
     _require_admin(authorization)
 
-    # Guard against path traversal
     safe_id = re.sub(r"[^a-z0-9_\-]", "", profile_id)
     if safe_id != profile_id:
         raise HTTPException(status_code=422, detail="Invalid profile_id format.")
 
-    if not _CATALOGUE_FILE.exists():
-        raise HTTPException(status_code=404, detail=f"Profile '{safe_id}' not found.")
+    sb = _ts_sb()
+    if sb:
+        if _sb_get_profile(safe_id) is None:
+            raise HTTPException(status_code=404, detail=f"Profile '{safe_id}' not found.")
+        _sb_delete_profile(safe_id)
+    else:
+        if not _CATALOGUE_FILE.exists():
+            raise HTTPException(status_code=404, detail=f"Profile '{safe_id}' not found.")
+        with _CATALOGUE_FILE.open(encoding="utf-8") as fh:
+            catalogue_doc = json.load(fh)
+        profiles = catalogue_doc.get("profiles", [])
+        if not any(p.get("profile_id") == safe_id for p in profiles):
+            raise HTTPException(status_code=404, detail=f"Profile '{safe_id}' not found.")
+        catalogue_doc["profiles"] = [p for p in profiles if p.get("profile_id") != safe_id]
+        with _CATALOGUE_FILE.open("w", encoding="utf-8") as fh:
+            json.dump(catalogue_doc, fh, indent=2)
+        data_path = _DATA_DIR / f"{safe_id}.json"
+        if data_path.exists():
+            data_path.unlink()
+        _reload_catalogue()
 
-    with _CATALOGUE_FILE.open(encoding="utf-8") as fh:
-        catalogue_doc = json.load(fh)
-
-    profiles = catalogue_doc.get("profiles", [])
-    if not any(p.get("profile_id") == safe_id for p in profiles):
-        raise HTTPException(status_code=404, detail=f"Profile '{safe_id}' not found.")
-
-    catalogue_doc["profiles"] = [p for p in profiles if p.get("profile_id") != safe_id]
-    with _CATALOGUE_FILE.open("w", encoding="utf-8") as fh:
-        json.dump(catalogue_doc, fh, indent=2)
-
-    data_path = _DATA_DIR / f"{safe_id}.json"
-    if data_path.exists():
-        data_path.unlink()
-
-    _reload_catalogue()
     logger.info("Timeseries profile deleted: %s", safe_id)
 
 
@@ -794,6 +948,33 @@ def list_profile_submissions(
     authorization: Annotated[str | None, Header()] = None,
 ) -> list[ProfileSubmissionRecord]:
     _require_admin(authorization)
+
+    sb = _ts_sb()
+    if sb:
+        rows = _sb_list_submissions(status)
+        return [
+            ProfileSubmissionRecord(
+                submission_id    = r["submission_id"],
+                name             = r.get("name", "—"),
+                type             = r.get("type", ""),
+                resolution       = r.get("resolution", ""),
+                location         = r.get("location", ""),
+                source           = r.get("source", ""),
+                carrier          = r.get("carrier", ""),
+                year             = r.get("year", 0),
+                unit             = r.get("unit", ""),
+                description      = r.get("description", ""),
+                n_timesteps      = r.get("n_timesteps", 0),
+                submitted_at     = r.get("submitted_at", ""),
+                submitter_email  = r.get("submitter_email"),
+                status           = r.get("status", "pending_review"),
+                rejection_reason = r.get("rejection_reason"),
+                stats            = r.get("stats"),
+            )
+            for r in rows
+        ]
+
+    # Filesystem fallback
     _PENDING_DIR.mkdir(parents=True, exist_ok=True)
     records: list[ProfileSubmissionRecord] = []
     for path in sorted(_PENDING_DIR.glob("*.json"), reverse=True):
@@ -836,17 +1017,20 @@ def get_profile_submission_data(
 ) -> dict:
     _require_admin(authorization)
     safe_id = re.sub(r"[^a-z0-9\-]", "", submission_id)
-    path    = _PENDING_DIR / f"{safe_id}.json"
+
+    sb = _ts_sb()
+    if sb:
+        row = _sb_get_submission(safe_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Submission not found.")
+        return {"submission_id": safe_id, "name": row.get("name",""), "unit": row.get("unit",""), "points": row.get("points", [])}
+
+    path = _PENDING_DIR / f"{safe_id}.json"
     if not path.exists():
         raise HTTPException(status_code=404, detail="Submission not found.")
     with path.open(encoding="utf-8") as fh:
         raw = json.load(fh)
-    return {
-        "submission_id": safe_id,
-        "name":          raw.get("name", ""),
-        "unit":          raw.get("unit", ""),
-        "points":        raw.get("points", []),
-    }
+    return {"submission_id": safe_id, "name": raw.get("name",""), "unit": raw.get("unit",""), "points": raw.get("points", [])}
 
 
 class ProfileAdminAction(BaseModel):
@@ -870,20 +1054,30 @@ def act_on_profile_submission(
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'.")
 
     safe_id = re.sub(r"[^a-z0-9\-]", "", submission_id)
-    path    = _PENDING_DIR / f"{safe_id}.json"
+
+    sb = _ts_sb()
+    if sb:
+        if body.action == "approve":
+            profile_id = _sb_approve_submission(safe_id, admin_email)
+            logger.info("Admin approved profile submission %s → %s", safe_id, profile_id)
+            return {"status": "approved", "submission_id": safe_id, "profile_id": profile_id}
+        else:
+            _sb_reject_submission(safe_id, admin_email, body.reason)
+            logger.info("Admin rejected profile submission %s", safe_id)
+            return {"status": "rejected", "submission_id": safe_id}
+
+    # Filesystem fallback
+    path = _PENDING_DIR / f"{safe_id}.json"
     if not path.exists():
         raise HTTPException(status_code=404, detail="Submission not found.")
-
     with path.open(encoding="utf-8") as fh:
         record = json.load(fh)
-
     if record.get("status") != "pending_review":
         raise HTTPException(status_code=409, detail=f"Submission already {record['status']}.")
 
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-
     if body.action == "approve":
-        profile_id = _approve_profile_submission(record)
+        profile_id            = _approve_profile_submission(record)
         record["status"]      = "approved"
         record["profile_id"]  = profile_id
         logger.info("Admin approved profile submission %s → %s", safe_id, profile_id)
@@ -891,11 +1085,32 @@ def act_on_profile_submission(
         record["status"]           = "rejected"
         record["rejection_reason"] = body.reason or ""
         logger.info("Admin rejected profile submission %s", safe_id)
-
     record["reviewed_at"] = now_str
     record["reviewed_by"] = admin_email
-
     with path.open("w", encoding="utf-8") as fh:
         json.dump(record, fh, indent=2)
 
     return {"status": record["status"], "submission_id": safe_id}
+
+
+@admin_ts_router.post(
+    "/pipeline/run",
+    status_code=202,
+    summary="Trigger the timeseries acquisition pipeline (admin only)",
+)
+def trigger_timeseries_pipeline(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict:
+    """Start the timeseries acquisition pipeline in a background thread."""
+    from threading import Thread
+    _require_admin(authorization)
+
+    def _run() -> None:
+        try:
+            from timeseries_scraper import pipeline  # noqa: PLC0415
+            pipeline.run()
+        except Exception as exc:
+            logger.error("Timeseries pipeline error: %s", exc, exc_info=True)
+
+    Thread(target=_run, daemon=True, name="ts-pipeline").start()
+    return {"status": "started", "message": "Timeseries pipeline triggered in background."}

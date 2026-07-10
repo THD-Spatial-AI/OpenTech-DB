@@ -2579,10 +2579,14 @@ function ProfileSubmissionCard({
   record,
   token,
   onAction,
+  checked,
+  onCheck,
 }: {
   record: ProfileSubmissionRecord;
   token: string;
   onAction: (id: string, action: "approve" | "reject") => void;
+  checked?: boolean;
+  onCheck?: (id: string) => void;
 }) {
   const [expanded,     setExpanded]   = useState(false);
   const [confirming,   setConfirming] = useState<"approve" | "reject" | null>(null);
@@ -2636,6 +2640,15 @@ function ProfileSubmissionCard({
         onClick={() => setExpanded((v) => !v)}
       >
         <div className="flex items-center gap-3 min-w-0">
+          {isPending && onCheck && (
+            <input
+              type="checkbox"
+              checked={checked ?? false}
+              onClick={(e) => e.stopPropagation()}
+              onChange={() => onCheck(record.submission_id)}
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 shrink-0 cursor-pointer"
+            />
+          )}
           <span className="material-symbols-outlined text-[20px] shrink-0" style={{ color: typeColor }}>ssid_chart</span>
           <div className="min-w-0">
             <p className="font-semibold text-slate-800 text-sm truncate">{record.name}</p>
@@ -2820,6 +2833,10 @@ export default function AdminPanel() {
   const [panelTab,           setPanelTab]           = useState<PanelTab>("submissions");
   const [loading,            startLoad]             = useTransition();
   const [profileLoading,     startProfileLoad]      = useTransition();
+  // Bulk selection for profile submissions
+  const [checkedProfiles,    setCheckedProfiles]    = useState<Set<string>>(new Set());
+  const [bulkProfileActing,  setBulkProfileActing]  = useState(false);
+  const [bulkProfileProgress,setBulkProfileProgress]= useState<{done:number;total:number}|null>(null);
 
   const load = useCallback((tok: string) => {
     startLoad(async () => {
@@ -2886,9 +2903,77 @@ export default function AdminPanel() {
             )
           : prev
       );
+      setCheckedProfiles((prev) => { const n = new Set(prev); n.delete(id); return n; });
     },
     []
   );
+
+  const pendingProfileIds = (profileSubmissions ?? [])
+    .filter((s) => s.status === "pending_review")
+    .map((s) => s.submission_id);
+
+  const allPendingChecked =
+    pendingProfileIds.length > 0 &&
+    pendingProfileIds.every((id) => checkedProfiles.has(id));
+
+  const toggleSelectAllProfiles = () => {
+    if (allPendingChecked) {
+      setCheckedProfiles((prev) => {
+        const n = new Set(prev);
+        pendingProfileIds.forEach((id) => n.delete(id));
+        return n;
+      });
+    } else {
+      setCheckedProfiles((prev) => {
+        const n = new Set(prev);
+        pendingProfileIds.forEach((id) => n.add(id));
+        return n;
+      });
+    }
+  };
+
+  const toggleProfileCheck = (id: string) =>
+    setCheckedProfiles((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) { n.delete(id); } else { n.add(id); }
+      return n;
+    });
+
+  const handleBulkProfileApprove = async () => {
+    if (!token) return;
+    const ids = [...checkedProfiles];
+    if (!ids.length) return;
+    setBulkProfileActing(true);
+    setBulkProfileProgress({ done: 0, total: ids.length });
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        await actOnProfileSubmission(token, ids[i], "approve");
+        handleProfileAction(ids[i], "approve");
+      } catch { /* continue on individual failure */ }
+      setBulkProfileProgress({ done: i + 1, total: ids.length });
+    }
+    setCheckedProfiles(new Set());
+    setBulkProfileActing(false);
+    setBulkProfileProgress(null);
+  };
+
+  const handleBulkProfileReject = async () => {
+    if (!token) return;
+    const ids = [...checkedProfiles];
+    if (!ids.length) return;
+    setBulkProfileActing(true);
+    setBulkProfileProgress({ done: 0, total: ids.length });
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        await actOnProfileSubmission(token, ids[i], "reject");
+        handleProfileAction(ids[i], "reject");
+      } catch { /* continue on individual failure */ }
+      setBulkProfileProgress({ done: i + 1, total: ids.length });
+    }
+    setCheckedProfiles(new Set());
+    setBulkProfileActing(false);
+    setBulkProfileProgress(null);
+  };
 
   // ── Not an admin ──────────────────────────────────────────────────────────
   if (!isAdmin) {
@@ -3007,22 +3092,83 @@ export default function AdminPanel() {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            {profileSubmissions === null
-              ? "Loading…"
-              : `${profileSubmissions.length} submission${profileSubmissions.length !== 1 ? "s" : ""} total`}
-          </p>
-          <button
-            type="button"
-            disabled={profileLoading}
-            onClick={() => token && loadProfiles(token)}
-            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
-                       border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
-          >
-            <span className={`material-symbols-outlined text-[16px] ${profileLoading ? "animate-spin" : ""}`}>refresh</span>
-            Refresh
-          </button>
+        {/* Toolbar */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Select-all checkbox (only when there are pending items) */}
+          {pendingProfileIds.length > 0 && (
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={allPendingChecked}
+                onChange={toggleSelectAllProfiles}
+                disabled={bulkProfileActing}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+              />
+              <span className="text-sm text-slate-500">
+                {allPendingChecked ? "Deselect all" : `Select all pending (${pendingProfileIds.length})`}
+              </span>
+            </label>
+          )}
+
+          {/* Bulk action buttons */}
+          {checkedProfiles.size > 0 && (
+            <>
+              <span className="w-px h-4 bg-slate-200" />
+              {bulkProfileActing && bulkProfileProgress ? (
+                <span className="text-xs font-semibold text-indigo-600">
+                  Processing {bulkProfileProgress.done}/{bulkProfileProgress.total}…
+                </span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleBulkProfileApprove}
+                    disabled={bulkProfileActing}
+                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-emerald-600
+                               hover:bg-emerald-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                    Approve {checkedProfiles.size}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkProfileReject}
+                    disabled={bulkProfileActing}
+                    className="flex items-center gap-1.5 text-xs font-bold text-red-700 bg-red-100
+                               hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">cancel</span>
+                    Reject {checkedProfiles.size}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCheckedProfiles(new Set())}
+                    className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    Clear
+                  </button>
+                </>
+              )}
+            </>
+          )}
+
+          <div className="ml-auto flex items-center gap-3">
+            <p className="text-sm text-slate-500">
+              {profileSubmissions === null
+                ? "Loading…"
+                : `${profileSubmissions.length} submission${profileSubmissions.length !== 1 ? "s" : ""} total`}
+            </p>
+            <button
+              type="button"
+              disabled={profileLoading}
+              onClick={() => token && loadProfiles(token)}
+              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
+                         border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
+            >
+              <span className={`material-symbols-outlined text-[16px] ${profileLoading ? "animate-spin" : ""}`}>refresh</span>
+              Refresh
+            </button>
+          </div>
         </div>
 
         {profileLoading && (
@@ -3047,6 +3193,8 @@ export default function AdminPanel() {
                 record={record}
                 token={token!}
                 onAction={handleProfileAction}
+                checked={checkedProfiles.has(record.submission_id)}
+                onCheck={toggleProfileCheck}
               />
             ))}
           </div>

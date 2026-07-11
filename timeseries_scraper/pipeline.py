@@ -9,16 +9,20 @@ from .sources.open_meteo import (
     OpenMeteoWindSource,
     OpenMeteoWindCFSource,
     OpenMeteoSolarSource,
+    OpenMeteoTemperatureSource,
+    OpenMeteoLoadSource,
     LOCATIONS as OM_LOCATIONS,
 )
 
 logger = logging.getLogger(__name__)
 
 _ALL_SOURCES = {
-    "pvgis":              (PVGISSource,          list(PVGIS_LOCATIONS.keys()), [2019, 2020]),
-    "open_meteo_wind":    (OpenMeteoWindSource,   list(OM_LOCATIONS.keys()),   [2019, 2020, 2021, 2022, 2023]),
-    "open_meteo_wind_cf": (OpenMeteoWindCFSource, list(OM_LOCATIONS.keys()),   [2019, 2020, 2021, 2022, 2023]),
-    "open_meteo_solar":   (OpenMeteoSolarSource,  list(OM_LOCATIONS.keys()),   [2019, 2020, 2021, 2022, 2023]),
+    "pvgis":                   (PVGISSource,                list(PVGIS_LOCATIONS.keys()), [2019, 2020]),
+    "open_meteo_wind":         (OpenMeteoWindSource,        list(OM_LOCATIONS.keys()),   [2019, 2020, 2021, 2022, 2023]),
+    "open_meteo_wind_cf":      (OpenMeteoWindCFSource,      list(OM_LOCATIONS.keys()),   [2019, 2020, 2021, 2022, 2023]),
+    "open_meteo_solar":        (OpenMeteoSolarSource,       list(OM_LOCATIONS.keys()),   [2019, 2020, 2021, 2022, 2023]),
+    "open_meteo_temperature":  (OpenMeteoTemperatureSource, list(OM_LOCATIONS.keys()),   [2019, 2020, 2021, 2022, 2023]),
+    "open_meteo_load":         (OpenMeteoLoadSource,        list(OM_LOCATIONS.keys()),   [2019, 2020, 2021, 2022, 2023]),
 }
 
 

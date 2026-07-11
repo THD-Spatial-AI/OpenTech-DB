@@ -217,3 +217,100 @@ class OpenMeteoSolarSource(BaseTimeseriesSource):
             points=points,
             source_name=self.source_name,
         )
+
+
+class OpenMeteoTemperatureSource(BaseTimeseriesSource):
+    """Air temperature at 2m — weather profile (unit: °C)."""
+    source_name = "open_meteo_temperature"
+
+    def fetch(self, location: str, year: int, **kwargs) -> Optional[ProfileDraft]:
+        if location not in LOCATIONS:
+            return None
+        lat, lon = LOCATIONS[location]
+        points = _fetch(lat, lon, year, "temperature_2m")
+        if not points:
+            return None
+        country = COUNTRY_NAMES.get(location, location)
+        return ProfileDraft(
+            name=f"{location} Air Temperature at 2m {year}",
+            type="weather",
+            resolution="hourly",
+            location=location,
+            source=f"Open-Meteo Historical Weather API (ERA5) | lat={lat}, lon={lon}",
+            carrier="temperature",
+            year=year,
+            unit="°C",
+            description=(
+                f"Hourly air temperature at 2m above ground for {country} ({year}). "
+                f"Open-Meteo Historical Weather API (ERA5 reanalysis), centroid lat={lat}, lon={lon}."
+            ),
+            points=points,
+            source_name=self.source_name,
+        )
+
+
+def _temp_to_load_raw(t: float) -> float:
+    """
+    Simplified electrification load factor from 2m temperature.
+
+    Base load + heating demand below 15 °C (space heating, water heating)
+    + cooling demand above 24 °C (air conditioning).
+    Exponents > 1 capture the nonlinear response near saturation.
+    """
+    heat = max(0.0, 15.0 - t) ** 1.2
+    cool = max(0.0, t - 24.0) ** 1.1
+    return 0.3 + 0.015 * heat + 0.012 * cool
+
+
+class OpenMeteoLoadSource(BaseTimeseriesSource):
+    """
+    Synthetic hourly electricity load profile derived from ERA5 air temperature.
+
+    Uses a simplified degree-day electrification model (HDD base 15 °C,
+    CDD base 24 °C) and normalises the result to [0, 1] so it can be used
+    directly as a capacity-factor-style demand shape in energy models.
+    """
+    source_name = "open_meteo_load"
+
+    def fetch(self, location: str, year: int, **kwargs) -> Optional[ProfileDraft]:
+        if location not in LOCATIONS:
+            return None
+        lat, lon = LOCATIONS[location]
+        raw = _fetch(lat, lon, year, "temperature_2m")
+        if not raw:
+            return None
+
+        vals = [_temp_to_load_raw(p["value"]) for p in raw]
+        v_min, v_max = min(vals), max(vals)
+        norm = (
+            [(v - v_min) / (v_max - v_min) for v in vals]
+            if v_max > v_min
+            else vals
+        )
+        points = [
+            {"timestamp": p["timestamp"], "value": round(n, 6)}
+            for p, n in zip(raw, norm)
+        ]
+        country = COUNTRY_NAMES.get(location, location)
+        return ProfileDraft(
+            name=f"{location} Electricity Load Profile {year}",
+            type="load",
+            resolution="hourly",
+            location=location,
+            source=(
+                f"Open-Meteo Historical Weather API (ERA5) | lat={lat}, lon={lon} | "
+                f"Simplified degree-day electrification model (HDD base 15 °C, CDD base 24 °C)"
+            ),
+            carrier="electricity",
+            year=year,
+            unit="p.u.",
+            description=(
+                f"Hourly normalised electricity load profile for {country} ({year}). "
+                f"Derived from ERA5 2m temperature (Open-Meteo) using a simplified degree-day "
+                f"electrification model: base load + heating demand below 15 °C + cooling demand "
+                f"above 24 °C. Normalised to [0, 1] (0 = minimum demand hour, 1 = peak demand "
+                f"hour). Centroid location: lat={lat}, lon={lon}."
+            ),
+            points=points,
+            source_name=self.source_name,
+        )

@@ -90,13 +90,23 @@ def _sb_list_profiles(
     location: str | None = None,
     carrier: str | None = None,
 ) -> list[dict]:
+    """Fetch all matching profiles, paging in 1000-row chunks to bypass PostgREST db-max-rows."""
     sb = _ts_sb()
-    q  = sb.table("timeseries_profiles").select(_CATALOGUE_META_COLS)
-    if type_:       q = q.eq("type", type_)
-    if resolution:  q = q.eq("resolution", resolution)
-    if location:    q = q.ilike("location", location)
-    if carrier:     q = q.ilike("carrier", carrier)
-    return q.order("uploaded_at", desc=True).execute().data or []
+    all_rows: list[dict] = []
+    page_size = 1000
+    offset = 0
+    while True:
+        q = sb.table("timeseries_profiles").select(_CATALOGUE_META_COLS)
+        if type_:       q = q.eq("type", type_)
+        if resolution:  q = q.eq("resolution", resolution)
+        if location:    q = q.ilike("location", location)
+        if carrier:     q = q.ilike("carrier", carrier)
+        rows = q.order("uploaded_at", desc=True).range(offset, offset + page_size - 1).execute().data or []
+        all_rows.extend(rows)
+        if len(rows) < page_size:
+            break
+        offset += page_size
+    return all_rows
 
 
 def _sb_get_profile(profile_id: str) -> dict | None:
@@ -397,7 +407,7 @@ def list_profiles(
     request:  Request,
     response: Response,
     skip:       Annotated[int, Query(ge=0, description="Offset for pagination")]   = 0,
-    limit:      Annotated[int, Query(ge=1, le=500, description="Max items to return")] = 50,
+    limit:      Annotated[int, Query(ge=1, le=5000, description="Max items to return")] = 50,
     type:       Annotated[str | None, Query(description="Filter by profile type (e.g. capacity_factor, load)")] = None,
     resolution: Annotated[str | None, Query(description="Filter by temporal resolution (e.g. hourly)")] = None,
     location:   Annotated[str | None, Query(description="Filter by location code (e.g. DE, FR)")] = None,

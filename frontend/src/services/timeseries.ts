@@ -72,7 +72,7 @@ function cached<T>(key: string, factory: () => Promise<T>): Promise<T> {
 export function fetchTimeSeriesCatalogue(): Promise<TimeSeriesCatalogueResponse> {
   return cached("timeseries:catalogue", async () => {
     try {
-      return await apiFetch<TimeSeriesCatalogueResponse>("/timeseries?limit=500");
+      return await apiFetch<TimeSeriesCatalogueResponse>("/timeseries?limit=5000");
     } catch (err) {
       // 404 means the endpoint is not yet available on this backend instance.
       // Treat as empty catalogue so the UI degrades gracefully.

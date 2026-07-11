@@ -3,12 +3,9 @@
  *
  * Layout
  * ──────
- *  ┌─ top bar: title · search · [Browse profiles ▾] ───────────────────┐
- *  └─ chart pane  ← fills ALL remaining height, full width ─────────────┘
- *
- * Profile selection is handled by a two-level cascading dropdown:
- *   Level 1 — categories (Cap. Factor, Generation, Load, …)
- *   Level 2 — profiles within the chosen category (vertical list)
+ *  ┌─ top bar: title ──────────────────────────────────────────────┐
+ *  ├─ toolbar: [search + inline dropdown]  [Browse profiles ▾] ───┤
+ *  └─ chart pane fills all remaining height ───────────────────────┘
  */
 
 import {
@@ -20,7 +17,7 @@ import {
   useRef,
   useTransition,
   useCallback,
-  startTransition,
+  startTransition as _startTransition,
 } from "react";
 import type { TimeSeriesProfile, ProfileType } from "../../types/timeseries";
 import { fetchTimeSeriesCatalogue, fetchTimeSeriesData } from "../../services/timeseries";
@@ -54,9 +51,7 @@ const tm = (t: string) => TYPE_META[t] ?? fallbackMeta;
 function PageSkeleton() {
   return (
     <div className="animate-pulse flex flex-col h-full">
-      <div className="h-10 bg-surface-container-low border-b border-outline-variant/15 flex items-center px-4">
-        <div className="h-5 w-44 bg-surface-container rounded-lg" />
-      </div>
+      <div className="h-12 bg-surface-container-low border-b border-outline-variant/15" />
       <div className="flex-1 bg-surface-container/30 m-4 rounded-2xl" style={{ minHeight: 400 }} />
     </div>
   );
@@ -67,22 +62,19 @@ function PageSkeleton() {
 // ─────────────────────────────────────────────────────────────────────
 function ProfileBrowserDropdown({
   profiles,
-  query,
   selectedProfileId,
   onSelect,
   isPending,
 }: {
   profiles: TimeSeriesProfile[];
-  query: string;
   selectedProfileId: string | null;
   onSelect: (p: TimeSeriesProfile) => void;
   isPending: boolean;
 }) {
-  const [open, setOpen]               = useState(false);
+  const [open, setOpen]                 = useState(false);
   const [openCategory, setOpenCategory] = useState<ProfileType | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -93,42 +85,17 @@ function ProfileBrowserDropdown({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Filter by search query
-  const q = query.trim().toLowerCase();
-  const filtered = useMemo(
-    () => q
-      ? profiles.filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) ||
-            p.location.toLowerCase().includes(q) ||
-            (p.carrier ?? "").toLowerCase().includes(q)
-        )
-      : profiles,
-    [profiles, q]
-  );
-
   // Group by type
   const groups = useMemo(() => {
     const map = new Map<ProfileType, TimeSeriesProfile[]>();
     for (const { value } of PROFILE_TYPES) map.set(value, []);
-    for (const p of filtered) {
+    for (const p of profiles) {
       const bucket = map.get(p.type as ProfileType) ?? [];
       bucket.push(p);
       map.set(p.type as ProfileType, bucket);
     }
     return map;
-  }, [filtered]);
-
-  // Auto-expand first matching category when searching
-  useEffect(() => {
-    if (!q) return;
-    for (const { value } of PROFILE_TYPES) {
-      if ((groups.get(value) ?? []).length > 0) {
-        startTransition(() => setOpenCategory(value));
-        break;
-      }
-    }
-  }, [q, groups]);
+  }, [profiles]);
 
   const selectedProfile = profiles.find((p) => p.profile_id === selectedProfileId);
 
@@ -139,12 +106,12 @@ function ProfileBrowserDropdown({
 
   return (
     <div className="relative flex-shrink-0" ref={containerRef}>
-      {/* Trigger button */}
+      {/* Trigger */}
       <button
         onClick={() => setOpen((v) => !v)}
         className={[
           "flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all",
-          "min-w-[200px] max-w-[300px] justify-between",
+          "min-w-[180px] max-w-[260px] justify-between",
           open
             ? "bg-surface-container border-outline-variant/50 text-on-surface"
             : "bg-surface-container-lowest border-outline-variant/30 text-on-surface hover:bg-surface-container hover:border-outline-variant/50",
@@ -167,56 +134,47 @@ function ProfileBrowserDropdown({
         </span>
       </button>
 
-      {/* Dropdown — two panels side by side */}
+      {/* Two-panel flyout */}
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 z-50 flex items-start gap-1">
+        <div className="absolute top-full right-0 mt-1.5 z-50 flex items-start gap-1">
 
-          {/* ── Level 1: categories panel ── */}
+          {/* Level 1 — categories */}
           <div className="w-52 bg-surface-container-lowest border border-outline-variant/25 rounded-2xl shadow-xl overflow-hidden">
-            {filtered.length === 0 ? (
-              <div className="flex items-center gap-2 px-4 py-3 text-xs text-on-surface-variant/50">
-                <span className="material-symbols-outlined text-[14px]">search_off</span>
-                No profiles match
-              </div>
-            ) : (
-              PROFILE_TYPES.map(({ value, label, icon }) => {
-                const items = groups.get(value) ?? [];
-                if (items.length === 0) return null;
-                const meta = tm(value);
-                const isActive = openCategory === value;
-                return (
-                  <button
-                    key={value}
-                    onClick={() => setOpenCategory((prev) => (prev === value ? null : value))}
-                    className={[
-                      "flex items-center justify-between w-full px-4 py-2.5 transition-colors text-left",
-                      "border-b border-outline-variant/10 last:border-b-0",
-                      isActive
-                        ? "bg-surface-container"
-                        : "hover:bg-surface-container/60",
-                    ].join(" ")}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className={`material-symbols-outlined text-[14px] ${isActive ? "text-primary" : "text-on-surface-variant/60"}`}>
-                        {icon}
-                      </span>
-                      <span className={`text-xs font-semibold ${isActive ? "text-primary" : "text-on-surface"}`}>
-                        {label}
-                      </span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${meta.chip}`}>
-                        {items.length}
-                      </span>
-                    </div>
-                    <span className={`material-symbols-outlined text-[14px] ${isActive ? "text-primary" : "text-on-surface-variant/30"}`}>
-                      chevron_right
+            {PROFILE_TYPES.map(({ value, label, icon }) => {
+              const items = groups.get(value) ?? [];
+              if (items.length === 0) return null;
+              const meta   = tm(value);
+              const isActive = openCategory === value;
+              return (
+                <button
+                  key={value}
+                  onClick={() => setOpenCategory((prev) => (prev === value ? null : value))}
+                  className={[
+                    "flex items-center justify-between w-full px-4 py-2.5 transition-colors text-left",
+                    "border-b border-outline-variant/10 last:border-b-0",
+                    isActive ? "bg-surface-container" : "hover:bg-surface-container/60",
+                  ].join(" ")}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`material-symbols-outlined text-[14px] ${isActive ? "text-primary" : "text-on-surface-variant/60"}`}>
+                      {icon}
                     </span>
-                  </button>
-                );
-              })
-            )}
+                    <span className={`text-xs font-semibold ${isActive ? "text-primary" : "text-on-surface"}`}>
+                      {label}
+                    </span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${meta.chip}`}>
+                      {items.length}
+                    </span>
+                  </div>
+                  <span className={`material-symbols-outlined text-[14px] ${isActive ? "text-primary" : "text-on-surface-variant/30"}`}>
+                    chevron_right
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* ── Level 2: profiles flyout panel ── */}
+          {/* Level 2 — profiles flyout */}
           {openCategory && (groups.get(openCategory) ?? []).length > 0 && (() => {
             const items = groups.get(openCategory)!;
             const meta  = tm(openCategory);
@@ -238,9 +196,7 @@ function ProfileBrowserDropdown({
                     >
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${meta.dot}`} />
                       <div className="min-w-0">
-                        <p className={`text-[11px] font-semibold leading-tight truncate ${
-                          isSelected ? "text-primary" : "text-on-surface"
-                        }`}>
+                        <p className={`text-[11px] font-semibold leading-tight truncate ${isSelected ? "text-primary" : "text-on-surface"}`}>
                           {p.name}
                         </p>
                         <p className="text-[9px] font-mono text-on-surface-variant/50 mt-0.5">
@@ -264,45 +220,169 @@ function ProfileBrowserDropdown({
 // ─────────────────────────────────────────────────────────────────────
 function CatalogueContent({
   cataloguePromise,
-  query,
   selectedProfileId,
   onSelectProfile,
   onDeleteProfile,
-  isPending,
 }: {
   cataloguePromise: Promise<{ total: number; profiles: TimeSeriesProfile[] }>;
-  query: string;
   selectedProfileId: string | null;
   onSelectProfile: (p: TimeSeriesProfile) => void;
   onDeleteProfile: (id: string) => void;
-  isPending: boolean;
 }) {
   const { profiles } = use(cataloguePromise);
+  const [query, setQuery]               = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isPending, startTransition]    = useTransition();
+  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef  = useRef<HTMLInputElement>(null);
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Filter profiles by query
+  const q = query.trim().toLowerCase();
+  const filtered = useMemo(() => {
+    if (!q) return [];
+    return profiles
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.location.toLowerCase().includes(q) ||
+          (p.carrier ?? "").toLowerCase().includes(q) ||
+          p.type.replace("_", " ").includes(q),
+      )
+      .slice(0, 30);
+  }, [profiles, q]);
+
+  const handleSearchSelect = (p: TimeSeriesProfile) => {
+    startTransition(() => onSelectProfile(p));
+    setQuery("");
+    setShowDropdown(false);
+  };
+
+  const handleBrowseSelect = (p: TimeSeriesProfile) => {
+    startTransition(() => onSelectProfile(p));
+  };
+
+  const handleClear = () => {
+    setQuery("");
+    setShowDropdown(false);
+    inputRef.current?.focus();
+  };
 
   const selectedProfile = useMemo(
     () => profiles.find((p) => p.profile_id === selectedProfileId) ?? null,
-    [profiles, selectedProfileId]
+    [profiles, selectedProfileId],
   );
   const dataPromise = useMemo(
     () => (selectedProfileId ? fetchTimeSeriesData(selectedProfileId) : null),
-    [selectedProfileId]
+    [selectedProfileId],
   );
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
 
-      {/* ── DROPDOWN BAR ─────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-b border-outline-variant/15 bg-surface-container-low/50 px-4 py-2">
+      {/* ── TOOLBAR: search + browse dropdown ───────────────────── */}
+      <div className="flex-shrink-0 border-b border-outline-variant/15 bg-surface-container-low/50 px-4 py-2.5 flex items-center gap-3">
+
+        {/* Search with inline dropdown */}
+        <div className="relative flex-1 max-w-lg" ref={searchRef}>
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-on-surface-variant/40 pointer-events-none">
+              search
+            </span>
+            <input
+              ref={inputRef}
+              type="search"
+              placeholder="Search by name, location, carrier or type…"
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setShowDropdown(true); }}
+              onFocus={() => { if (query) setShowDropdown(true); }}
+              className="w-full bg-surface-container-lowest border border-outline-variant/30
+                         rounded-xl pl-9 pr-8 py-1.5 text-xs text-on-surface
+                         placeholder:text-on-surface-variant/40
+                         focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40
+                         transition-all"
+            />
+            {query && (
+              <button
+                onClick={handleClear}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant/40 hover:text-on-surface transition-colors"
+              >
+                <span className="material-symbols-outlined text-[15px]">close</span>
+              </button>
+            )}
+          </div>
+
+          {/* Inline results list */}
+          {showDropdown && q && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 z-50
+                            bg-surface-container-lowest border border-outline-variant/25
+                            rounded-2xl shadow-xl overflow-hidden max-h-80 overflow-y-auto">
+              {filtered.length === 0 ? (
+                <div className="flex items-center gap-2 px-4 py-3 text-xs text-on-surface-variant/50">
+                  <span className="material-symbols-outlined text-[15px]">search_off</span>
+                  No profiles match &ldquo;{query}&rdquo;
+                </div>
+              ) : (
+                <>
+                  <div className="px-4 py-2 border-b border-outline-variant/10">
+                    <span className="text-[10px] font-semibold text-on-surface-variant/50 uppercase tracking-wide">
+                      {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  {filtered.map((p) => {
+                    const meta = tm(p.type);
+                    const isSelected = p.profile_id === selectedProfileId;
+                    return (
+                      <button
+                        key={p.profile_id}
+                        onClick={() => handleSearchSelect(p)}
+                        className={[
+                          "flex items-center gap-3 w-full text-left px-4 py-2.5 transition-colors",
+                          "border-b border-outline-variant/10 last:border-b-0",
+                          isSelected ? "bg-primary/5" : "hover:bg-surface-container/60",
+                        ].join(" ")}
+                      >
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.dot}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-xs font-semibold truncate ${isSelected ? "text-primary" : "text-on-surface"}`}>
+                            {p.name}
+                          </p>
+                          <p className="text-[10px] text-on-surface-variant/50 mt-0.5 font-mono">
+                            {p.location} · {p.year} · {p.resolution}
+                          </p>
+                        </div>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${meta.chip}`}>
+                          {p.type.replace("_", " ")}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Browse profiles dropdown */}
         <ProfileBrowserDropdown
           profiles={profiles}
-          query={query}
           selectedProfileId={selectedProfileId}
-          onSelect={onSelectProfile}
+          onSelect={handleBrowseSelect}
           isPending={isPending}
         />
       </div>
 
-      {/* ── CHART PANE — fills all remaining space ───────────────── */}
+      {/* ── CHART PANE ──────────────────────────────────────────── */}
       <main className={[
         "flex-1 min-h-0 overflow-hidden transition-opacity",
         isPending ? "opacity-70" : "opacity-100",
@@ -321,21 +401,28 @@ function CatalogueContent({
             <div>
               <p className="text-base font-bold text-on-surface mb-1">Select a profile</p>
               <p className="text-sm text-on-surface-variant/60 max-w-sm">
-                Use the <strong>Browse profiles</strong> dropdown above to pick a category and
-                then a profile — the interactive chart will load here.
+                Search by name, location, or carrier — or use <strong>Browse profiles</strong> to explore by category.
               </p>
             </div>
             {profiles.length > 0 && (
               <div className="flex flex-wrap justify-center gap-2 mt-1">
-                {profiles.slice(0, 5).map((p) => {
-                  const meta = tm(p.type);
+                {PROFILE_TYPES.map(({ value, label, icon }) => {
+                  const count = profiles.filter((p) => p.type === value).length;
+                  if (count === 0) return null;
+                  const meta = tm(value);
                   return (
                     <button
-                      key={p.profile_id}
-                      onClick={() => onSelectProfile(p)}
-                      className={`text-[11px] font-bold px-3 py-1.5 rounded-full border ${meta.chip} ${meta.border} transition-all hover:opacity-80`}
+                      key={value}
+                      onClick={() => {
+                        setQuery(value.replace("_", " "));
+                        setShowDropdown(true);
+                        inputRef.current?.focus();
+                      }}
+                      className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all hover:opacity-80 ${meta.chip} ${meta.border}`}
                     >
-                      {p.name}
+                      <span className="material-symbols-outlined text-[12px]">{icon}</span>
+                      {label}
+                      <span className="opacity-60 font-normal">({count})</span>
                     </button>
                   );
                 })}
@@ -352,17 +439,11 @@ function CatalogueContent({
 // Page root
 // ─────────────────────────────────────────────────────────────────────
 export default function TimeSeriesCatalogue() {
-  const [query, setQuery]                         = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [catalogueVersion, setCatalogueVersion]   = useState(0);
-  const [isPending, startTransition]              = useTransition();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const cataloguePromise = useMemo(() => fetchTimeSeriesCatalogue(), [catalogueVersion]);
-
-  const handleSelect = (p: TimeSeriesProfile) => {
-    startTransition(() => setSelectedProfileId(p.profile_id));
-  };
 
   const handleDelete = useCallback((id: string) => {
     setSelectedProfileId((prev) => (prev === id ? null : prev));
@@ -376,55 +457,25 @@ export default function TimeSeriesCatalogue() {
 
       <div className="flex flex-col overflow-hidden" style={{ height: "calc(100vh - 57px)" }}>
 
-        {/* ── TOP BAR: title + search ──────────────────────────────── */}
-        <div className="flex items-center gap-3 px-5 py-2.5 border-b border-outline-variant/15 flex-shrink-0 bg-surface-container-low">
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-base text-primary">show_chart</span>
-            </div>
-            <span className="font-headline text-base font-bold text-on-surface whitespace-nowrap">
-              Time Series & Profiles
-            </span>
+        {/* ── TOP BAR: title ──────────────────────────────────── */}
+        <div className="flex items-center gap-2 px-5 py-2.5 border-b border-outline-variant/15 flex-shrink-0 bg-surface-container-low">
+          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+            <span className="material-symbols-outlined text-base text-primary">show_chart</span>
           </div>
-
-          <div className="relative w-52 flex-shrink-0">
-            <input
-              type="search"
-              placeholder="Search profiles…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-surface-container-lowest border border-outline-variant/30
-                         rounded-xl pl-7 pr-3 py-1.5 text-xs text-on-surface
-                         placeholder:text-on-surface-variant/40
-                         focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40
-                         transition-all"
-            />
-            <span className="material-symbols-outlined absolute left-2 top-1.5 text-[13px] text-on-surface-variant/40">
-              search
-            </span>
-          </div>
-
-          {query && (
-            <button
-              onClick={() => setQuery("")}
-              className="text-[10px] font-bold text-on-surface-variant/50 hover:text-primary transition-colors"
-            >
-              ✕ clear
-            </button>
-          )}
+          <span className="font-headline text-base font-bold text-on-surface whitespace-nowrap">
+            Time Series &amp; Profiles
+          </span>
         </div>
 
-        {/* ── Body: dropdown bar + chart ───────────────────────────── */}
+        {/* ── Body ────────────────────────────────────────────── */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <ErrorBoundary context="time series catalogue">
             <Suspense fallback={<PageSkeleton />}>
               <CatalogueContent
                 cataloguePromise={cataloguePromise}
-                query={query}
                 selectedProfileId={selectedProfileId}
-                onSelectProfile={handleSelect}
+                onSelectProfile={(p) => setSelectedProfileId(p.profile_id)}
                 onDeleteProfile={handleDelete}
-                isPending={isPending}
               />
             </Suspense>
           </ErrorBoundary>

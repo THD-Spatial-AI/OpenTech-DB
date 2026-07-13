@@ -1,0 +1,45 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:   # manual trigger only
+
+jobs:
+  # ── Job 1: sanity check that the pipeline runs ───
+  pipeline-check:
+    name: Pipeline check
+    runs-on: [self-hosted, opentechdb-runner]
+    steps:
+      - name: Pipeline passed
+        run: echo "✅ Pipeline is working!"
+
+  # ── Job 2: deploy the app  ───
+  deploy:
+    name: Deploy app
+    runs-on: [self-hosted, opentechdb-runner]
+    needs: pipeline-check   # only runs if job 1 succeeded
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Frontend: build the SPA and publish it for nginx ──
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: https://otdb.th-deg.de/api/v1
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publish frontend to nginx web root
+        run: |
+          rm -rf /var/www/opentech-db/*
+          cp -r frontend/dist/* /var/www/opentech-db/
+
+      # ── Backend + nginx: rebuild and restart the container stack ──
+      - name: Deploy containers
+        run: |
+          docker compose -f docker-compose.prod.yml up -d --build
+          echo " Deployed"

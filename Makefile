@@ -60,7 +60,7 @@ install: _check-docker .venv frontend/node_modules .env frontend/.env.local _ins
 	@echo ""
 
 # Interactive prompt: generates JWT secret, sets admin email + password hash
-configure:
+configure: .venv
 	@$(PY) tools/configure_env.py
 
 _check-docker:
@@ -92,7 +92,7 @@ frontend/.env.local:
 
 # ── Supabase ─────────────────────────────────────────────────────────────────
 
-supabase: _check-docker
+supabase: _check-docker _install-supabase-cli .venv
 	supabase start
 	@echo "Patching .env files with local credentials..."
 	@$(PY) tools/patch_supabase_env.py
@@ -100,7 +100,7 @@ supabase: _check-docker
 stop:
 	supabase stop
 
-reset:
+reset: _check-docker
 	supabase db reset
 
 # ── Dev servers ──────────────────────────────────────────────────────────────

@@ -60,6 +60,7 @@ desktop.ini
 data/timeseries/pending/
 data/timeseries/*.json
 !data/timeseries/timeseries_catalogue.json
+!data/timeseries/ci_test_fixture.json
 
 # Node / frontend (already covered by frontend/.gitignore too)
 frontend/node_modules/

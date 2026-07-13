@@ -2,6 +2,20 @@
   "version": "2.0.0",
   "profiles": [
     {
+      "profile_id": "ci_test_fixture",
+      "name": "CI test fixture",
+      "type": "capacity_factor",
+      "resolution": "hourly",
+      "location": "XX",
+      "source": "synthetic",
+      "carrier": "solar",
+      "year": 2019,
+      "unit": "p.u.",
+      "description": "Synthetic 200-point fixture used by CI tests.",
+      "uploaded_at": "2019-01-01T00:00:00Z",
+      "n_timesteps": 200
+    },
+    {
       "profile_id": "de_solar_pv_utility_cf_2019",
       "name": "DE Utility Solar PV Capacity Factor 2019",
       "type": "capacity_factor",

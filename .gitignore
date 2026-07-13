@@ -76,7 +76,12 @@ data/pending_submissions/*.json
 data/**/*.bak
 
 # Local utility scripts — not part of the project
-scripts/
+# (contents only, so specific maintained scripts can be re-included below)
+scripts/*
+!scripts/seed_supabase_catalogue.py
+!scripts/migrate_catalogue_to_supabase.py
+!scripts/backfill_instance_countries_supabase.py
+!scripts/export_all.py
 
 # Local data files not part of the catalogue
 data/wind_turbine_library.csv

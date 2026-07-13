@@ -52,11 +52,12 @@ jobs:
           rm -rf /var/www/opentech-db/*
           cp -r frontend/dist/* /var/www/opentech-db/
 
-      # ── Backend + nginx: rebuild and restart the container stack ──
       - name: Deploy containers
         run: |
           docker compose -f docker-compose.prod.yml up -d --build
           echo " Deployed"
 
       - name: Sync technology catalogue to Supabase
-        run: docker exec opentech-db python scripts/migrate_catalogue_to_supabase.py
+        run: |
+          docker exec opentech-db python scripts/seed_supabase_catalogue.py
+          docker restart opentech-db

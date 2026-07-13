@@ -26,4 +26,4 @@ dist-ssr
 .env.local
 
 data/timeseries
-public/img
+#public/img

@@ -30,6 +30,9 @@ jobs:
         env:
           VITE_API_BASE_URL: https://otdb.th-deg.de/api/v1
         run: |
+          set -a
+          source /opt/opentech-db/.env
+          set +a
           npm ci
           npm run build
 

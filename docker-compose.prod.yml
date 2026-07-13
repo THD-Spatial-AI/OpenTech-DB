@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: .
+    container_name: opentech-db
+    env_file: /opt/opentech-db/.env
+    restart: unless-stopped
+    expose:
+      - "8000" 
+
+  nginx:
+    image: nginx:alpine
+    container_name: opentech-nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /var/www/opentech-db:/usr/share/nginx/html:ro 
+      - /etc/letsencrypt:/etc/letsencrypt:ro          
+      - /var/www/certbot:/var/www/certbot:ro 

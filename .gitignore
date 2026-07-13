@@ -94,3 +94,8 @@ CLAUDE.md
 /.claude
 
 node_modules
+
+# ── Supabase CLI runtime (never commit) ──────────────────────────────────────
+supabase/.branches/
+supabase/.temp/
+supabase/.git/

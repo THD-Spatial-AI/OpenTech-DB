@@ -11,7 +11,33 @@ for i in $(seq 1 60); do
   sleep 2
 done
 
-# Migration 005 references auth.users, which GoTrue creates on first boot.
+echo "Handing auth schema ownership to supabase_auth_admin..."
+docker exec -i "$DB" psql -U postgres -d postgres <<'SQL'
+ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+DO $$
+DECLARE obj text;
+BEGIN
+  FOR obj IN
+    SELECT format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid))
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'auth'
+  LOOP
+    EXECUTE 'ALTER FUNCTION ' || obj || ' OWNER TO supabase_auth_admin';
+  END LOOP;
+  FOR obj IN
+    SELECT format('%I.%I', schemaname, tablename) FROM pg_tables WHERE schemaname = 'auth'
+  LOOP
+    EXECUTE 'ALTER TABLE ' || obj || ' OWNER TO supabase_auth_admin';
+  END LOOP;
+  FOR obj IN
+    SELECT format('%I.%I', sequence_schema, sequence_name)
+    FROM information_schema.sequences WHERE sequence_schema = 'auth'
+  LOOP
+    EXECUTE 'ALTER SEQUENCE ' || obj || ' OWNER TO supabase_auth_admin';
+  END LOOP;
+END $$;
+SQL
+
 echo "Waiting for GoTrue to initialise the auth schema..."
 for i in $(seq 1 60); do
   ok=$(docker exec "$DB" psql -U postgres -d postgres -tAc \

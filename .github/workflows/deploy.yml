@@ -16,9 +16,20 @@ jobs:
   deploy:
     name: Deploy app
     runs-on: [self-hosted, opentechdb-runner]
-    needs: pipeline-check   # only runs if job 1 succeeded
+    needs: pipeline-check 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure Supabase secrets
+        run: bash deploy/supabase/setup-secrets.sh
+
+      - name: Start Supabase stack
+        run: |
+          docker network create opentech 2>/dev/null || true
+          docker compose -f deploy/supabase/compose.yml --env-file /opt/opentech-db/supabase.env up -d
+
+      - name: Apply database migrations
+        run: bash deploy/supabase/apply-migrations.sh
 
       # ── Frontend: build the SPA and publish it for nginx ──
       - uses: actions/setup-node@v4

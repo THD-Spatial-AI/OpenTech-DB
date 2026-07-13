@@ -63,4 +63,8 @@ for f in supabase/migrations/*.sql; do
   "${PSQL[@]}" -c "INSERT INTO public._applied_migrations (name) VALUES ('$name')" >/dev/null
 done
 
+# PostgREST caches the schema at startup; tell it to pick up new tables.
+echo "Reloading PostgREST schema cache..."
+docker exec "$DB" psql -U postgres -d postgres -c "NOTIFY pgrst, 'reload schema';" >/dev/null
+
 echo "Migrations up to date."

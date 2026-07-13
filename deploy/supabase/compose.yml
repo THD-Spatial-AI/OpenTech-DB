@@ -87,18 +87,14 @@ services:
     depends_on:
       - auth
       - rest
-    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
     ports:
-      - "127.0.0.1:54321:8000"   # local debugging only; public access goes through nginx
-    environment:
+      - "127.0.0.1:54321:8000" 
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl
-      SUPABASE_ANON_KEY: ${ANON_KEY}
-      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
     volumes:
-      - ./kong.yml:/home/kong/temp.yml:ro
+      - /opt/opentech-db/kong.yml:/home/kong/kong.yml:ro
     networks:
       - default
       - opentech   # shared with the app stack: nginx + backend reach "supabase-kong"

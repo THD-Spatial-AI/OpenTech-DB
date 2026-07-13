@@ -52,10 +52,13 @@ else
   echo "Using existing secrets from $SB_ENV"
 fi
 
-# shellcheck disable=SC1090
 set -a; source "$SB_ENV"; set +a
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+sed -e "s|\${SUPABASE_ANON_KEY}|$ANON_KEY|g" \
+    -e "s|\${SUPABASE_SERVICE_KEY}|$SERVICE_ROLE_KEY|g" \
+    "$SCRIPT_DIR/kong.yml" > /opt/opentech-db/kong.yml
+chmod 644 /opt/opentech-db/kong.yml
 
-# ── Patch the app env file ────────────────────────────────────────────────────
 set_kv() {  # set_kv <key> <value>
   if grep -q "^$1=" "$ENV_FILE"; then
     sed -i "s|^$1=.*|$1=$2|" "$ENV_FILE"

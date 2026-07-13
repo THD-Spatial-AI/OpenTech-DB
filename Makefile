@@ -1,0 +1,127 @@
+# ── opentech-db — local development setup ────────────────────────────────────
+# Prerequisites: Python 3.11+, Node.js 18+, Docker Desktop
+#
+# Quick start (Mac / Linux / Git Bash on Windows):
+#
+#   make install          ← run once after cloning
+#   make backend          ← terminal 1
+#   make frontend         ← terminal 2
+#
+# Windows (PowerShell, no make):
+#   .\scripts\setup-local-supabase.ps1
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+.PHONY: help install configure supabase backend frontend stop reset lint build dev
+
+# ── Platform ─────────────────────────────────────────────────────────────────
+
+ifeq ($(OS),Windows_NT)
+    PYTHON   := python
+    VENV_BIN := .venv/Scripts
+else
+    PYTHON   := python3
+    VENV_BIN := .venv/bin
+endif
+
+PY  := $(VENV_BIN)/python
+PIP := $(VENV_BIN)/pip
+UV  := $(VENV_BIN)/uvicorn
+
+# ── Default ───────────────────────────────────────────────────────────────────
+
+help:
+	@echo ""
+	@echo "  opentech-db — make targets"
+	@echo ""
+	@echo "  make install     one-time setup: venv · npm · Supabase · .env"
+	@echo "  make configure   set JWT secret + admin credentials in .env"
+	@echo "  make backend     start FastAPI on :8000"
+	@echo "  make frontend    start Vite dev server on :5173"
+	@echo "  make dev         start both in one terminal (Ctrl+C to stop all)"
+	@echo "  make supabase    (re)start local Supabase + patch .env"
+	@echo "  make stop        stop local Supabase containers"
+	@echo "  make reset       wipe local DB and re-run all migrations"
+	@echo "  make lint        ESLint on the frontend"
+	@echo "  make build       production frontend bundle"
+	@echo ""
+
+# ── One-time setup ───────────────────────────────────────────────────────────
+
+install: _check-docker .venv frontend/node_modules .env frontend/.env.local _install-supabase-cli
+	@$(MAKE) --no-print-directory supabase
+	@$(MAKE) --no-print-directory configure
+	@echo ""
+	@echo "================================================================"
+	@echo "  Setup complete! Start the dev servers:"
+	@echo "    Terminal 1:  make backend"
+	@echo "    Terminal 2:  make frontend"
+	@echo "================================================================"
+	@echo ""
+
+# Interactive prompt: generates JWT secret, sets admin email + password hash
+configure:
+	@$(PY) tools/configure_env.py
+
+_check-docker:
+	@docker info > /dev/null 2>&1 \
+	  || (echo "" && echo "ERROR: Docker Desktop is not running. Please start it and try again." && exit 1)
+
+_install-supabase-cli:
+	@which supabase > /dev/null 2>&1 \
+	  || (echo "Installing Supabase CLI..." && npm install -g supabase)
+
+# Python virtualenv — only created when the directory doesn't exist
+.venv:
+	$(PYTHON) -m venv .venv
+	$(PIP) install --upgrade pip --quiet
+	$(PIP) install -r requirements.txt
+
+# npm deps — only runs when package.json is newer than node_modules
+frontend/node_modules: frontend/package.json
+	cd frontend && npm install
+
+# .env template — only created when file is missing
+.env:
+	@cp .env.example .env
+	@echo "Created .env from .env.example — fill in JWT_SECRET_KEY and ADMIN_PASSWORD_HASH."
+
+frontend/.env.local:
+	@cp frontend/.env.example frontend/.env.local
+	@echo "Created frontend/.env.local from template."
+
+# ── Supabase ─────────────────────────────────────────────────────────────────
+
+supabase: _check-docker
+	supabase start
+	@echo "Patching .env files with local credentials..."
+	@$(PY) tools/patch_supabase_env.py
+
+stop:
+	supabase stop
+
+reset:
+	supabase db reset
+
+# ── Dev servers ──────────────────────────────────────────────────────────────
+
+backend:
+	$(UV) main:app --reload --port 8000
+
+frontend:
+	cd frontend && npm run dev
+
+# Runs backend in the background and frontend in the foreground.
+# Ctrl+C stops the frontend; the backend is also killed on exit.
+dev:
+	@trap 'kill %1 2>/dev/null; exit 0' INT TERM EXIT; \
+	 $(UV) main:app --reload --port 8000 & \
+	 cd frontend && npm run dev
+
+# ── Code quality ─────────────────────────────────────────────────────────────
+
+lint:
+	cd frontend && npm run lint
+
+build:
+	cd frontend && npm run build

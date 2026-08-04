@@ -12,7 +12,8 @@
 #
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: help install configure supabase backend frontend stop reset lint build dev
+.PHONY: help install configure supabase backend frontend stop reset lint build dev \
+        docker-build docker-up docker-down docker-logs
 
 # ── Platform ─────────────────────────────────────────────────────────────────
 
@@ -42,8 +43,12 @@ help:
 	@echo "  make supabase    (re)start local Supabase + patch .env"
 	@echo "  make stop        stop local Supabase containers"
 	@echo "  make reset       wipe local DB and re-run all migrations"
-	@echo "  make lint        ESLint on the frontend"
-	@echo "  make build       production frontend bundle"
+	@echo "  make lint           ESLint on the frontend"
+	@echo "  make build          production frontend bundle"
+	@echo "  make docker-build   build all Docker images (backend + frontend)"
+	@echo "  make docker-up      start production stack in background"
+	@echo "  make docker-down    stop production stack"
+	@echo "  make docker-logs    tail logs from all containers"
 	@echo ""
 
 # ── One-time setup ───────────────────────────────────────────────────────────
@@ -125,3 +130,17 @@ lint:
 
 build:
 	cd frontend && npm run build
+
+# ── Docker / Production ───────────────────────────────────────────────────────
+
+docker-build:
+	docker compose build
+
+docker-up:
+	docker compose up -d
+
+docker-down:
+	docker compose down
+
+docker-logs:
+	docker compose logs -f --tail=100

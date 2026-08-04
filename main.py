@@ -18,6 +18,7 @@ load_dotenv()  # load .env before any env-dependent imports
 
 import json
 import logging
+import os
 import uuid as _uuid
 from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
@@ -157,16 +158,21 @@ async def add_request_id(request: Request, call_next):
     return response
 
 
+_CORS_ORIGINS = [
+    "https://otdb.th-deg.de",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://localhost:4173",
+]
+_extra = os.getenv("CORS_ORIGINS", "")
+if _extra:
+    _CORS_ORIGINS += [o.strip() for o in _extra.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://otdb.th-deg.de",   # production
-        "http://localhost:5173",    # Vite default
-        "http://localhost:5174",    # Vite fallback
-        "http://localhost:5175",    # Vite fallback (further)
-        "http://localhost:5176",    # Vite fallback
-        "http://localhost:4173",    # Vite `npm run preview`
-    ],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     # Authorization header must be explicitly exposed for GET /auth/me

@@ -31,7 +31,6 @@ import * as echarts from "echarts";
 import {
   uploadTimeSeriesProfile,
 } from "../../services/timeseries";
-import { useAuth } from "../../context/AuthContext";
 import type { ProfileType, ProfileResolution } from "../../types/timeseries";
 import MapPickerModal from "./MapPickerModal";
 
@@ -767,7 +766,6 @@ interface UploadProfileProps {
 }
 
 export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
-  const { token }   = useAuth();
   const fileRef     = useRef<HTMLInputElement>(null);
   const [pickedFile, setPickedFile] = useState<File | null>(null);
   const [format, setFormat]         = useState<"csv" | "json">("csv");
@@ -793,8 +791,8 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
       const file = pickedFile;
       if (!file) {
         errs.file = "A file is required.";
-      } else if (file.size > 50 * 1024 * 1024) {
-        errs.file = "File must be smaller than 50 MB.";
+      } else if (file.size > 10 * 1024 * 1024) {
+        errs.file = "File must be smaller than 10 MB.";
       } else if (
         format === "csv" && !file.name.toLowerCase().endsWith(".csv")
       ) {
@@ -821,7 +819,7 @@ export default function UploadProfile({ onUploadSuccess }: UploadProfileProps) {
       fd.append("file", file!);
 
       try {
-        const result = await uploadTimeSeriesProfile(fd, token);
+        const result = await uploadTimeSeriesProfile(fd);
         onUploadSuccess?.(result.submission_id, result.name);
         return { status: "success", profileId: result.submission_id, name: result.name, n: result.n_timesteps };
       } catch (err) {

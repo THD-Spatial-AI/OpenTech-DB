@@ -19,21 +19,24 @@ but available).
 
 ---
 
-## ADR-002: No relational database
+## ADR-002: Supabase data service with JSON portability
 
-**Status:** Accepted
+**Status:** Accepted; replaces the original JSON-only decision
 
 **Context:** Data is curated (low write frequency), needs to be version-controlled, and
 should be portable without infrastructure.
 
-**Decision:** Store all data as JSON files in the `data/` directory tree.
+**Decision:** Use backend-only Supabase PostgreSQL/PostgREST as the primary
+runtime store and retain `data/` JSON files as version-controlled seeds and a
+fallback.
 
-**Rationale:** JSON files in Git provide full history, diff-ability, and portability. A
-researcher can contribute new technologies by opening a text editor. A database would add
-operational complexity with no benefit at the current project scale.
+**Rationale:** JSON in Git still provides reviewability and portability, while
+the relational service supports catalogue, time-series, scraper, concurrent
+workflow operations, and revocable hashed personal API tokens. Keeping the
+service-role key in FastAPI preserves one authorization boundary.
 
-**Consequences:** No concurrent write support. Filtering and search is O(n) in memory over
-the loaded dataset. Acceptable for a catalogue of hundreds of technologies.
+**Consequences:** Supabase migrations and backups are operational requirements.
+The API can fall back to JSON for local data-only development.
 
 ---
 
@@ -133,23 +136,24 @@ served as static files from any web server.
 
 ---
 
-## ADR-008: Supabase + ORCID for authentication
+## ADR-008: Go sessions with an isolated Keycloak realm
 
-**Status:** Accepted
+**Status:** Accepted; replaces the original Supabase/ORCID browser-auth decision
 
 **Context:** Contributor and admin workflows require user identity. Researchers prefer
 ORCID iD as their professional identity. Simple email + password must also be supported.
 
-**Decision:** Use ORCID OAuth (handled in `api/auth.py`) for researcher sign-in and
-Supabase JS SDK for session management, email/password auth, and admin role storage.
+**Decision:** Use a standalone Go service with the `opentechdb` Keycloak realm.
+The Go service owns Keycloak tokens in Redis and gives React only an opaque
+HttpOnly session cookie. GitHub and ORCID remain optional Keycloak brokers.
 
-**Rationale:** ORCID is the standard researcher identifier in academia, reducing
-friction for contributor sign-up. Supabase provides a managed auth backend with email,
-GitHub OAuth, and role metadata without operating a custom identity service.
+**Rationale:** A shared Keycloak server can isolate several applications by realm
+while keeping accounts and roles out of the data database. The Go boundary
+prevents identity-provider tokens from entering browser JavaScript.
 
-**Consequences:** ORCID client credentials and Supabase project keys must be configured
-as environment variables. JWTs are stored in `sessionStorage` (cleared on browser close).
-If Supabase is unavailable, ORCID-based login still works independently.
+**Consequences:** Keycloak, Redis, and the Go service must be operated. FastAPI
+validates sessions server-to-server with `AUTH_INTERNAL_SECRET`. Supabase
+Auth/GoTrue and the Supabase JS dependency are removed completely.
 
 ---
 
@@ -166,9 +170,9 @@ visibility, and auth session.
 no reducers, actions, or boilerplate. It integrates naturally with React 19 hooks. For
 the scale of state involved (a handful of UI flags), Redux would be over-engineered.
 
-**Consequences:** State is not persisted across hard reloads (except auth JWT in
-`sessionStorage`). No dev tools integration out of the box (though Zustand supports
-Redux DevTools).
+**Consequences:** UI state is not persisted across hard reloads. Authentication
+persists independently through the Go-managed HttpOnly cookie. No dev-tools
+integration is enabled by default (though Zustand supports Redux DevTools).
 
 ---
 
@@ -180,8 +184,8 @@ Redux DevTools).
 Initially, profile references were stored as scalar fields inside technology records.
 
 **Decision:** Extract time-series profiles into a dedicated endpoint family
-(`/api/v1/timeseries`) backed by `data/timeseries/timeseries_catalogue.json` and
-individual data files. VRE technology records reference profiles by `profile_key`.
+(`/api/v1/timeseries`) backed primarily by Supabase tables, with JSON files as a
+local fallback. VRE technology records reference profiles by `profile_key`.
 
 **Rationale:** Time-series data (up to 8760 values per profile) is too large to embed in
 technology catalogue responses. Decoupling allows the profile catalogue to be queried,

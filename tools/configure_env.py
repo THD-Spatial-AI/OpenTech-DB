@@ -1,36 +1,29 @@
-"""
-Interactive .env configurator.
-Fills in JWT_SECRET_KEY (auto-generated) and ADMIN_EMAIL / ADMIN_PASSWORD_HASH
-(prompted) if they are not already set, then creates the admin user in the
-local Supabase instance with is_admin: true in app_metadata.
+"""Configure matching local OpenTech DB and Keycloak/Go auth secrets.
 
-Called by:  make configure
-Safe to re-run — skips any value already set.
+This script deliberately does not create Supabase Auth users. Authentication,
+roles, and users live only in the isolated ``opentechdb`` Keycloak realm.
 """
+from __future__ import annotations
 
-import getpass
 import re
 import secrets
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ENV  = ROOT / ".env"
+BACKEND_ENV = ROOT / ".env"
+AUTH_ENV = ROOT / "keycloak" / ".env.local"
+FRONTEND_ENV = ROOT / "frontend" / ".env.local"
 
-# Values that count as "not configured yet"
-_PLACEHOLDERS = {"admin@example.com", "your-email@example.com", "change-me", ""}
-
-
-# ── .env helpers ─────────────────────────────────────────────────────────────
 
 def read_env(path: Path) -> dict[str, str]:
     if not path.exists():
         return {}
     data: dict[str, str] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
-        m = re.match(r"^([A-Z_]+)=(.*)$", line.strip())
-        if m:
-            data[m.group(1)] = m.group(2)
+        match = re.match(r"^([A-Z][A-Z0-9_]*)=(.*)$", line.strip())
+        if match:
+            data[match.group(1)] = match.group(2).strip()
     return data
 
 
@@ -41,131 +34,83 @@ def set_env_var(path: Path, key: str, value: str) -> None:
     if re.search(pattern, content, re.MULTILINE):
         content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
     else:
-        content = content.rstrip("\n") + f"\n{key}={value}\n"
+        content = content.rstrip("\n") + f"\n{replacement}\n"
     path.write_text(content, encoding="utf-8")
 
 
-def already_set(current: dict, key: str) -> bool:
-    value = current.get(key, "").strip()
-    return bool(value) and value not in _PLACEHOLDERS
-
-
-# ── Supabase admin user creation ─────────────────────────────────────────────
-
-def create_supabase_admin(url: str, service_key: str, email: str, password: str) -> None:
-    """Create (or promote) a Supabase user with is_admin: true."""
-    try:
-        from supabase import create_client  # type: ignore[import]
-    except ImportError:
-        print("  Supabase admin user  skipped (supabase package not installed)")
+def remove_env_vars(path: Path, keys: set[str]) -> None:
+    if not path.exists():
         return
-
-    if not url or not service_key:
-        print("  Supabase admin user  skipped (SUPABASE_URL / SERVICE_ROLE_KEY not set)")
-        return
-
-    try:
-        sb = create_client(url, service_key)
-
-        # Try to create; if already exists, fetch and update instead
-        try:
-            result = sb.auth.admin.create_user({
-                "email": email,
-                "password": password,
-                "email_confirm": True,
-                "app_metadata": {"is_admin": True},
-            })
-            print(f"  Supabase admin user  created ({email})  ✓")
-        except Exception as create_err:
-            err_str = str(create_err).lower()
-            if "already" in err_str or "exists" in err_str or "duplicate" in err_str:
-                # User exists — just promote them
-                users = sb.auth.admin.list_users()
-                user = next((u for u in users if u.email == email), None)
-                if user:
-                    sb.auth.admin.update_user_by_id(
-                        str(user.id),
-                        {"app_metadata": {"is_admin": True}},
-                    )
-                    print(f"  Supabase admin user  already exists — promoted to admin  ✓")
-                else:
-                    print(f"  Supabase admin user  could not find existing user to promote")
-            else:
-                print(f"  Supabase admin user  warning: {create_err}")
-                print("  You can promote manually in Supabase Studio → Authentication → Users")
-
-    except Exception as e:
-        print(f"  Supabase admin user  skipped (Supabase not reachable: {e})")
-        print("  Run `make configure` again after `make supabase` to create the admin user.")
+    lines = path.read_text(encoding="utf-8").splitlines()
+    retained = [
+        line for line in lines
+        if line.strip().split("=", 1)[0] not in keys
+    ]
+    updated = "\n".join(retained).rstrip("\n") + "\n"
+    if updated != path.read_text(encoding="utf-8"):
+        path.write_text(updated, encoding="utf-8")
+        print(f"  {path.relative_to(ROOT)}: removed retired browser/auth secrets  ✓")
 
 
-# ── Main ─────────────────────────────────────────────────────────────────────
+def ensure_secret(path: Path, key: str, *, shared_value: str | None = None) -> str:
+    current = read_env(path).get(key, "").strip()
+    if shared_value is not None:
+        if current != shared_value:
+            set_env_var(path, key, shared_value)
+            print(f"  {path.name}: {key} synchronized  ✓")
+        else:
+            print(f"  {path.name}: {key} already synchronized")
+        return shared_value
+    if current and not current.startswith("replace-with"):
+        print(f"  {path.name}: {key} already set")
+        return current
+    value = shared_value or secrets.token_urlsafe(48)
+    set_env_var(path, key, value)
+    print(f"  {path.name}: {key} generated  ✓")
+    return value
+
 
 def main() -> None:
-    if not ENV.exists():
-        print(f"ERROR: {ENV} not found. Run `make install` first.")
+    if not BACKEND_ENV.exists():
+        print(f"ERROR: {BACKEND_ENV} not found. Copy .env.example first.")
         sys.exit(1)
 
-    current = read_env(ENV)
-    admin_email    = ""
-    admin_password = ""
-    print()
-
-    # ── JWT_SECRET_KEY ────────────────────────────────────────────────────────
-    if already_set(current, "JWT_SECRET_KEY"):
-        print("  JWT_SECRET_KEY        already set — skipping")
-    else:
-        key = secrets.token_urlsafe(32)
-        set_env_var(ENV, "JWT_SECRET_KEY", key)
-        print("  JWT_SECRET_KEY        generated  ✓")
-
-    # ── ADMIN_EMAIL ───────────────────────────────────────────────────────────
-    if already_set(current, "ADMIN_EMAIL"):
-        admin_email = current["ADMIN_EMAIL"]
-        print(f"  ADMIN_EMAIL           already set ({admin_email}) — skipping")
-    else:
-        admin_email = input("  Enter admin email: ").strip()
-        if admin_email:
-            set_env_var(ENV, "ADMIN_EMAIL", admin_email)
-            print("  ADMIN_EMAIL           set  ✓")
-        else:
-            print("  ADMIN_EMAIL           skipped")
-
-    # ── ADMIN_PASSWORD_HASH ───────────────────────────────────────────────────
-    if already_set(current, "ADMIN_PASSWORD_HASH"):
-        print("  ADMIN_PASSWORD_HASH   already set — skipping")
-        print()
-        print("  Tip: run `make configure` to re-create the Supabase admin user if needed.")
-    else:
-        try:
-            import bcrypt  # noqa: PLC0415
-        except ImportError:
-            print("  ADMIN_PASSWORD_HASH   skipped (bcrypt not in venv; run: pip install bcrypt)")
-        else:
-            admin_password = getpass.getpass("  Enter admin password (hidden): ").strip()
-            if admin_password:
-                hashed = bcrypt.hashpw(admin_password.encode(), bcrypt.gensalt(12)).decode()
-                set_env_var(ENV, "ADMIN_PASSWORD_HASH", hashed)
-                print("  ADMIN_PASSWORD_HASH   hashed and saved  ✓")
-            else:
-                print("  ADMIN_PASSWORD_HASH   skipped")
-
-    # ── Supabase admin user ───────────────────────────────────────────────────
-    # Re-read .env after edits above so we get the latest SUPABASE_* values
-    current = read_env(ENV)
-    if admin_email and admin_password:
-        create_supabase_admin(
-            url         = current.get("SUPABASE_URL", ""),
-            service_key = current.get("SUPABASE_SERVICE_ROLE_KEY", ""),
-            email       = admin_email,
-            password    = admin_password,
+    if not AUTH_ENV.exists():
+        AUTH_ENV.write_text(
+            "KEYCLOAK_ADMIN_USERNAME=admin\n"
+            "KEYCLOAK_DB_USER=keycloak\n",
+            encoding="utf-8",
         )
-    elif admin_email:
-        print("  Supabase admin user  skipped (no password provided)")
+        print(f"  created {AUTH_ENV.relative_to(ROOT)}")
 
-    print()
-    print("  Done. Start the servers with:  make backend  /  make frontend")
-    print()
+    internal_secret = ensure_secret(BACKEND_ENV, "AUTH_INTERNAL_SECRET")
+    remove_env_vars(BACKEND_ENV, {
+        "ADMIN_EMAIL",
+        "ADMIN_PASSWORD_HASH",
+        "JWT_SECRET_KEY",
+        "ORCID_CLIENT_ID",
+        "ORCID_CLIENT_SECRET",
+        "ORCID_REDIRECT_URI",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_JWT_SECRET",
+    })
+    remove_env_vars(FRONTEND_ENV, {
+        "VITE_SUPABASE_ANON_KEY",
+        "VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY",
+        "VITE_SUPABASE_URL",
+    })
+    set_env_var(BACKEND_ENV, "AUTH_SERVICE_URL", "http://localhost:8001")
+    set_env_var(BACKEND_ENV, "AUTH_REALM", "opentechdb")
+
+    ensure_secret(AUTH_ENV, "KEYCLOAK_ADMIN_PASSWORD")
+    ensure_secret(AUTH_ENV, "KEYCLOAK_DB_PASSWORD")
+    ensure_secret(AUTH_ENV, "REDIS_PASSWORD")
+    ensure_secret(AUTH_ENV, "OPENTECHDB_CLIENT_SECRET")
+    ensure_secret(AUTH_ENV, "AUTH_INTERNAL_SECRET", shared_value=internal_secret)
+
+    print("\n  Authentication configuration is ready.")
+    print("  The 'make auth' target can start or rebuild the authentication stack.")
+    print("  Grant the realm role 'admin' in Keycloak; no hardcoded admin exists.\n")
 
 
 if __name__ == "__main__":

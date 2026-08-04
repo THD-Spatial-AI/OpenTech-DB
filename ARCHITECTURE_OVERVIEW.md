@@ -30,7 +30,7 @@ bounds, and no ontology alignment.
 | Multi-framework support | PyPSA and Calliope adapters (more planned) |
 | Automated data discovery | Academic scraper pipeline (OpenAlex, NREL ATB, IRENA…) |
 | Non-developer access | React 19 web frontend with charts and world map |
-| Contributor workflow | ORCID + Supabase auth with admin review queue |
+| Contributor workflow | Go sessions + isolated Keycloak realm with admin review queue |
 | Hourly profiles | Time-series catalogue of capacity factors and load profiles |
 
 ---
@@ -51,20 +51,20 @@ bounds, and no ontology alignment.
 │   │                                                            └──────────┘  │  │
 │   │  ┌─────────────────────┐  ┌──────────────────┐  ┌───────────────────┐   │  │
 │   │  │  ContributorWork-   │  │   AdminPanel     │  │   AuthPage        │   │  │
-│   │  │  space (submit      │  │   ScraperPanel   │  │   ORCID / Supabase│   │  │
-│   │  │  tech / profile)    │  │   (review queue) │  │   OAuthCallback   │   │  │
+│   │  │  space (submit      │  │   ScraperPanel   │  │ username / email  │   │  │
+│   │  │  tech / profile)    │  │   (review queue) │  │ GitHub / ORCID    │   │  │
 │   │  └─────────────────────┘  └──────────────────┘  └───────────────────┘   │  │
 │   └──────────────────────┬───────────────────────────────────────────────────┘  │
-│                          │ HTTP + Bearer JWT                                     │
+│                          │ HTTP + opaque session cookie / personal bearer token  │
 │   ┌──────────────────────▼───────────────────────────────────────────────────┐  │
 │   │                    FastAPI Backend  (main.py)                            │  │
 │   │                                                                          │  │
-│   │  /technologies  /adapt  /timeseries  /auth  /scraper  /admin  /debug    │  │
+│   │  /technologies  /adapt  /timeseries  /profile  /scraper  /admin /debug   │  │
 │   │                                                                          │  │
 │   │  ┌─────────────┐  ┌───────────┐  ┌─────────────┐  ┌──────────────────┐  │  │
-│   │  │ routes.py   │  │ auth.py   │  │timeseries.py│  │scraper_routes.py │  │  │
-│   │  │ (CRUD +     │  │ (ORCID    │  │ (catalogue, │  │ (status, run,    │  │  │
-│   │  │  adapters)  │  │  JWT)     │  │  submit,    │  │  candidates,     │  │  │
+│   │  │ routes.py   │  │auth_session│  │timeseries.py│  │scraper_routes.py │  │  │
+│   │  │ (CRUD +     │  │ (Go       │  │ (catalogue, │  │ (status, run,    │  │  │
+│   │  │  adapters)  │  │ session)  │  │  submit,    │  │  candidates,     │  │  │
 │   │  │             │  │           │  │  approve)   │  │  approve/reject) │  │  │
 │   │  └─────────────┘  └───────────┘  └─────────────┘  └──────────────────┘  │  │
 │   └──────┬─────────────────────────────────────────────────────┬─────────┘  │
@@ -81,8 +81,9 @@ bounds, and no ontology alignment.
 │                                                                               │
 │   ┌──────────────────────────────────────────────────────────────────────┐   │
 │   │                         Supabase PostgreSQL                          │   │
-│   │  technologies · Auth sessions · scraper_candidates · scraper_runs   │   │
-│   │  technology_submissions · admin roles                                │   │
+│   │  technologies · technology_instances · time-series profiles          │   │
+│   │  technology_submissions · scraper_candidates · scraper_runs            │   │
+│   │  api_tokens (SHA-256 hashes + Keycloak-subject attribution)             │   │
 │   └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                               │
 └───────────────────────────────────────────────────────────────────────────────┘
@@ -151,7 +152,7 @@ The backend is a **FastAPI** application with:
 
 - **ORJSONResponse** as default serialiser (fast, deterministic field ordering)
 - **CORS** configured for frontend origins (ports 5173, 5174, 4173)
-- **Seven router groups** mounted under `/api/v1/`
+- Router groups mounted under `/api/v1/`
 - **APScheduler** started on application lifespan for automated scraper runs
 - **Swagger UI** at `/docs` and **ReDoc** at `/redoc`
 
@@ -160,12 +161,11 @@ The backend is a **FastAPI** application with:
 | Router | Base path | Description |
 |---|---|---|
 | `tech_router` | `/technologies` | List, filter, retrieve technologies and instances |
-| `auth_router` | `/auth` | ORCID OAuth redirect/callback, JWT validation |
 | `timeseries_router` | `/timeseries` | Profile catalogue, data retrieval, contributor submit |
 | `scraper_router` | `/scraper` | Pipeline status, manual run trigger, candidate management |
 | `debug_router` | `/debug` | Cache reload, JSON loading diagnostics |
 | `ontology_router` | `/ontology` | Schema definitions and enum values |
-| `admin_router` | `/admin` | Submissions review, approval, user management |
+| `admin_router` | `/admin` | Submission review and approval; users remain in Keycloak |
 
 **Data loading flow:**
 
@@ -363,21 +363,27 @@ extraction:
 
 ### 3.6 Database — Supabase Migrations
 
-Located in `db/migrations/`. The database is **optional** — the system runs fully without
-Supabase using local JSON files. When Supabase is configured, it stores:
+Located in `db/migrations/` and `supabase/migrations/`. Supabase is the primary
+runtime data service; local JSON files are a seed and fallback. It stores:
 
 | Table | Contents |
 |---|---|
+| `technologies`, `technology_instances` | Active OEO-aligned catalogue |
+| `technology_submissions` | Human contributor review workflow with Keycloak-subject attribution |
+| `timeseries_profiles`, `timeseries_submissions` | Approved profiles and their review queue |
 | `scraper_candidates` | All scraped candidates with status, source, extracted params, proposed instance |
 | `scraper_runs` | Pipeline execution history (run_id, timing, paper counts, errors) |
+| `api_tokens` | Hashed, scoped, expiring/revocable personal API credentials linked to Keycloak subjects |
 
-Migrations are simple SQL files applied once:
+Migrations are applied in order by the local CLI or production helper:
 ```bash
-psql "$SUPABASE_DB_URL" -f db/migrations/001_scraper_tables.sql
+make supabase
+# production: bash deploy/supabase/apply-migrations.sh
 ```
 
-**Security:** Scraper tables are accessed via the service-role key (bypasses RLS).
-Supabase auth tables use Row-Level Security — admins are promoted via `raw_app_meta_data`.
+**Security:** all tables are accessed only by FastAPI/maintenance tools using the
+service role. Supabase Auth/GoTrue is disabled, browser roles have no privileges,
+and no application-user record or user-table foreign key is created.
 
 ---
 
@@ -405,13 +411,13 @@ Vite 8, TailwindCSS, ECharts, and Leaflet. Served independently from the backend
 | World map | `WorldMapView` + `TechGeoMap` + `CountryPanel` | Leaflet map of technology instances by country |
 | Contributor | `ContributorWorkspace` | Multi-step technology submission form + time-series upload |
 | Admin | `AdminPanel` + `ScraperPanel` | Review submissions + scraper candidates; approve/reject |
-| Auth | `AuthPage` + `OAuthCallback` | ORCID OAuth + Supabase email/GitHub login |
+| Auth | `AuthPage` + `AuthContext` | Existing username/email UI backed by Go/Keycloak; optional GitHub/ORCID brokers |
 
 **State management:**
 
 | Mechanism | Used for |
 |---|---|
-| `AuthContext` (React Context) | JWT, user identity, `isAdmin` flag |
+| `AuthContext` (React Context) | Public session identity and Keycloak-derived `isAdmin` flag |
 | Zustand 5 | Active category, search query, modal state |
 | Promise cache in `services/api.ts` | Deduplicates in-flight API requests |
 
@@ -438,41 +444,26 @@ nginx, Caddy, or Render static site hosting.
 | ECharts | 6.x | Bar charts + time-series line charts |
 | Leaflet | 1.9 | World map + location picker |
 | Zustand | 5 | Minimal state management |
-| Supabase JS | 2 | Auth sessions |
 
 ---
 
 ### 3.8 Authentication Flow
 
-Three concurrent auth mechanisms serve different use cases:
+One server-side identity boundary supports several sign-in methods:
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                  Authentication Paths                  │
-│                                                        │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  Path 1 — ORCID OAuth (researcher identity)     │  │
-│  │  User → GET /auth/orcid → ORCID OAuth page      │  │
-│  │  ORCID → callback → backend issues HS256 JWT    │  │
-│  │  JWT stored in sessionStorage; sent as Bearer   │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                        │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  Path 2 — Supabase (email / GitHub OAuth)       │  │
-│  │  Supabase JS SDK handles session management     │  │
-│  │  Admin role stored in raw_app_meta_data         │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                        │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  Path 3 — Built-in admin (email + bcrypt hash)  │  │
-│  │  ADMIN_EMAIL + ADMIN_PASSWORD_HASH env vars     │  │
-│  │  No external service dependency                 │  │
-│  └──────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────┘
+Browser ── /auth-api ──> Go auth service ── OIDC ──> Keycloak/opentechdb
+   │                          │                            │
+   │ opaque HttpOnly cookie  │ access/refresh in Redis    │ users + roles
+   └──── protected API ──> FastAPI ── internal validation ┘
 ```
 
-Protected endpoints require `Authorization: Bearer <jwt>` header. Admin endpoints
-additionally require `is_admin: true` in the JWT claims.
+The same UI supports username/email and password plus Keycloak-brokered GitHub
+and ORCID login. FastAPI accepts the opaque session cookie, validates it with the
+Go service, checks the exact `opentechdb` realm and filtered roles, and fails
+closed if validation is unavailable. The profile can issue independent `otdb_`
+personal API tokens whose hashes live in backend-only Supabase; these tokens
+never inherit admin. React receives no Keycloak/Supabase token.
 
 ---
 
@@ -524,7 +515,7 @@ a non-root `appuser` for security.
 ### Cloud (Render.com)
 
 `render.yaml` configures a web service deployment on Render.com. The free tier handles
-read-only API traffic; Supabase handles persistent data (candidates, runs).
+read-only API traffic; Supabase handles persistent catalogue and workflow data.
 
 ---
 
@@ -582,7 +573,9 @@ read-only API traffic; Supabase handles persistent data (candidates, runs).
 | **ADOPTNet0** | Agent-based Decarbonisation Optimisation and Planning Tool for Net Zero (THD) |
 | **ORCID** | Open Researcher and Contributor ID — persistent digital identifier for researchers |
 | **SPA** | Single-Page Application — the React frontend is served as static files |
-| **Supabase** | Open-source Firebase alternative — managed auth, Postgres DB, and user metadata |
+| **Supabase** | Backend-only PostgreSQL/PostgREST data platform; Auth/GoTrue is disabled |
+| **Keycloak** | Identity provider; OpenTech accounts and roles live in the isolated `opentechdb` realm |
+| **Personal API token** | Revocable `otdb_` credential shown once; only its SHA-256 hash is stored |
 
 ---
 

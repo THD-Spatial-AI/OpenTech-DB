@@ -1,156 +1,119 @@
 # Deployment Guide
 
-Production deployment of OpenTech-DB on a THD VM behind `*.th-deg.de`.
+OpenTech DB is deployed as three boundaries:
 
-## Architecture
+1. the React/Nginx application and FastAPI backend;
+2. a backend-only Supabase data stack (PostgreSQL, PostgREST, and Kong);
+3. the shared Keycloak server plus the OpenTech Go auth service and Redis.
 
-```
-Internet ──HTTPS──> Caddy (port 443)
-                        │
-                        ├── /api/* ──> backend:8000  (FastAPI)
-                        ├── /health ──> backend:8000
-                        ├── /docs    ──> backend:8000
-                        └── /*       ──> frontend:80 (nginx, SPA)
+Supabase Auth/GoTrue is not deployed. Application accounts, passwords, identity
+providers, and roles exist only in the `opentechdb` Keycloak realm. The browser
+can reach Supabase only indirectly through FastAPI.
 
-Database: JSON files in Docker named volume `opentech-db-data`
-Candidates: Supabase Postgres (external)
+```text
+Browser ── HTTPS ──> OpenTech Nginx ──> FastAPI ──> Supabase data API
+   │                       │                │          (service role only)
+   └── /auth-api ──────────┴────────────> Go auth ──> Keycloak opentechdb realm
+                                            │
+                                           Redis
 ```
 
 ## Prerequisites
 
-- Docker + Docker Compose (v2) on the VM
-- Domain DNS: `otdb.th-deg.de` → VM IP address
-- Supabase project (free tier) with:
-  - `technology_submissions` table
-  - RLS policy enabling service-role only access
-- ORCID app credentials (production, not sandbox)
-- GitHub PAT with `repo` scope (for admin approval → PR workflow)
+- Docker with Compose v2 on both servers.
+- DNS and TLS for the OpenTech application and Keycloak/auth server.
+- A private or firewall-restricted route from FastAPI to the Supabase data API.
+- A matching 32+ character `AUTH_INTERNAL_SECRET` on the application and auth
+  servers.
+- A GitHub token only when approval should create pull requests.
 
-## Quick Start
+## Keycloak/auth server
+
+Each application has its own realm. OpenTech DB uses only `opentechdb`; users in
+other realms on the same Keycloak installation are not OpenTech users.
 
 ```bash
-# 1. Clone on the VM
-git clone https://github.com/THD-Spatial-AI/OpenTech-DB.git
-cd opentech-db
-
-# 2. Create .env with production secrets
-#    See .env.example for all required vars. NEVER commit this file.
-cp .env.example .env
-# → Edit .env: fill ADMIN_EMAIL, ADMIN_PASSWORD_HASH, JWT_SECRET_KEY, etc.
-
-# 3. Pull images and start
-docker compose pull
-docker compose up -d
-
-# 4. Verify
-curl https://otdb.th-deg.de/health
-curl https://otdb.th-deg.de/api/v1/technologies?limit=1
+cp keycloak/.env.example keycloak/.env
+# Set unique production secrets, DNS names, frontend URL, and callback URL.
+docker compose --env-file keycloak/.env -f keycloak/compose.yml up -d --build
 ```
 
-## Environment Variables
+The stack runs Keycloak 26.7, its PostgreSQL database, Redis, the Go auth
+service, and Caddy. Configure optional GitHub and ORCID identity providers in
+the `opentechdb` realm. Their client secrets do not belong in React or FastAPI.
 
-Set in `.env` (gitignored) or passed to the container:
+## Supabase data server
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `JWT_SECRET_KEY` | **Yes** | 32-byte random base64; `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
-| `ADMIN_EMAIL` | **Yes** | Built-in admin login email |
-| `ADMIN_PASSWORD_HASH` | **Yes** | bcrypt hash; `python -c "import bcrypt; print(bcrypt.hashpw(b'<pw>', bcrypt.gensalt(12)).decode())"` |
-| `SUPABASE_URL` | No | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | No | Service role key (server-side only) |
-| `SUPABASE_JWT_SECRET` | **Yes** if Supabase | JWT secret from Supabase dashboard |
-| `CORS_ORIGINS` | **Yes** for production | Comma-separated: `https://otdb.th-deg.de` |
-| `ORCID_ENV` | No | `production` (default) or `sandbox` |
-| `ORCID_CLIENT_ID` | No | ORCID OAuth client ID |
-| `ORCID_CLIENT_SECRET` | No | ORCID OAuth client secret |
-| `ORCID_REDIRECT_URI` | No | Must match ORCID app config, e.g. `https://otdb.th-deg.de/api/v1/auth/orcid/callback` |
-| `FRONTEND_URL` | No | SPA origin, e.g. `https://otdb.th-deg.de` |
-| `VITE_API_BASE_URL` | No (default: `/api/v1`) | Passed as build arg; relative path works behind Caddy |
+The production Supabase Compose file intentionally contains no GoTrue service
+and exposes Kong only on loopback. It creates technical PostgreSQL/PostgREST
+roles, but never an application-user record.
 
-## Update & Redeploy
+```bash
+sudo mkdir -p /opt/opentech-db
+sudo cp .env.example /opt/opentech-db/.env
+sudo bash deploy/supabase/setup-secrets.sh
+docker network create opentech
+docker compose \
+  --env-file /opt/opentech-db/supabase.env \
+  -f deploy/supabase/compose.yml up -d
+bash deploy/supabase/apply-migrations.sh
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` is a backend-only PostgREST credential. It is not a
+login token and must never be placed in a `VITE_*` variable or returned to a
+browser. Migration 012 revokes all public-schema access from the Supabase
+`anon` and `authenticated` roles. Migration 013 creates the RLS-protected
+`api_tokens` table used for hashed personal API tokens; it creates no user row.
+
+## Application server
+
+Set these values in `/opt/opentech-db/.env`:
+
+| Variable | Purpose |
+|---|---|
+| `AUTH_SERVICE_URL` | Server-to-server URL for the remote Go auth service |
+| `AUTH_INTERNAL_SECRET` | Shared secret for FastAPI session validation |
+| `AUTH_REALM` | Must be `opentechdb` |
+| `OPENTECHDB_AUTH_UPSTREAM` | Nginx upstream for the same-origin `/auth-api` proxy |
+| `FRONTEND_URL` | Canonical OpenTech application origin |
+| `CORS_ORIGINS` | Exact trusted frontend origins |
+| `SUPABASE_URL` | Backend-only Supabase/PostgREST URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Backend-only data credential |
+| `GITHUB_TOKEN` | Optional approval-to-PR integration |
+
+There are no `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, Supabase anon-key, Supabase
+JWT-secret, or frontend Supabase variables. Admin access is granted with the
+`admin` realm role in Keycloak.
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+curl https://otdb.th-deg.de/health
+curl 'https://otdb.th-deg.de/api/v1/technologies?limit=1'
+```
+
+## Security checks
+
+- Do not expose PostgREST/Kong publicly or proxy a `/supabase` route.
+- Apply migration 013 before exposing the profile token controls. Token
+  generation fails closed with `503` when backend data storage is unavailable.
+- Restrict `/internal/*` on the auth server to the application server where
+  possible; the shared-secret check remains mandatory.
+- Keep Keycloak, Supabase, Redis, and database credentials in uncommitted env
+  files with restricted filesystem permissions.
+- Terminate TLS at Nginx/Caddy and retain exact-origin checks for cookie-based
+  write requests.
+- Back up the Supabase PostgreSQL data directory and the Keycloak PostgreSQL
+  volume independently. Redis sessions may be treated as ephemeral unless
+  session continuity is a recovery requirement.
+
+## Updating
 
 ```bash
 git pull
-docker compose build --no-cache frontend
-docker compose up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose --env-file keycloak/.env -f keycloak/compose.yml up -d --build
+bash deploy/supabase/apply-migrations.sh
 ```
 
-## Backups
-
-The only persistent data is in the Docker named volume:
-
-```bash
-# Backup
-docker run --rm -v opentech-db_opentech-db-data:/data -v $(pwd):/backup alpine \
-  tar czf /backup/opentech-db-data-$(date +%Y%m%d).tar.gz -C /data .
-
-# Restore
-docker run --rm -v opentech-db_opentech-db-data:/data -v $(pwd):/backup alpine \
-  tar xzf /backup/opentech-db-data-*.tar.gz -C /data
-```
-
-Add a cron job for daily backups:
-
-```cron
-0 3 * * * cd /opt/opentech-db && ./scripts/backup.sh
-```
-
-## Monitoring
-
-- **Health check**: Caddy probes the backend at `/health` (configured in docker-compose.yml)
-- **Logs**: `docker compose logs -f --tail=100`
-- **Uptime**: Add https://uptimerobot.com or https://healthchecks.io for external monitoring
-
----
-
-## Data Protection (DPM / DSFA)
-
-Information required for the THD Data Protection Management process.
-
-### 1. Controller (Verantwortliche Stelle)
-Deggendorf Institute of Technology (THD)
-Dieter-Görlitz-Platz 1, 94469 Deggendorf
-
-### 2. Purpose of Processing
-- Research data platform for energy technology parameters
-- Contributor authentication (researcher identity via ORCID)
-- Admin management of submitted data
-- Integration with energy modelling frameworks (PyPSA, Calliope, OSeMOSYS)
-
-### 3. Legal Basis
-- Art. 6(1)(e) DSGVO — public task (research and education)
-- Art. 6(1)(a) DSGVO — consent (ORCID authentication)
-
-### 4. Data Categories Processed
-
-| Data | Source | Storage | Retention |
-|------|--------|---------|-----------|
-| ORCID iD | ORCID OAuth | JWT in sessionStorage | Session (cleared on tab close) |
-| Email address | ORCID / Supabase | Supabase `auth.users` | Until account deletion |
-| Name | ORCID | JWT in sessionStorage | Session |
-| Submitted tech parameters | User form | Docker volume (`data/`) | Until admin approval or rejection |
-| Scraped paper metadata | OpenAlex, Crossref, etc. | Supabase `scraper_candidates` | 90 days after review |
-
-### 5. Recipients
-- **Hosting**: VM at TH Deggendorf (internal)
-- **Auth**: Supabase (Postgres, Frankfurt region) — DPA in place /// maybe Keycloack?
-- **OAuth**: ORCID (external, researcher identity only)
-- **No data is sold or transferred to third countries**
-
-### 6. Technical and Organisational Measures (TOM)
-
-| Measure | Implementation |
-|---------|---------------|
-| Access control | JWT-based auth, bcrypt password hashing |
-| Transport encryption | TLS via Caddy / Let's Encrypt |
-| Server-side processing | Supabase service role key never leaves the backend |
-| No client-side Supabase | Frontend has zero access to Supabase |
-| Input validation | Pydantic v2 schemas on all API endpoints |
-| Rate limiting | slowapi (5/min admin login, 10/min submissions) |
-| Vulnerability scanning | Trivy in CI pipeline, CRITICAL = fail |
-| Non-root container | Docker runs as `appuser` |
-| Secrets management | All secrets via env vars, never in repo |
-| Logging | Request IDs on all responses, structured JSON logs |
-
-### 7. Data Protection Officer
- ---
+Review and test migrations before production use. Do not delete either
+PostgreSQL volume during an update.

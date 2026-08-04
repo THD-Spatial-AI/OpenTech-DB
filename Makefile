@@ -3,16 +3,13 @@
 #
 # Quick start (Mac / Linux / Git Bash on Windows):
 #
-#   make install          ← run once after cloning
+#   make install          ← dependencies + Supabase + complete auth stack
 #   make backend          ← terminal 1
 #   make frontend         ← terminal 2
 #
-# Windows (PowerShell, no make):
-#   .\scripts\setup-local-supabase.ps1
-#
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: help install configure supabase backend frontend stop reset lint build dev
+.PHONY: help install configure supabase auth auth-down auth-logs backend frontend stop reset lint build dev
 
 # ── Platform ─────────────────────────────────────────────────────────────────
 
@@ -34,14 +31,17 @@ help:
 	@echo ""
 	@echo "  opentech-db — make targets"
 	@echo ""
-	@echo "  make install     one-time setup: venv · npm · Supabase · .env"
-	@echo "  make configure   set JWT secret + admin credentials in .env"
+	@echo "  make install     one-time setup: venv · npm · data services · Keycloak/auth · .env"
+	@echo "  make configure   generate matching backend/auth-service secrets"
+	@echo "  make auth        start local Keycloak, Go auth, Postgres, and Redis"
+	@echo "  make auth-down   stop the local authentication stack"
+	@echo "  make auth-logs   follow Keycloak and Go auth logs"
 	@echo "  make backend     start FastAPI on :8000"
 	@echo "  make frontend    start Vite dev server on :5173"
 	@echo "  make dev         start both in one terminal (Ctrl+C to stop all)"
-	@echo "  make supabase    (re)start local Supabase + patch .env"
-	@echo "  make stop        stop local Supabase containers"
-	@echo "  make reset       wipe local DB and re-run all migrations"
+	@echo "  make supabase    start local Supabase data services (Auth disabled)"
+	@echo "  make stop        stop local Supabase data containers"
+	@echo "  make reset       wipe local data DB and re-run migrations"
 	@echo "  make lint        ESLint on the frontend"
 	@echo "  make build       production frontend bundle"
 	@echo ""
@@ -50,16 +50,17 @@ help:
 
 install: _check-docker .venv frontend/node_modules .env frontend/.env.local _install-supabase-cli
 	@$(MAKE) --no-print-directory supabase
-	@$(MAKE) --no-print-directory configure
+	@$(MAKE) --no-print-directory auth
 	@echo ""
 	@echo "================================================================"
-	@echo "  Setup complete! Start the dev servers:"
+	@echo "  Setup complete! Data and authentication containers are running."
+	@echo "  Start the dev servers:"
 	@echo "    Terminal 1:  make backend"
 	@echo "    Terminal 2:  make frontend"
 	@echo "================================================================"
 	@echo ""
 
-# Interactive prompt: generates JWT secret, sets admin email + password hash
+# Generates independent local secrets and synchronizes AUTH_INTERNAL_SECRET.
 configure: .venv
 	@$(PY) tools/configure_env.py
 
@@ -84,16 +85,17 @@ frontend/node_modules: frontend/package.json
 # .env template — only created when file is missing
 .env:
 	@cp .env.example .env
-	@echo "Created .env from .env.example — fill in JWT_SECRET_KEY and ADMIN_PASSWORD_HASH."
+	@echo "Created .env from .env.example — run make configure."
 
 frontend/.env.local:
 	@cp frontend/.env.example frontend/.env.local
 	@echo "Created frontend/.env.local from template."
 
-# ── Supabase ─────────────────────────────────────────────────────────────────
+# ── Supabase data services (authentication is disabled) ──────────────────────
 
 supabase: _check-docker _install-supabase-cli .venv
 	supabase start
+	supabase migration up --local
 	@echo "Patching .env files with local credentials..."
 	@$(PY) tools/patch_supabase_env.py
 
@@ -102,6 +104,17 @@ stop:
 
 reset: _check-docker
 	supabase db reset
+
+# ── Authentication stack ─────────────────────────────────────────────────────
+
+auth: _check-docker configure
+	docker compose --env-file keycloak/.env.local -f keycloak/compose.local.yml up -d --build
+
+auth-down:
+	docker compose --env-file keycloak/.env.local -f keycloak/compose.local.yml down
+
+auth-logs:
+	docker compose --env-file keycloak/.env.local -f keycloak/compose.local.yml logs -f keycloak auth-service
 
 # ── Dev servers ──────────────────────────────────────────────────────────────
 

@@ -18,29 +18,20 @@
  * • Zod validates on the client before the action fires, providing instant
  *   field-level feedback without a round-trip.
  *
- * OAuth providers
- * ────────────────
- * • GitHub — handled by Supabase: signInWithOAuth({ provider: 'github' })
- *   redirects to Supabase's OAuth flow; on return the Supabase client detects
- *   the session and AuthContext.onAuthStateChange fires automatically.
- *
- * • ORCID  — handled by the FastAPI backend (GET /api/v1/auth/orcid).
- *   The backend completes the ORCID OAuth dance and redirects to
- *   /?token=<jwt>.  <OAuthCallback> in App.tsx picks that up and calls
- *   AuthContext.signIn() to store the custom JWT.
+ * Authentication is handled by the standalone Go auth service. It creates an
+ * opaque HttpOnly session after authenticating against this application's
+ * isolated Keycloak realm; no Keycloak token is exposed to React.
  */
 
 import { useState, useActionState, useId } from "react";
 import { useFormStatus } from "react-dom";
 import { z } from "zod";
-import { getOrcidOAuthUrl, adminLogin } from "../../services/api";
-import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext";
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
 const LoginSchema = z.object({
-  email: z.email("Enter a valid email address"),
+  identifier: z.string().trim().min(1, "Email or username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -48,14 +39,16 @@ const RegisterSchema = z.object({
   username: z
     .string()
     .min(3, "Username must be at least 3 characters")
-    .max(40, "Username is too long")
-    .regex(/^[a-zA-Z0-9_-]+$/, "Only letters, numbers, _ and - are allowed"),
+    .max(64, "Username is too long")
+    .regex(/^[a-zA-Z0-9._-]+$/, "Only letters, numbers, ., _ and - are allowed"),
   email: z.email("Enter a valid email address"),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")
     .regex(/[A-Z]/, "Must include at least one uppercase letter")
-    .regex(/[0-9]/, "Must include at least one number"),
+    .regex(/[a-z]/, "Must include at least one lowercase letter")
+    .regex(/[0-9]/, "Must include at least one number")
+    .regex(/[^A-Za-z0-9]/, "Must include at least one special character"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
 }).refine((d) => d.password === d.confirmPassword, {
   message: "Passwords do not match",
@@ -67,7 +60,6 @@ const RegisterSchema = z.object({
 type FormState =
   | { status: "idle" }
   | { status: "error"; issues: z.ZodIssue[]; apiError?: string }
-  | { status: "confirm_email" }
   | { status: "success" };
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -173,27 +165,23 @@ function Field({
 
 // ── OAuth provider buttons ────────────────────────────────────────────────────
 
-function GitHubButton() {
+function GitHubButton({ onLogin }: { onLogin: () => void }) {
   const [providerError, setProviderError] = useState<string | null>(null);
 
-  const handleGitHub = async () => {
+  const handleGitHub = () => {
     setProviderError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: {
-        // Supabase redirects back here after the OAuth dance; its client
-        // detects the session automatically via detectSessionInUrl: true.
-        redirectTo: window.location.origin,
-      },
-    });
-    if (error) setProviderError(error.message);
+    try {
+      onLogin();
+    } catch {
+      setProviderError("Could not start GitHub sign-in. Please try again.");
+    }
   };
 
   return (
     <div className="flex flex-col gap-1.5">
       <button
         type="button"
-        onClick={() => void handleGitHub()}
+        onClick={handleGitHub}
         className="
           flex items-center justify-center gap-3 w-full rounded-xl
           border border-outline-variant/40 bg-[#24292f] text-white
@@ -222,10 +210,11 @@ function GitHubButton() {
   );
 }
 
-function OrcidButton() {
+function OrcidButton({ onLogin }: { onLogin: () => void }) {
   return (
-    <a
-      href={getOrcidOAuthUrl()}
+    <button
+      type="button"
+      onClick={onLogin}
       className="
         flex items-center justify-center gap-3 w-full rounded-xl
         border border-outline-variant/40 bg-[#a6ce39] text-[#2d4b0e]
@@ -246,7 +235,7 @@ function OrcidButton() {
         <path d="M128 0C57.3 0 0 57.3 0 128s57.3 128 128 128 128-57.3 128-128S198.7 0 128 0zM86.3 186.2H70.9V105.2h15.4v81zM78.6 90.3c-5.2 0-8.6-3.6-8.6-8s3.4-8 8.6-8c5.3 0 8.6 3.6 8.6 8s-3.4 8-8.6 8zm113.8 95.9h-15.4v-40.6c0-10.1-3.6-17-12.5-17-6.8 0-10.9 4.6-12.7 9.1-.6 1.6-.8 3.8-.8 6.1v42.4h-15.4V135c0-6.2-.2-11.4-.4-15.9h13.4l.7 6.9h.3c2-3.4 7-8 15.1-8 10 0 17.5 6.5 17.5 20.5v47.7z" />
       </svg>
       Continue with ORCID
-    </a>
+    </button>
   );
 }
 
@@ -266,14 +255,20 @@ function OrDivider() {
 
 // ── Login form ────────────────────────────────────────────────────────────────
 
-function LoginForm({ onSuccess, signIn }: { onSuccess: () => void; signIn: (token: string) => void }) {
+function LoginForm({
+  onSuccess,
+  login,
+}: {
+  onSuccess: () => void;
+  login: (emailOrUsername: string, password: string) => Promise<void>;
+}) {
   const emailId = useId();
   const passwordId = useId();
 
   const [state, formAction] = useActionState<FormState, FormData>(
     async (_prev, formData) => {
       const raw = {
-        email: formData.get("email") as string,
+        identifier: formData.get("identifier") as string,
         password: formData.get("password") as string,
       };
 
@@ -282,28 +277,17 @@ function LoginForm({ onSuccess, signIn }: { onSuccess: () => void; signIn: (toke
         return { status: "error", issues: result.error.issues };
       }
 
-      // ── Admin path: try the FastAPI hardcoded-admin endpoint first ─────────
-      // If it succeeds, the user is the super-admin — done.
-      // Any failure (wrong credentials, backend down, etc.) → fall through to
-      // Supabase so regular users are never blocked by the admin check.
       try {
-        const adminResp = await adminLogin(result.data.email, result.data.password);
-        signIn(adminResp.token);
+        await login(result.data.identifier, result.data.password);
         onSuccess();
         return { status: "success" };
-      } catch {
-        // Not the hardcoded admin — fall through to Supabase
+      } catch (error) {
+        return {
+          status: "error",
+          issues: [],
+          apiError: error instanceof Error ? error.message : "Sign-in failed.",
+        };
       }
-
-      // ── Regular Supabase path ─────────────────────────────────────────────
-      const { error } = await supabase.auth.signInWithPassword(result.data);
-      if (error) {
-        return { status: "error", issues: [], apiError: error.message };
-      }
-
-      // AuthContext.onAuthStateChange picks up the session automatically
-      onSuccess();
-      return { status: "success" };
     },
     { status: "idle" }
   );
@@ -328,12 +312,11 @@ function LoginForm({ onSuccess, signIn }: { onSuccess: () => void; signIn: (toke
 
       <Field
         id={emailId}
-        name="email"
-        label="Email"
-        type="email"
-        autoComplete="email"
-        placeholder="you@institution.org"
-        error={fieldError(issues, "email")}
+        name="identifier"
+        label="Email or Username"
+        autoComplete="username"
+        placeholder="you@institution.org or your-handle"
+        error={fieldError(issues, "identifier")}
       />
 
       <Field
@@ -362,7 +345,18 @@ function LoginForm({ onSuccess, signIn }: { onSuccess: () => void; signIn: (toke
 
 // ── Register form ─────────────────────────────────────────────────────────────
 
-function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
+function RegisterForm({
+  onSuccess,
+  register,
+}: {
+  onSuccess: () => void;
+  register: (
+    username: string,
+    email: string,
+    password: string,
+    passwordConfirmation: string,
+  ) => Promise<void>;
+}) {
   const usernameId = useId();
   const emailId = useId();
   const passwordId = useId();
@@ -382,55 +376,28 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
         return { status: "error", issues: result.error.issues };
       }
 
-      const { data, error } = await supabase.auth.signUp({
-        email: result.data.email,
-        password: result.data.password,
-        options: {
-          // Stored in user_metadata; surfaced by mapSupabaseUser in AuthContext
-          data: { user_name: result.data.username },
-          // Supabase sends a confirmation email with this URL as the redirect.
-          // Without this, it falls back to the Site URL set in the dashboard.
-          emailRedirectTo: window.location.origin,
-        },
-      });
-
-      if (error) {
-        return { status: "error", issues: [], apiError: error.message };
+      try {
+        await register(
+          result.data.username,
+          result.data.email,
+          result.data.password,
+          result.data.confirmPassword,
+        );
+        onSuccess();
+        return { status: "success" };
+      } catch (error) {
+        return {
+          status: "error",
+          issues: [],
+          apiError: error instanceof Error ? error.message : "Registration failed.",
+        };
       }
-
-      // If Supabase email confirmation is enabled, data.session will be null;
-      // show the user a "check your inbox" message instead of closing the modal.
-      if (!data.session) {
-        return { status: "confirm_email" };
-      }
-
-      // Immediate session (email confirmation disabled) — same as login
-      onSuccess();
-      return { status: "success" };
     },
     { status: "idle" }
   );
 
   const issues = state.status === "error" ? state.issues : [];
   const apiError = state.status === "error" ? state.apiError : undefined;
-
-  // Email confirmation required — replace the form with a friendly nudge
-  if (state.status === "confirm_email") {
-    return (
-      <div className="flex flex-col items-center gap-4 py-6 text-center">
-        <span className="material-symbols-outlined text-5xl text-primary">
-          mark_email_unread
-        </span>
-        <h2 className="font-headline text-lg font-bold text-on-surface">
-          Check your inbox
-        </h2>
-        <p className="text-sm text-on-surface-variant max-w-xs leading-relaxed">
-          We sent a confirmation link to your email address. Click it to
-          activate your account, then sign in.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <form action={formAction} noValidate className="space-y-4">
@@ -454,7 +421,7 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
         autoComplete="username"
         placeholder="your-handle"
         error={fieldError(issues, "username")}
-        hint="Letters, numbers, _ and - only"
+        hint="Letters, numbers, ., _ and - only"
       />
 
       <Field
@@ -465,7 +432,7 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
         autoComplete="email"
         placeholder="you@institution.org"
         error={fieldError(issues, "email")}
-        hint="Use your institutional email so we can verify your affiliation"
+        hint="Used for your account and contribution notifications"
       />
 
       <Field
@@ -474,7 +441,7 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
         label="Password"
         type="password"
         autoComplete="new-password"
-        placeholder="Min 8 chars, 1 uppercase, 1 number"
+        placeholder="8+ chars with upper/lower, number & symbol"
         error={fieldError(issues, "password")}
       />
 
@@ -590,7 +557,7 @@ type Tab = "login" | "register";
 
 export default function AuthPage({ onSuccess, initialError }: { onSuccess: () => void; initialError?: string }) {
   const [tab, setTab] = useState<Tab>("login");
-  const { signIn } = useAuth();
+  const { login, register, loginWithProvider } = useAuth();
 
   return (
     <>
@@ -641,8 +608,8 @@ export default function AuthPage({ onSuccess, initialError }: { onSuccess: () =>
 
             {/* OAuth providers — always shown */}
             <div className="flex flex-col gap-2.5">
-              <GitHubButton />
-              <OrcidButton />
+              <GitHubButton onLogin={() => loginWithProvider("github")} />
+              <OrcidButton onLogin={() => loginWithProvider("orcid")} />
             </div>
 
             <OrDivider />
@@ -673,9 +640,9 @@ export default function AuthPage({ onSuccess, initialError }: { onSuccess: () =>
 
             {/* Form panel — keyed so state resets on tab switch */}
             {tab === "login" ? (
-              <LoginForm key="login" onSuccess={onSuccess} signIn={signIn} />
+              <LoginForm key="login" onSuccess={onSuccess} login={login} />
             ) : (
-              <RegisterForm key="register" onSuccess={onSuccess} />
+              <RegisterForm key="register" onSuccess={onSuccess} register={register} />
             )}
 
             {/* Switch tab hint */}

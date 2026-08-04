@@ -40,12 +40,25 @@ const mockFetchSubmissions = vi.mocked(fetchAdminSubmissions)
 const mockFetchProfileSubmissions = vi.mocked(fetchAdminProfileSubmissions)
 
 const adminAuth = {
-  user: { id: 'u1', username: 'admin', email: 'admin@test.com', auth_provider: 'admin', is_contributor: false, is_admin: true },
-  token: 'test-token',
+  user: {
+    id: 'u1',
+    username: 'admin',
+    email: 'admin@test.com',
+    realm: 'opentechdb' as const,
+    roles: ['contributor', 'admin'],
+    auth_provider: 'keycloak',
+    is_contributor: true,
+    is_admin: true,
+  },
   isAdmin: true,
   isLoading: false,
-  signIn: vi.fn(),
+  authError: null,
+  login: vi.fn(),
+  register: vi.fn(),
+  loginWithProvider: vi.fn(),
   signOut: vi.fn(),
+  manageAccount: vi.fn(),
+  refreshSession: vi.fn(async () => true),
 }
 
 function makeSubmission(overrides: Partial<SubmissionRecord> = {}): SubmissionRecord {
@@ -74,7 +87,7 @@ beforeEach(() => {
 
 describe('AdminPanel', () => {
   it('shows "Sign in to access this page" when not logged in', () => {
-    mockUseAuth.mockReturnValue({ ...adminAuth, isAdmin: false, user: null, token: null })
+    mockUseAuth.mockReturnValue({ ...adminAuth, isAdmin: false, user: null })
     render(<AdminPanel />)
     expect(screen.getByText('Sign in to access this page')).toBeInTheDocument()
   })
@@ -83,7 +96,16 @@ describe('AdminPanel', () => {
     mockUseAuth.mockReturnValue({
       ...adminAuth,
       isAdmin: false,
-      user: { id: 'u2', username: 'user', email: 'user@test.com', auth_provider: 'email', is_contributor: false, is_admin: false },
+      user: {
+        id: 'u2',
+        username: 'user',
+        email: 'user@test.com',
+        realm: 'opentechdb',
+        roles: [],
+        auth_provider: 'keycloak',
+        is_contributor: false,
+        is_admin: false,
+      },
     })
     render(<AdminPanel />)
     expect(screen.getByText('Admin access required')).toBeInTheDocument()

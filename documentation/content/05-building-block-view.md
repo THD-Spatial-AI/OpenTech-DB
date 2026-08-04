@@ -19,9 +19,11 @@ opentech-db
 |   +-- routes.py        HTTP route handlers + dual-format JSON data loader.
 |   |                    Routers: tech_router, debug_router, ontology_router,
 |   |                    admin_router, submissions_router.
-|   +-- auth.py          ORCID OAuth flow (redirect + callback + /auth/me).
+|   +-- auth_session.py  Validates opaque Go sessions through the internal auth API.
 |   +-- timeseries.py    Time-series catalogue endpoints: timeseries_router
 |                        (list, data) and admin_ts_router (submissions).
+|
++-- keycloak/            Isolated realm, Go auth service, Redis/Keycloak Compose stacks.
 |
 +-- adapters/
 |   +-- pypsa_adapter.py     Translates Technology -> PyPSA component dict.
@@ -41,10 +43,8 @@ opentech-db
         +-- services/
         |   +-- api.ts           HTTP client; promise memoisation for use() hook.
         |   +-- timeseries.ts    Time-series API client.
-        +-- lib/
-        |   +-- supabase.ts      Supabase JS v2 client instance.
         +-- context/
-        |   +-- AuthContext.tsx  Auth state (ORCID + Supabase); JWT management.
+        |   +-- AuthContext.tsx  Opaque Go/Keycloak session state.
         +-- components/
             +-- TechGrid.tsx           Category grid view (all technology cards).
             +-- TechCard.tsx           Individual technology summary card.
@@ -60,14 +60,14 @@ opentech-db
             |   +-- UploadProfile.tsx        Contributor upload form.
             |   +-- MapPickerModal.tsx       Leaflet map for location selection.
             +-- auth/
-            |   +-- AuthPage.tsx        ORCID + Supabase login page.
-            |   +-- OAuthCallback.tsx   Handles ?token= from ORCID redirect.
+            |   +-- AuthPage.tsx        Existing username/email and provider login UI.
             +-- contributor/
             |   +-- ContributorWorkspace.tsx  New technology submission form.
             +-- admin/
-            |   +-- AdminPanel.tsx      Approve/reject submissions; manage users.
+            |   +-- AdminPanel.tsx      Approve/reject submissions and scraper data.
             +-- profile/
-                +-- ProfilePage.tsx     User profile and settings.
+                +-- ProfilePage.tsx              Keycloak profile summary and settings.
+                +-- PersonalApiTokensPanel.tsx   Generate/list/revoke personal API tokens.
 ```
 
 ## schemas/models.py — Data Model
@@ -106,22 +106,24 @@ _load_json_file()          raw dict
                HTTP route handlers
 ```
 
-## api/auth.py — Authentication Flow
+## Authentication Boundary
 
 ```
 Browser / Frontend
    |
-   +-- GET /api/v1/auth/orcid
-   |       -> 302 redirect to ORCID OAuth endpoint
+   +-- /auth-api/login or /auth-api/auth/provider/{alias}
+   |       -> standalone Go service
+   |       -> Keycloak realm: opentechdb
+   |       -> Keycloak tokens stored in Redis
+   |       -> opaque session_id HttpOnly cookie returned
    |
-   +-- GET /api/v1/auth/orcid/callback?code=...
-   |       -> exchanges code for ORCID token
-   |       -> issues signed JWT
-   |       -> redirect to frontend with ?token=<jwt>
-   |
-   +-- GET /api/v1/auth/me  (Authorization: Bearer <jwt>)
-           -> validates JWT, returns user profile
+   +-- protected /api/v1 request with cookie
+           -> FastAPI calls /internal/validate-session
+           -> Go returns filtered subject, username, email, realm, and roles
 ```
+
+Supabase Auth/GoTrue is disabled. The React bundle contains no Supabase client
+or key, and Supabase contains no application-user table.
 
 ## api/timeseries.py — Time-Series API
 
@@ -134,9 +136,9 @@ GET /api/v1/timeseries/{id}/data
     -> loads data/<id>.json
     -> returns {profile_id, timestamps[], values[]}
 
-POST /api/v1/timeseries/submit  (authenticated)
-    -> stores file in data/timeseries/pending/
-    -> adds entry to catalogue with status=pending
+POST /api/v1/timeseries/upload  (authenticated)
+    -> stores a pending row in Supabase when configured
+    -> falls back to data/timeseries/pending/ for local data-only development
 
 GET /api/v1/admin/timeseries/submissions  (admin only)
     -> lists all pending/approved profiles
@@ -175,14 +177,13 @@ App.tsx (Suspense boundary)
 main.tsx
    └── <AuthProvider>  (AuthContext.tsx)
          |
-         +-- Supabase onAuthStateChange listener
-         +-- JWT stored in sessionStorage
-         +-- isAdmin flag synced from Supabase metadata
+         +-- fetches /auth-api/auth/session with credentials included
+         +-- browser keeps only opaque HttpOnly session_id + CSRF cookies
+         +-- isAdmin derives from filtered Keycloak realm roles
          |
          +-- <App>
                ├── TopNavBar (sign-in / sign-out button)
-               ├── AuthPage  (ORCID redirect + Supabase forms)
-               ├── OAuthCallback (receives ?token= from ORCID)
+               ├── AuthPage  (existing form + Keycloak-brokered providers)
                ├── AdminPanel (guarded by isAdmin)
                │     └── ScraperPanel (pipeline status + candidate review)
                ├── ContributorWorkspace (guarded by isAuthenticated)
@@ -245,3 +246,9 @@ SQL migration files for the optional Supabase backend:
 |---|---|
 | `001_scraper_tables.sql` | `scraper_candidates` + `scraper_runs` tables; indexes; RLS bypass |
 | `003_instance_country_columns.sql` | Adds `country_iso2`, `country`, `location` to instance records |
+
+Later migrations create the catalogue, submission, and time-series tables.
+Migration 012 removes browser-role access. Only the backend service role has
+data privileges; Keycloak subjects stored on workflow rows are attribution
+values, not foreign keys to database users. Migration 013 adds hashed,
+revocable personal API tokens without adding an application-user table.

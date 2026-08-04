@@ -11,7 +11,7 @@ GET  /timeseries/{profile_id}/data       → data points for one profile (ETag;
 POST /timeseries/upload                  → contributor upload (multipart CSV/JSON) → pending review
 DELETE /timeseries/{profile_id}          → delete an approved profile (admin only)
 
-Admin endpoints (require admin JWT)
+Admin endpoints (require an OpenTech realm admin session)
 ------------------------------------
 GET  /admin/timeseries/submissions         → list pending/approved/rejected profile submissions
 POST /admin/timeseries/submissions/{id}    → approve or reject a submission
@@ -32,6 +32,7 @@ import csv
 import io
 import json
 import logging
+import os
 import re
 import uuid as _uuid_mod
 from datetime import datetime, timezone
@@ -39,13 +40,15 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request, Response, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Query, Request, Response, UploadFile, File, Form
 from fastapi.responses import ORJSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 _limiter = Limiter(key_func=get_remote_address)
 from pydantic import BaseModel
+
+from api._auth_helpers import _require_contributor
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +62,7 @@ _PENDING_DIR    = _DATA_DIR / "pending"
 
 _ALLOWED_TYPES       = {"capacity_factor", "load", "generation", "weather", "price"}
 _ALLOWED_RESOLUTIONS = {"15min", "30min", "hourly", "daily"}
+_MAX_UPLOAD_BYTES    = int(os.getenv("MAX_TIMESERIES_UPLOAD_BYTES", str(10 * 1024 * 1024)))
 
 # ---------------------------------------------------------------------------
 # Storage layer — Supabase-first, filesystem fallback for local dev
@@ -539,12 +543,12 @@ class ProfileMetadataUpdate(BaseModel):
     summary="Update profile metadata (admin only)",
 )
 def update_profile_metadata(
+    request:       Request,
     profile_id:    str,
     body:          ProfileMetadataUpdate,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
     from api.routes import _require_admin  # noqa: PLC0415
-    _require_admin(authorization)
+    _require_admin(request)
 
     if not re.fullmatch(r"[a-z0-9_\-]+", profile_id):
         raise HTTPException(status_code=400, detail="Invalid profile_id format.")
@@ -608,12 +612,12 @@ class ProfileDataReplaceBody(BaseModel):
     summary="Replace all data points for a profile (admin only)",
 )
 def replace_profile_data(
+    request:       Request,
     profile_id:    str,
     body:          ProfileDataReplaceBody,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
     from api.routes import _require_admin  # noqa: PLC0415
-    _require_admin(authorization)
+    _require_admin(request)
 
     if not re.fullmatch(r"[a-z0-9_\-]+", profile_id):
         raise HTTPException(status_code=400, detail="Invalid profile_id format.")
@@ -670,13 +674,14 @@ async def upload_profile(
     description: Annotated[str, Form(description="Free-text description")]   = "",
     unit:        Annotated[str, Form(description="Physical unit of the values")] = "p.u.",
     file:        UploadFile = File(description="CSV or JSON file with time-series data"),
-    authorization: Annotated[str | None, Header()] = None,
 ) -> TimeSeriesUploadResponse:
     """
     Accept a contributor-submitted time-series profile for admin review.
     The data is stored in data/timeseries/pending/ and NOT added to the
     public catalogue until an admin approves it.
     """
+    identity = _require_contributor(request)
+
     # --- Validate enum fields ---
     if type not in _ALLOWED_TYPES:
         raise HTTPException(
@@ -690,7 +695,12 @@ async def upload_profile(
         )
 
     # --- Detect format and parse ---
-    raw_bytes = await file.read()
+    raw_bytes = await file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(raw_bytes) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Upload exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MiB limit.",
+        )
     try:
         text = raw_bytes.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
@@ -757,23 +767,9 @@ async def upload_profile(
     if len(points) < 2:
         raise HTTPException(status_code=422, detail="File must contain at least 2 data rows.")
 
-    # --- Extract submitter email from token (best-effort) ---
-    submitter_email: str | None = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.removeprefix("Bearer ")
-        try:
-            from api.auth import _decode_jwt
-            submitter_email = _decode_jwt(token).get("email")
-        except Exception:
-            pass
-        if not submitter_email:
-            try:
-                import base64 as _b64, json as _j
-                part = token.split(".")[1]
-                pl = _j.loads(_b64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
-                submitter_email = pl.get("email")
-            except Exception:
-                pass
+    # Identity comes only from the Go-validated OpenTech realm session.
+    user_id = str(identity.get("sub") or "")
+    submitter_email = str(identity.get("email") or "")
 
     # --- Build submission_id ---
     submission_id = str(_uuid_mod.uuid4())
@@ -784,6 +780,7 @@ async def upload_profile(
         "submission_id":   submission_id,
         "submitted_at":    now_str,
         "status":          "pending_review",
+        "user_id":         user_id,
         "submitter_email": submitter_email,
         "name":            name,
         "type":            type,
@@ -826,14 +823,14 @@ async def upload_profile(
     response_description="Profile metadata and data file removed.",
 )
 def delete_profile(
+    request:       Request,
     profile_id:    str,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> None:
     """
     Remove a profile from the catalogue index and delete its data file.
     """
     from api.routes import _require_admin  # noqa: PLC0415
-    _require_admin(authorization)
+    _require_admin(request)
 
     safe_id = re.sub(r"[^a-z0-9_\-]", "", profile_id)
     if safe_id != profile_id:
@@ -960,10 +957,10 @@ def _approve_profile_submission(record: dict) -> str:
     summary="List all profile submissions (admin only)",
 )
 def list_profile_submissions(
+    request: Request,
     status: Annotated[str | None, Query(description="Filter by status")] = None,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> list[ProfileSubmissionRecord]:
-    _require_admin(authorization)
+    _require_admin(request)
 
     sb = _ts_sb()
     if sb:
@@ -1031,10 +1028,10 @@ def list_profile_submissions(
     summary="Get full data points for a pending submission (admin only)",
 )
 def get_profile_submission_data(
+    request: Request,
     submission_id: str,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
-    _require_admin(authorization)
+    _require_admin(request)
     safe_id = re.sub(r"[^a-z0-9\-]", "", submission_id)
 
     sb = _ts_sb()
@@ -1064,12 +1061,12 @@ class ProfileAdminAction(BaseModel):
     summary="Approve or reject a pending profile submission",
 )
 def act_on_profile_submission(
+    request: Request,
     submission_id: str,
     body: ProfileAdminAction,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
-    admin_payload = _require_admin(authorization)
-    admin_email   = admin_payload.get("email", "admin")
+    admin_payload = _require_admin(request)
+    admin_email = admin_payload.get("email", "admin")
 
     if body.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'.")
@@ -1125,11 +1122,11 @@ def act_on_profile_submission(
     summary="Trigger the timeseries acquisition pipeline (admin only)",
 )
 def trigger_timeseries_pipeline(
-    authorization: Annotated[str | None, Header()] = None,
+    request: Request,
 ) -> dict:
     """Start the timeseries acquisition pipeline in a background thread."""
     from threading import Thread
-    _require_admin(authorization)
+    _require_admin(request)
 
     def _run() -> None:
         try:

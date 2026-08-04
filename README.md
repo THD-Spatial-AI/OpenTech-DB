@@ -22,10 +22,8 @@
 ```bash
 git clone https://github.com/THD-Spatial-AI/OpenTech-DB.git
 cd opentech-db
-python -m venv .venv && .venv\Scripts\activate   # Windows
-# source .venv/bin/activate                       # Linux/macOS
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+make install     # dependencies + Supabase data services + Keycloak/auth stack
+make backend
 ```
 
 | Interface | URL |
@@ -33,20 +31,25 @@ uvicorn main:app --reload --port 8000
 | Swagger UI | http://127.0.0.1:8000/docs |
 | ReDoc | http://127.0.0.1:8000/redoc |
 | Web UI | http://localhost:5173 |
+| Keycloak Admin Console | http://localhost:8080/admin/ |
 
 ### Frontend (separate terminal)
 
 ```bash
-cd frontend
-npm install
-npm run dev
+make frontend
 ```
 
-### Docker
+### Restarting the authentication stack
 
 ```bash
-docker compose up --build
+make auth
 ```
+
+Authentication uses the standalone Go service and the isolated `opentechdb`
+Keycloak realm. React never receives Keycloak tokens and does not use
+`keycloak-js`. Signed-in users can create revocable, hashed personal API tokens
+from their profile for scripts and integrations; see
+[Authentication](docs/authentication.md).
 
 ---
 

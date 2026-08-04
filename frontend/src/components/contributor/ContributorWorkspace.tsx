@@ -93,7 +93,7 @@ function StatusBadge({ status }: { status: SubmissionRecord["status"] }) {
 
 // ── My Submissions tab — fetches live from the database ───────────────────────
 
-function MySubmissionsPanel({ token }: { token: string }) {
+function MySubmissionsPanel() {
   const [submissions, setSubmissions] = useState<SubmissionRecord[] | null>(null);
   const [error, setError]             = useState<string | null>(null);
   const [loading, setLoading]         = useState(true);
@@ -102,14 +102,14 @@ function MySubmissionsPanel({ token }: { token: string }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchMySubmissions(token);
+      const data = await fetchMySubmissions();
       setSubmissions(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load submissions.");
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -201,7 +201,7 @@ function MySubmissionsPanel({ token }: { token: string }) {
 type Tab = "new" | "my" | "timeseries";
 
 export default function ContributorWorkspace() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("new");
   const [submissionCount, setSubmissionCount] = useState(0);
 
@@ -301,10 +301,10 @@ export default function ContributorWorkspace() {
 
           {/* ── My Submissions ─────────────────────────────────────────── */}
           {activeTab === "my" && (
-            token ? (
+            user ? (
               <div className="h-full overflow-y-auto">
                 <div className="max-w-3xl mx-auto px-8 py-8">
-                  <MySubmissionsPanel token={token} />
+                  <MySubmissionsPanel />
                 </div>
               </div>
             ) : (

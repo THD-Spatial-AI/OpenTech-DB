@@ -1,14 +1,8 @@
 -- =============================================================================
--- Migration 011 – Explicit role grants for local self-hosted Supabase
+-- Migration 011 – Backend-only grants for local self-hosted Supabase
 -- =============================================================================
--- Supabase cloud automatically grants DML to service_role / authenticated /
--- anon when a project is created.  Self-hosted local instances do NOT apply
--- these grants for tables created by custom migrations.
---
--- This migration replicates the Supabase cloud defaults:
---   service_role  – full DML on all tables (bypasses RLS; used by FastAPI backend)
---   authenticated – full DML on all tables (subject to RLS policies)
---   anon          – SELECT only (subject to RLS policies)
+-- Supabase is a server-side data service only. The service_role used by
+-- FastAPI receives DML access; browser roles receive nothing.
 --
 -- Uses a PL/pgSQL loop so it reliably covers every table in the schema,
 -- and sets ALTER DEFAULT PRIVILEGES so future tables inherit the same grants.
@@ -25,23 +19,16 @@ BEGIN
     LOOP
         EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON public.'
                 || quote_ident(r.tablename)
-                || ' TO service_role, authenticated';
-
-        EXECUTE 'GRANT SELECT ON public.'
-                || quote_ident(r.tablename)
-                || ' TO anon';
+                || ' TO service_role';
     END LOOP;
 END $$;
 
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role, authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
 -- ── Future tables ─────────────────────────────────────────────────────────────
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO service_role, authenticated;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO service_role;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT ON TABLES TO anon;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT USAGE, SELECT ON SEQUENCES TO service_role, authenticated;
+    GRANT USAGE, SELECT ON SEQUENCES TO service_role;

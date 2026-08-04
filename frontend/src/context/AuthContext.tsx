@@ -1,192 +1,182 @@
-/**
- * context/AuthContext.tsx
- * ───────────────────────
- * Application-wide authentication state.
+/** Application-wide authentication state.
  *
- * Three login paths, one unified context
- * ───────────────────────────────────────
- * 1. Email / Password  — Supabase Auth (signInWithPassword / signUp)
- * 2. GitHub OAuth      — Supabase Auth (signInWithOAuth provider:"github")
- *    Both are tracked via supabase.auth.onAuthStateChange → no signIn() call
- *    needed from the UI; the context updates automatically.
- *
- * 3. ORCID OAuth       — FastAPI backend completes the OAuth dance and
- *    redirects to /?token=<jwt>.  <OAuthCallback> calls signIn(token) which
- *    stores the JWT in sessionStorage and fetches the user profile from
- *    GET /auth/me.  The ORCID token is kept separate from the Supabase
- *    session so the two flows don't interfere.
- *
- * Token used for FastAPI calls
- * ────────────────────────────
- * • Supabase session  → session.access_token (Supabase-signed JWT)
- * • ORCID             → custom JWT stored in sessionStorage
- * The context always exposes whichever token is active as `token`.
- *
- * React 19 patterns
- * ─────────────────
- * • Context rendered directly (no .Provider wrapper) — React 19 feature.
- * • Async hydration does NOT use useTransition here because Supabase's
- *   onAuthStateChange handles the timing; isLoading is derived from a plain
- *   boolean flag to avoid the React 19 transition warning on async effects.
+ * The browser only receives an opaque HttpOnly session cookie. Keycloak
+ * access and refresh tokens stay in the standalone Go authentication service.
  */
-
 import {
   createContext,
-  useContext,
-  useState,
-  useEffect,
   useCallback,
+  useContext,
+  useEffect,
+  useState,
   type ReactNode,
 } from "react";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
 import type { AuthUser } from "../types/api";
-import { supabase } from "../lib/supabase";
-import { fetchCurrentUser } from "../services/api";
+import {
+  getKeycloakAccountUrl,
+  getKeycloakProviderLoginUrl,
+  keepKeycloakSessionAlive,
+  loginWithKeycloak,
+  logoutFromKeycloak,
+  refreshAuthSession,
+  registerWithKeycloak,
+} from "../services/api";
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  keycloak_not_configured: "Keycloak login is not configured on this server.",
+  keycloak_denied: "Authentication was cancelled. Please try again.",
+  keycloak_token_exchange: "Keycloak could not complete the login. Please try again.",
+  invalid_oauth_state: "The login response could not be verified. Please start again.",
+  invalid_identity_provider: "That identity provider is not allowed.",
+};
 
-/** sessionStorage key for custom backend JWTs (ORCID, admin) */
-const ORCID_TOKEN_KEY = "opentech_orcid_token";
-
-// ── Supabase user mapper ───────────────────────────────────────────────────────
-
-function mapSupabaseUser(sbUser: SupabaseUser): AuthUser {
-  const meta = sbUser.user_metadata as Record<string, unknown>;
-  const appMeta = sbUser.app_metadata as Record<string, unknown>;
-  return {
-    id: sbUser.id,
-    username:
-      (meta.user_name as string) ??
-      (meta.name as string) ??
-      sbUser.email?.split("@")[0] ??
-      sbUser.id,
-    email: sbUser.email ?? "",
-    avatar_url: (meta.avatar_url as string) ?? null,
-    // Supabase provider is "github", "email", etc.
-    auth_provider: (appMeta.provider as string) ?? "email",
-    // Stored in user_metadata by backend triggers; defaults false
-    is_contributor: (meta.is_contributor as boolean) ?? false,
-    // Set via Supabase dashboard → Authentication → Users → App Metadata
-    // e.g.  { "is_admin": true }
-    // OR via SQL: UPDATE auth.users SET raw_app_meta_data = raw_app_meta_data || '{"is_admin":true}' WHERE email = '...'
-    is_admin: (appMeta.is_admin as boolean) ?? false,
-  };
-}
-
-// ── Context shape ─────────────────────────────────────────────────────────────
-
-interface AuthContextValue {
+export interface AuthContextValue {
   user: AuthUser | null;
-  /** Access token for Authorization: Bearer <token> headers to FastAPI */
-  token: string | null;
   isLoading: boolean;
-  /** True when the authenticated user has admin privileges */
   isAdmin: boolean;
-  /**
-   * Custom backend JWT path (ORCID, admin): store the JWT and fetch the user
-   * profile. Supabase paths (email/password, GitHub) update the context
-   * automatically via onAuthStateChange — no manual signIn() call needed.
-   */
-  signIn: (token: string) => void;
-  signOut: () => void;
+  authError: string | null;
+  login: (emailOrUsername: string, password: string) => Promise<void>;
+  register: (
+    username: string,
+    email: string,
+    password: string,
+    passwordConfirmation: string,
+  ) => Promise<void>;
+  loginWithProvider: (provider: "github" | "orcid") => void;
+  signOut: () => Promise<void>;
+  manageAccount: () => void;
+  refreshSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
-  token: null,
   isLoading: true,
   isAdmin: false,
-  signIn: () => {},
-  signOut: () => {},
+  authError: null,
+  login: async () => {},
+  register: async () => {},
+  loginWithProvider: () => {},
+  signOut: async () => {},
+  manageAccount: () => {},
+  refreshSession: async () => false,
 });
 
-// ── Provider ──────────────────────────────────────────────────────────────────
+function consumeAuthError(): string | null {
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get("auth_error");
+  if (!code) return null;
+  url.searchParams.delete("auth_error");
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  return AUTH_ERROR_MESSAGES[code] ?? "Authentication failed. Please try again.";
+}
+
+function currentReturnPath(): string {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}` || "/";
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError] = useState<string | null>(consumeAuthError);
+
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    try {
+      const session = await refreshAuthSession();
+      setUser(session.user);
+      return true;
+    } catch {
+      setUser(null);
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
-    // ── 1. Bootstrap: check Supabase session first, then ORCID fallback ────────
-    // We call refreshSession() instead of getSession() so that any changes to
-    // app_metadata (e.g. granting is_admin via Supabase SQL/dashboard) are
-    // reflected immediately on the next page load without requiring a sign-out.
-    supabase.auth.refreshSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(mapSupabaseUser(session.user));
-        setToken(session.access_token);
-        setIsLoading(false);
-      } else {
-        // No Supabase session — check for a stored ORCID token
-        const orcidToken = sessionStorage.getItem(ORCID_TOKEN_KEY);
-        if (orcidToken) {
-          fetchCurrentUser(orcidToken)
-            .then((profile) => {
-              setUser(profile);
-              setToken(orcidToken);
-            })
-            .catch(() => {
-              // Stale ORCID token — discard silently
-              sessionStorage.removeItem(ORCID_TOKEN_KEY);
-            })
-            .finally(() => setIsLoading(false));
-        } else {
-          setIsLoading(false);
-        }
-      }
-    });
+    let active = true;
 
-    // ── 2. Live subscription: keep context in sync with Supabase state ─────────
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser(mapSupabaseUser(session.user));
-        setToken(session.access_token);
-        // A Supabase session is authoritative — clear any ORCID token
-        sessionStorage.removeItem(ORCID_TOKEN_KEY);
-      } else if (!sessionStorage.getItem(ORCID_TOKEN_KEY)) {
-        // No Supabase session AND no ORCID token → signed out
-        setUser(null);
-        setToken(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // ── signIn — ORCID custom JWT path only ────────────────────────────────────
-  const signIn = useCallback((newToken: string) => {
-    sessionStorage.setItem(ORCID_TOKEN_KEY, newToken);
-    setToken(newToken);
-    fetchCurrentUser(newToken)
-      .then((profile) => setUser(profile))
+    refreshAuthSession()
+      .then((session) => {
+        if (active) setUser(session.user);
+      })
       .catch(() => {
-        sessionStorage.removeItem(ORCID_TOKEN_KEY);
-        setToken(null);
-        setUser(null);
+        if (active) setUser(null);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
       });
+
+    // Refresh the Keycloak token in the Go service before its default
+    // five-minute access-token lifetime expires, then reload public claims.
+    const interval = window.setInterval(() => {
+      void keepKeycloakSessionAlive()
+        .then(() => refreshAuthSession())
+        .then((session) => {
+          if (active) setUser(session.user);
+        })
+        .catch(() => {
+          if (active) setUser(null);
+        });
+    }, 4 * 60 * 1000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
-  // ── signOut — clears both Supabase session and ORCID token ─────────────────
-  const signOut = useCallback(() => {
-    sessionStorage.removeItem(ORCID_TOKEN_KEY);
-    setUser(null);
-    setToken(null);
-    // Fire-and-forget — the onAuthStateChange listener will also run
-    void supabase.auth.signOut();
+  const login = useCallback(async (emailOrUsername: string, password: string) => {
+    const session = await loginWithKeycloak(emailOrUsername, password);
+    setUser(session.user);
+    setIsLoading(false);
   }, []);
 
-  // React 19: render context directly without .Provider
+  const register = useCallback(async (
+    username: string,
+    email: string,
+    password: string,
+    passwordConfirmation: string,
+  ) => {
+    await registerWithKeycloak(username, email, password, passwordConfirmation);
+    const session = await loginWithKeycloak(username, password);
+    setUser(session.user);
+    setIsLoading(false);
+  }, []);
+
+  const loginWithProvider = useCallback((provider: "github" | "orcid") => {
+    window.location.assign(getKeycloakProviderLoginUrl(provider, currentReturnPath()));
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      await logoutFromKeycloak();
+    } finally {
+      setUser(null);
+      setIsLoading(false);
+    }
+  }, []);
+
+  const manageAccount = useCallback(() => {
+    window.location.assign(getKeycloakAccountUrl());
+  }, []);
+
   return (
-    <AuthContext value={{ user, token, isLoading, isAdmin: user?.is_admin ?? false, signIn, signOut }}>
+    <AuthContext
+      value={{
+        user,
+        isLoading,
+        isAdmin: user?.is_admin ?? false,
+        authError,
+        login,
+        register,
+        loginWithProvider,
+        signOut,
+        manageAccount,
+        refreshSession,
+      }}
+    >
       {children}
     </AuthContext>
   );
 }
-
-// ── Consumer hook ─────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {

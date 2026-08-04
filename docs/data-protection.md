@@ -10,7 +10,7 @@
 |---|---|
 | **File Number (Serial Number)** | *(to be assigned by THD DPM office)* |
 | **Creation Date** | 2026-06-17 |
-| **Last Status** | 2026-08-03 |
+| **Last Status** | 2026-08-04 |
 
 ---
 
@@ -44,7 +44,8 @@
 The system comprises:
 - A **FastAPI backend** serving a versioned REST API (`/api/v1/`) and hosting an automated scraper pipeline that collects technology cost data from academic and regulatory sources (OpenAlex, Crossref, NREL ATB, etc.) twice monthly.
 - A **React 19 single-page application** (SPA) allowing authenticated users to browse the technology catalogue, submit new parameters, and visualise data on a world map.
-- A **self-hosted Supabase instance** (PostgreSQL + GoTrue auth) running on the THD university VM alongside the application stack. This instance stores user accounts, technology submission workflow records, and scraper pipeline audit logs. **No data is transferred to Supabase, Inc. cloud services.**
+- A **self-hosted Supabase data instance** (PostgreSQL + PostgREST) storing catalogue, time-series, submission-workflow, scraper records, and hashed personal API-token metadata. GoTrue/Supabase Auth is disabled and no application account is stored there. **No data is transferred to Supabase, Inc. cloud services.**
+- A standalone **Go authentication service** backed by Redis and the isolated Keycloak `opentechdb` realm. Keycloak stores accounts and roles; identity-provider tokens remain server-side.
 - A **JSON file catalogue** in `data/` (version-controlled in Git) as the primary, portable data store for technology parameters.
 
 The system is deployed in **Docker containers on a THD-managed VM**, behind a Caddy reverse proxy with TLS termination. All personal data (user accounts, submission records) remains within THD infrastructure.
@@ -103,10 +104,11 @@ The following documents must be uploaded to support the consent legal basis:
 
 **Accountdaten:**
 - Benutzername
-- Passwort (nur für den integrierten Admin-Account als bcrypt-Hash; reguläre Nutzer authentifizieren sich über Supabase oder OAuth)
+- Passwort-Hash (ausschließlich im Keycloak-Identitätsspeicher; kein integrierter Admin-Account)
 - E-Mail-Adresse
-- ORCID iD (bei Anmeldung über ORCID OAuth)
-- GitHub-Profildaten: Name, Avatar-URL (bei Anmeldung über GitHub OAuth)
+- ORCID iD (falls ORCID als Keycloak-Identity-Provider verwendet wird)
+- GitHub-Kontoverknüpfung und freigegebene Profildaten (falls GitHub als Keycloak-Identity-Provider verwendet wird)
+- Realm-Rollen (`contributor`, `admin`)
 
 ---
 
@@ -147,14 +149,10 @@ Die Webanwendung lädt Schriftarten von Google Fonts CDN (`fonts.googleapis.com`
 
 **Endgerätedaten (Client-Side Storage):**
 
-Diese Anwendung setzt keine eigenen HTTP-Cookies. Authentifizierungstoken werden ausschließlich im `sessionStorage` des Browsers gespeichert und beim Schließen des Browser-Tabs automatisch gelöscht.
-
-Folgende Einträge werden nach dem Login gespeichert:
-
-| Schlüssel | Inhalt | Zweck | Speicherdauer |
-|---|---|---|---|
-| `opentech_orcid_token` | HS256 JWT: `sub`, `username`, `email`, `auth_provider`, `is_admin` | Authentifizierung (ORCID- und Admin-Pfad) | Bis zum Schließen des Browser-Tabs (max. 24 Stunden) |
-| `sb-<instance-ref>-auth.session` | Supabase-Sitzungsobjekt: `access_token`, `refresh_token`, `user` | Supabase-Sitzung (E-Mail- und GitHub-Pfad); automatisch erneuert | Bis zum Schließen des Browser-Tabs (ca. 1 Stunde, automatisch erneuert) |
+Die Anwendung setzt einen undurchsichtigen `session_id`-Cookie (HttpOnly), einen
+CSRF-Cookie und während eines externen Provider-Logins kurzzeitig einen
+`oauth_state`-Cookie. Keycloak-, ORCID-, GitHub- oder Supabase-Tokens werden
+nicht in Web Storage oder für JavaScript lesbaren Cookies gespeichert.
 
 ---
 
@@ -176,11 +174,13 @@ Wenn Sie uns eine Anfrage per E-Mail (ric.ignaciom@gmail.com) oder über GitHub 
 
 | Datenkategorie | Speicherort | Technische Form | Zugriffskontrolle |
 |---|---|---|---|
-| Accountdaten (E-Mail, ORCID iD, Profil, GitHub-Daten) | Self-hosted Supabase `auth.users` — THD-VM | PostgreSQL-Tabelle, Disk-Verschlüsselung (VM-Ebene) | Service-Role-Key (nur Backend); RLS nach `auth.uid()` |
+| Accountdaten (Benutzername, E-Mail, Passwort-Hash, Rollen, optionale Provider-Verknüpfung) | Keycloak-PostgreSQL — Auth-Server | Keycloak-Identitätsmodell | Keycloak-Admin- und Realm-Zugriffskontrolle |
+| Aktive Authentifizierungstokens | Redis — Auth-Server | Serverseitige, zeitlich begrenzte Sitzung | Nur Go-Auth-Service; Browser kennt lediglich eine zufällige Sitzungs-ID |
+| Persönliche API-Tokens | Self-hosted Supabase `api_tokens` — THD-VM | SHA-256-Hash, Kurzpräfix, Name, Scope, Ablauf-/Nutzungszeit und unveränderliche Keycloak-Subject-Referenz; Klartext nur einmal im Browser angezeigt | Service-Role-Key (nur FastAPI); RLS; kein Admin-Scope |
 | Technologieeinreichungen, Admin-Prüfprotokoll | Self-hosted Supabase `technology_submissions`, `scraper_candidates` — THD-VM | PostgreSQL-Tabellen | Service-Role-Key (nur Backend); RLS |
 | Scraper-Laufprotokoll | Self-hosted Supabase `scraper_runs` — THD-VM | PostgreSQL-Tabelle | Service-Role-Key (nur Backend) |
-| Technologiekatalog (Parameter) | Docker Named Volume (`opentech-db-data`) — THD-VM | JSON-Dateien in `data/`; versioniert in Git | Nur Backend-Container; kein direkter Zugriff von außen |
-| Authentifizierungstoken | Browser `sessionStorage` — Endgerät des Nutzers | HS256 JWT; Supabase-Sitzungsobjekt | Nur same-origin JavaScript; automatisch gelöscht beim Tab-Schließen |
+| Technologiekatalog und Zeitreihen | Self-hosted Supabase und JSON-Seed-Dateien — THD-VM | PostgreSQL/JSON | Backend-Service-Role; kein Supabase-Zugriff aus dem Browser |
+| Sitzungsreferenz / CSRF-Wert | Browser-Cookies — Endgerät des Nutzers | Undurchsichtige Zufallswerte, keine IdP-Tokens | `session_id` HttpOnly/SameSite=Strict; Secure in Produktion |
 | Server- / Zugriffsprotokolle | Caddy-Reverse-Proxy-Logdateien — THD-VM | Strukturiertes Text-/JSON-Format | Nur THD-Systemadministratoren |
 
 ---
@@ -215,20 +215,19 @@ The application fetches country boundary data once per session to render the Wor
 
 | Provider | Endpoint(s) | Data Shared | Legal Basis |
 |---|---|---|---|
-| ORCID OAuth | `https://orcid.org/oauth/authorize`, `https://orcid.org/oauth/token` | ORCID iD, researcher display name | Art. 6(1)(a) DSGVO (consent) |
-| Self-hosted Supabase Auth | Internal VM endpoint — no external Supabase cloud traffic | Email address, bcrypt-hashed password (email path); GitHub profile data (OAuth path) | Art. 6(1)(a) DSGVO (consent) |
-| GitHub OAuth (via Supabase) | `https://github.com/login/oauth/authorize` | GitHub email, display name, avatar URL | Art. 6(1)(a) DSGVO (consent) |
+| Self-hosted Keycloak (`opentechdb` realm) | Auth server | Username, email, password hash, roles, linked identities | Art. 6(1)(a) DSGVO (consent) |
+| ORCID (optional, brokered by Keycloak) | ORCID OAuth endpoints via Keycloak | ORCID iD and attributes released by ORCID | Art. 6(1)(a) DSGVO (consent) |
+| GitHub (optional, brokered by Keycloak) | GitHub OAuth endpoints via Keycloak | GitHub identifier and attributes released by GitHub | Art. 6(1)(a) DSGVO (consent) |
 
 **Authentication configuration details:**
 
 | Component | Description |
 |---|---|
-| Custom JWT algorithm | HS256, signed with `JWT_SECRET_KEY` |
-| Custom JWT lifetime | 24 hours (ORCID and built-in admin paths) |
-| Supabase JWT lifetime | ~1 hour, auto-refreshed by Supabase JS SDK |
-| Token persistence | `sessionStorage` (cleared on browser tab close) |
-| Protocol mappers (custom JWT) | `sub` (ORCID iD or "admin"), `username`, `email`, `auth_provider`, `is_contributor`, `is_admin` |
-| Data stored server-side | User profile, role flags (`is_admin`, `is_contributor`) in self-hosted Supabase `auth.users` on THD VM |
+| Identity boundary | Isolated Keycloak realm `opentechdb` |
+| Browser session | Random opaque `session_id` cookie; one-hour default TTL |
+| Token persistence | Keycloak access/refresh tokens contained in the Go-owned Redis session; never returned to React |
+| Public identity fields | Subject, username, email, realm, provider, and filtered OpenTech roles |
+| Data stored server-side | Account/roles in Keycloak PostgreSQL; active Keycloak tokens/session in Redis; hashed personal API-token metadata in backend-only Supabase; no Supabase Auth user |
 
 ### 5.3 Scraper Pipeline — Academic & Regulatory Sources
 
@@ -265,7 +264,7 @@ These services are called server-side by the FastAPI backend, not directly from 
 
 | Service | Purpose | Personal Data Shared | Legal Basis |
 |---|---|---|---|
-| Self-hosted Supabase PostgreSQL (THD VM) | Stores technology submissions and scraper candidates | `user_id`, `submitter_email`, full submission payload | Art. 6(1)(e) DSGVO (public task) |
+| Self-hosted Supabase PostgreSQL (THD VM) | Stores catalogue/workflow records and hashed personal API-token metadata | `user_id`, `submitter_email`, submission payload, token hash/prefix/name/scope/timestamps | Art. 6(1)(e) DSGVO (public task) |
 | GitHub API (`api.github.com`) | Opens pull requests when an admin approves a contribution; merges payload into JSON catalogue | Submitter email (in PR metadata), admin GitHub token | Art. 6(1)(e) DSGVO (public task) |
 | OpenAI API (optional) | LLM-based extraction of parameters from academic PDFs | Paper text only — no user personal data | Art. 6(1)(e) DSGVO (public task) |
 
@@ -347,7 +346,7 @@ Not applicable — no joint controllership arrangements exist for this processin
 
 | Feld | Inhalt |
 |---|---|
-| **Datenkategorie** | Accountdaten: E-Mail-Adresse, Benutzername, ORCID iD, GitHub-Profildaten (Name, Avatar-URL), Passwort-Hash (nur Admin-Account) |
+| **Datenkategorie** | Accountdaten in Keycloak: E-Mail-Adresse, Benutzername, Passwort-Hash, Realm-Rollen sowie optionale ORCID-/GitHub-Verknüpfung |
 | **Rechtsgrundlage** | Art. 6 Abs. 1 UAbs. 1 lit. a DSGVO i.V.m. Art. 7 DSGVO (Einwilligung bei Registrierung) |
 | **Löschfrist** | Mit Löschung des Nutzerkontos (auf Antrag des Nutzers oder nach festzulegender Inaktivitätsfrist) |
 
@@ -363,13 +362,13 @@ Not applicable — no joint controllership arrangements exist for this processin
 
 ---
 
-**Datenkategorie: Endgerätedaten (Client-Side Storage)**
+**Datenkategorie: Endgerätedaten (Cookies)**
 
 | Feld | Inhalt |
 |---|---|
-| **Datenkategorie** | `sessionStorage`-Einträge: `opentech_orcid_token` (JWT), `sb-<instance-ref>-auth.session` (Supabase-Sitzungsobjekt) |
+| **Datenkategorie** | Zufällige Cookie-Werte: `session_id`, `csrf_token` und kurzzeitig `oauth_state`; keine Keycloak-/Provider-Tokens |
 | **Rechtsgrundlage** | Art. 6 Abs. 1 UAbs. 1 lit. e DSGVO (öffentliche Aufgabe — sichere Sitzungsverwaltung) |
-| **Löschfrist** | Automatisch beim Schließen des Browser-Tabs: ORCID-Token max. 24 Stunden, Supabase-Session ca. 1 Stunde (automatisch erneuert) |
+| **Löschfrist** | `session_id` und `csrf_token`: standardmäßig eine Stunde bzw. beim Logout; `oauth_state`: fünf Minuten bzw. nach Callback |
 
 ---
 
@@ -508,7 +507,7 @@ This link must be referenced in the website Datenschutzerklärung and/or in the 
 
 **Begründung der Risikoeinschätzung (VV):**
 
-Die Plattform verarbeitet ausschließlich Standardidentifikationsdaten (E-Mail-Adresse, ORCID iD, GitHub-Profildaten) zur Authentifizierung und wissenschaftlichen Beitragszuordnung. Es werden keine besonderen Kategorien personenbezogener Daten gem. Art. 9 DSGVO verarbeitet. Die Zielgruppe besteht ausschließlich aus erwachsenen Forschern und Wissenschaftlern, die die Konsequenzen der Datenerhebung vollständig einschätzen können. Es findet keine automatisierte Entscheidungsfindung mit erheblichen Auswirkungen auf Betroffene statt. Die Anzahl der betroffenen Personen ist gering. Standardmäßige technische und organisatorische Maßnahmen (HTTPS, JWT-Signaturprüfung, sessionStorage, bcrypt-Hashing, Supabase Row Level Security) sind implementiert.
+Die Plattform verarbeitet ausschließlich Standardidentifikationsdaten (Benutzername, E-Mail-Adresse sowie optionale ORCID-/GitHub-Verknüpfungen) zur Authentifizierung und wissenschaftlichen Beitragszuordnung. Es werden keine besonderen Kategorien personenbezogener Daten gem. Art. 9 DSGVO verarbeitet. Die Zielgruppe besteht ausschließlich aus erwachsenen Forschern und Wissenschaftlern, die die Konsequenzen der Datenerhebung vollständig einschätzen können. Es findet keine automatisierte Entscheidungsfindung mit erheblichen Auswirkungen auf Betroffene statt. Die Anzahl der betroffenen Personen ist gering. Technische Maßnahmen umfassen HTTPS, Keycloak-Passwort-Hashing und Brute-Force-Schutz, serverseitige Tokens in Redis, undurchsichtige HttpOnly-Sitzungscookies, CSRF-/Origin-Prüfungen und backend-exklusiven Supabase-Zugriff.
 
 **Residual risk factors acknowledged (not overriding low-risk classification, but to be monitored):**
 
@@ -533,32 +532,27 @@ Die Plattform verarbeitet ausschließlich Standardidentifikationsdaten (E-Mail-A
 
 ### 12.1 Cookies
 
-The OpenTech-DB backend sets **no HTTP cookies**. The self-hosted Supabase JS client may set session cookies depending on the GoTrue configuration on the THD VM; this behaviour is controlled by the self-hosted Supabase instance, not the application backend.
+The standalone Go service sets first-party cookies through the application's
+same-origin `/auth-api` proxy:
 
-**Not Logged In:** No cookies set.
-
-**Logged In:** No cookies set by this application. Self-hosted Supabase-managed cookies (if enabled) carry the session token with `Secure` and `HttpOnly` flags.
-
-### 12.2 Session Storage
-
-All authentication tokens are stored in `sessionStorage`, not `localStorage`. This ensures tokens are automatically cleared when the browser tab is closed — appropriate for shared or public research machines.
-
-**Not Logged In**
-
-No `sessionStorage` entries are set.
-
-**Logged In**
-
-| Key | Example Content | Purpose | Lifetime |
+| Cookie | Content | Protection | Default lifetime |
 |---|---|---|---|
-| `opentech_orcid_token` | HS256 JWT: `{ sub: "0000-0002-…", username: "Jane Smith", auth_provider: "orcid", … }` | Custom auth token for ORCID OAuth and built-in admin login paths | Until browser tab close (max 24 h) |
-| `sb-<instance-ref>-auth.session` | Supabase session object: `{ access_token, refresh_token, user: { id, email, … } }` | Supabase auth session for email and GitHub OAuth paths; auto-refreshed while tab is open | Until browser tab close (~1 h, continuously auto-refreshed) |
+| `session_id` | Cryptographically random opaque lookup key | HttpOnly, SameSite=Strict, Secure in production | 60 minutes or logout |
+| `csrf_token` | Random double-submit value | SameSite=Lax, Secure in production; readable only so React can echo it in a header | 60 minutes or logout |
+| `oauth_state` | Random one-time provider-flow identifier | HttpOnly, SameSite=Lax, Secure in production | 5 minutes or callback |
+
+The cookie values contain no Keycloak, GitHub, ORCID, or Supabase token.
+
+### 12.2 Web Storage
+
+OpenTech DB stores no authentication token in `sessionStorage` or
+`localStorage`. React keeps the public session response only in memory.
 
 **In-Memory State (not persisted)**
 
 | Store | Content | Cleared when |
 |---|---|---|
-| React `AuthContext` | `{ user, token, isLoading, isAdmin }` | Component unmount / page reload |
+| React `AuthContext` | `{ user, isLoading, isAdmin }` | Component unmount / page reload |
 | Promise cache (`services/api.ts`) | Technology category and detail responses | Page reload or explicit `invalidateAll()` call |
 | Zustand `useTechBuilderStore` | Visual tech builder UI state | Page reload |
 
@@ -566,12 +560,13 @@ No `sessionStorage` entries are set.
 
 ## 13. Data Flow Summary
 
-1. **User registers or logs in** → personal data (email, ORCID iD, or GitHub profile) stored in self-hosted Supabase `auth.users` on the THD VM; a signed JWT is issued (custom HS256 for ORCID/admin, Supabase JWT for email/GitHub)
-2. **Auth token stored client-side** → JWT placed in `sessionStorage["opentech_orcid_token"]` or Supabase session key; cleared automatically on browser tab close
-3. **User submits a technology** → `user_id` (Supabase UUID or ORCID iD) and `submitter_email` written to self-hosted Supabase `technology_submissions` with status `pending_review`
-4. **Admin approves a submission** → GitHub API opens a pull request merging the payload into the JSON catalogue; submission record updated with `status = "approved"`, `reviewed_by`, `reviewed_at`, and `pr_url`
-5. **Scraper pipeline runs** (APScheduler, twice monthly) → fetches paper metadata and cost data from academic/regulatory sources; writes extracted candidates to self-hosted Supabase `scraper_candidates`; no user personal data is transmitted externally
-6. **Frontend loads map and fonts** → a single GeoJSON request to GitHub CDN (for country boundaries) and font requests to Google Fonts CDN; user IP address is transmitted in both cases
+1. **User registers or logs in** → account data and realm roles are read/written in Keycloak; the Go service keeps Keycloak tokens in Redis
+2. **Opaque browser session created** → a random HttpOnly `session_id` cookie references the Redis session; no identity-provider token enters browser storage
+3. **User generates a personal API token** → FastAPI stores only its SHA-256 hash, metadata, and immutable Keycloak subject in self-hosted Supabase; the complete secret is returned once and remains under the user's control
+4. **User submits a technology** → immutable Keycloak subject and `submitter_email` are written as attribution to self-hosted Supabase `technology_submissions`; no Supabase user row is created
+5. **Admin approves a submission** → GitHub API opens a pull request merging the payload into the JSON catalogue; submission record updated with `status = "approved"`, `reviewed_by`, `reviewed_at`, and `pr_url`
+6. **Scraper pipeline runs** (APScheduler, twice monthly) → fetches paper metadata and cost data from academic/regulatory sources; writes extracted candidates to self-hosted Supabase `scraper_candidates`; no user personal data is transmitted externally
+7. **Frontend loads map and fonts** → a single GeoJSON request to GitHub CDN (for country boundaries) and font requests to Google Fonts CDN; user IP address is transmitted in both cases
 
 ---
 
@@ -581,12 +576,12 @@ No `sessionStorage` entries are set.
 |---|---|---|
 | Google Fonts CDN receives IP address | Every page load sends the user's IP to Google's servers for font delivery | Self-host Space Grotesk, Inter, and Material Symbols to eliminate the external request |
 | GitHub CDN receives IP address | Single GeoJSON fetch per session sends IP to GitHub's CDN | Serve `countries.geo.json` from the OpenTech-DB backend (bundle file into `data/` and expose via `/api/v1/geojson/countries`) |
-| ORCID placeholder email | The ORCID `/authenticate` scope does not expose the researcher's real email; a synthetic placeholder `{orcid_id}@orcid.org` is generated | Inform ORCID users at login; offer an optional post-login step to provide a real email address |
+| Optional provider attributes are incomplete | ORCID or GitHub may not release every requested attribute | Configure mandatory username/email mapping and account-linking rules in the `opentechdb` Keycloak realm |
 | Indefinite submission retention | No automatic deletion policy exists for `technology_submissions` or `scraper_candidates` | Define and implement a retention TTL (e.g., archive rejected candidates after 12 months); document in privacy policy |
-| JWT secret key exposure | `JWT_SECRET_KEY` and `SUPABASE_JWT_SECRET` are stored in environment variables | Store secrets in Docker Secrets or HashiCorp Vault on the THD VM; rotate quarterly |
-| Admin credentials in environment variables | `ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH` are env-var-based; no UI to rotate them | Use a strong bcrypt hash (cost factor ≥ 12); avoid default credentials; redeploy to rotate; document rotation procedure |
+| Service secret exposure | Keycloak client secret, `AUTH_INTERNAL_SECRET`, and Supabase service-role key are server-side environment/secrets values | Restrict filesystem/network access, use a secrets manager where available, and rotate the affected secret after suspected exposure |
+| Privileged account compromise | Keycloak administrators and OpenTech `admin` realm users can approve data changes | Require strong credentials, enable Keycloak brute-force protection, minimize admin assignments, and review realm/admin audit logs |
 | LLM providers receive paper text | When enabled, OpenAI or Anthropic receive text extracted from academic PDFs | LLM extraction is disabled by default; no user personal data is included in prompts; establish a data processing agreement with the LLM provider before enabling in production |
-| Session token in `sessionStorage` | `sessionStorage` is accessible to JavaScript on the same origin (XSS risk) | Enforce a strict `Content-Security-Policy` header; validate all JWT signatures server-side on every authenticated request |
+| Session/CSRF cookie theft | XSS or an untrusted origin could attempt authenticated writes | HttpOnly session cookie, CSRF double-submit token, SameSite policy, exact Origin checks, TLS, and a strict Content-Security-Policy |
 
 ---
 
@@ -621,7 +616,9 @@ Since Supabase is self-hosted, all database operations are processed within THD 
 
 | Component | Location | Control |
 |---|---|---|
-| Self-hosted Supabase (PostgreSQL + GoTrue) | THD university VM (Docker container) | THD-managed |
+| Self-hosted Supabase (PostgreSQL + PostgREST; Auth disabled) | THD university VM (Docker containers) | THD-managed |
+| Keycloak + Keycloak PostgreSQL | Shared or dedicated THD-managed auth server | THD-managed; isolated `opentechdb` realm |
+| Go auth service + Redis | Auth server (Docker containers) | THD-managed |
 | JSON technology catalogue (`data/`) | THD university VM (Docker named volume) | THD-managed |
 | FastAPI backend | THD university VM (Docker container) | THD-managed |
 | React frontend | THD university VM (Docker container, served by nginx) | THD-managed |
@@ -636,10 +633,10 @@ Under Chapter III of the GDPR, data subjects (registered users of OpenTech-DB) h
 
 | Right | Article | Scope within OpenTech-DB | Fulfilment procedure |
 |---|---|---|---|
-| **Right of access** | Art. 15 | User may request a copy of all personal data held: Supabase `auth.users` record, all rows in `technology_submissions` linked to their `user_id`, admin review metadata | Controller exports the data via the self-hosted Supabase admin interface and provides it in a machine-readable format (JSON) within one month |
-| **Right to rectification** | Art. 16 | User may correct their display name, email address, or ORCID iD | Controller updates the relevant Supabase record; JWT re-issued if email changes |
-| **Right to erasure** | Art. 17 | User may request deletion of their account and associated personal data | Controller deletes the Supabase `auth.users` record; submission records are anonymised (nullify `submitter_email`, replace `user_id` with a tombstone value) rather than hard-deleted, to preserve catalogue audit trail. Residual audit trail is retained under Art. 17(3)(b) (statistical/scientific purpose and legitimate interest) |
-| **Right to restriction** | Art. 18 | User may request that their data not be actively processed while a dispute is pending | Controller marks the user record as `restricted` and suspends any processing beyond storage |
+| **Right of access** | Art. 15 | User may request their Keycloak account/link data, personal-token metadata, submission rows linked to their Keycloak subject, and review metadata | Controller exports Keycloak and Supabase workflow/token metadata in a machine-readable format within one month; plaintext token secrets cannot be recovered because they are not stored |
+| **Right to rectification** | Art. 16 | User may correct username/email and linked-provider data | Controller updates or unlinks the identity in the `opentechdb` Keycloak realm; subsequent Go sessions use the updated claims |
+| **Right to erasure** | Art. 17 | User may request deletion of their account and associated personal data | Controller revokes/deletes personal-token rows, deletes the Keycloak realm user, and terminates Redis sessions; submission attribution is deleted or pseudonymised according to the approved retention/legal-basis policy |
+| **Right to restriction** | Art. 18 | User may request that their data not be actively processed while a dispute is pending | Controller disables the Keycloak realm account and restricts workflow processing beyond required storage |
 | **Right to data portability** | Art. 20 | Applies to data provided by the data subject (account profile, technology submissions) | Controller provides data as a structured JSON export |
 | **Right to object** | Art. 21 | Applies to processing based on public task (Art. 6(1)(e)): authentication metadata, scraper audit logs, admin review audit | Controller assesses whether compelling grounds override the objection; if not, processing is ceased |
 | **Right not to be subject to automated decisions** | Art. 22 | No solely automated decisions producing legal or similarly significant effects are made in OpenTech-DB | N/A — the scraper pipeline produces *candidates* that require human admin review before any effect on the catalogue |
@@ -658,18 +655,19 @@ Measures implemented to ensure a level of security appropriate to the risk (Art.
 |---|---|
 | Encryption in transit | All external communication uses HTTPS/TLS 1.2+. The FastAPI backend is deployed behind a Caddy reverse proxy with automatic TLS termination (Let's Encrypt) |
 | Encryption at rest | THD VM disk encryption managed by THD IT infrastructure; self-hosted Supabase PostgreSQL data at rest is protected by OS-level disk encryption on the VM |
-| Access control — backend | Role-based: `is_admin` and `is_contributor` flags in JWT claims; server-side validation on every authenticated endpoint. Admin endpoints reject non-admin tokens with HTTP 403 |
-| Access control — database | Supabase Row Level Security (RLS) policies restrict data access by `auth.uid()`. The service-role key (bypasses RLS) is held only on the backend; never exposed to the frontend |
-| Secrets management | `JWT_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD_HASH`, `ORCID_CLIENT_SECRET`, `GITHUB_TOKEN` are stored as environment variables / Docker secrets — never committed to the repository |
-| Password hashing | Built-in admin password stored as bcrypt hash (cost factor ≥ 12). No plaintext passwords stored anywhere |
-| Session lifetime | Custom JWTs expire after 24 hours. Supabase tokens expire after ~1 hour (auto-refreshed). All tokens are stored in `sessionStorage` and cleared on browser tab close |
+| Access control — backend | FastAPI validates the opaque cookie with the Go internal endpoint or a hashed `otdb_` personal token, checks the exact `opentechdb` realm, applies read/full scope, and never grants admin through a personal token |
+| Access control — database | Kong and PostgreSQL/RLS permit the backend service role only. Supabase `anon`/`authenticated` schema privileges and historical browser policies are revoked; no Supabase route/key is exposed to React |
+| Secrets management | `AUTH_INTERNAL_SECRET`, Keycloak client/admin/database secrets, Redis password, `SUPABASE_SERVICE_ROLE_KEY`, and optional `GITHUB_TOKEN` stay in uncommitted server environment/secrets files |
+| Password hashing | Password verification and hashing are owned by Keycloak; OpenTech and Supabase store no application password |
+| Session lifetime | Go sessions default to 60 minutes; Keycloak tokens remain in Redis and are refreshed server-side. Logout revokes the Keycloak session and clears browser cookies |
+| Personal-token lifetime | Personal tokens default to 90 days, are shown once, are revocable from the profile, and are stored only as SHA-256 hashes; a database trigger caps each user at 10 active tokens |
 
 ### 17.2 Integrity
 
 | Measure | Implementation |
 |---|---|
 | Input validation | All API request bodies validated by Pydantic v2 models before processing; invalid payloads rejected with HTTP 422 |
-| JWT signature verification | Every authenticated request validates the JWT signature server-side using `JWT_SECRET_KEY`; expired or tampered tokens are rejected |
+| Session validation | Every protected request is resolved through the shared-secret-protected Go endpoint; expired, missing, duplicate, wrong-realm, or unauthorized sessions are rejected |
 | Contribution workflow | Scraper-sourced and user-submitted technology data require explicit admin approval before merging into the JSON catalogue; no automated writes to the catalogue |
 | Audit trail | `technology_submissions` and `scraper_candidates` record `reviewed_by` (admin email) and `reviewed_at` timestamp for every approval or rejection decision |
 
@@ -685,7 +683,7 @@ Measures implemented to ensure a level of security appropriate to the risk (Art.
 
 | Measure | Implementation |
 |---|---|
-| Stateless backend | FastAPI backend is stateless (session data held client-side); any instance can be restarted without loss of user sessions beyond the active tab |
+| Stateless FastAPI tier | FastAPI keeps no auth token or login state; active sessions are centralized in Redis and survive FastAPI restarts |
 | Cache invalidation | In-memory LRU cache can be cleared via `POST /debug/reload` without a full service restart |
 | Incident response | In the event of a suspected personal data breach, the controller will notify BayLDA within 72 hours (Art. 33 GDPR) and affected data subjects without undue delay if high risk is identified (Art. 34 GDPR) |
 
@@ -693,7 +691,7 @@ Measures implemented to ensure a level of security appropriate to the risk (Art.
 
 | Measure | Priority | Notes |
 |---|---|---|
-| Content-Security-Policy header | High | Mitigates XSS risk to `sessionStorage` tokens; implement in Caddy reverse proxy config |
+| Content-Security-Policy header | High | Adds defense in depth against XSS and unauthorized same-origin script execution |
 | Self-hosted fonts | Medium | Eliminates Google Fonts CDN IP address transfer |
 | Self-hosted GeoJSON | Medium | Eliminates GitHub CDN IP address transfer; serve from `/api/v1/geojson/countries` |
 | Secrets manager | Medium | Move secrets from env vars to Docker Secrets or HashiCorp Vault on THD VM |

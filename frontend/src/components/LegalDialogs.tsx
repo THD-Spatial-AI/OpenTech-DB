@@ -65,9 +65,9 @@ function PrivacyContent() {
       <Section title="2. Data Processed &amp; Legal Bases">
         <div className="space-y-2">
           {[
-            { cat: "Account data",      data: "Email, ORCID iD, name, institution",                basis: "Art. 6(1)(a) GDPR" },
+            { cat: "Account data",      data: "Username, email, Keycloak account ID, optional linked GitHub/ORCID identity", basis: "Art. 6(1)(a) GDPR" },
             { cat: "Log data",          data: "IP address, timestamp, HTTP path (Caddy logs)",     basis: "Art. 6(1)(e) GDPR" },
-            { cat: "Session data",      data: "ORCID token, Supabase JWT (sessionStorage only)",   basis: "Art. 6(1)(a) GDPR" },
+            { cat: "Session data",      data: "Opaque HttpOnly session cookie and CSRF token; Keycloak tokens remain server-side", basis: "Art. 6(1)(a) GDPR" },
             { cat: "Content data",      data: "Submitted technology parameters, source references", basis: "Art. 6(1)(a)/(e)" },
             { cat: "Communications",    data: "Support emails sent to the project lead",           basis: "Art. 6(1)(f) GDPR" },
           ].map(({ cat, data, basis }) => (
@@ -84,7 +84,7 @@ function PrivacyContent() {
         <ul className="list-disc list-inside space-y-1 text-sm">
           <li><strong>Account data</strong> — deleted on account deletion request</li>
           <li><strong>Log data</strong> — max. 7 days (automatic Caddy log rotation)</li>
-          <li><strong>Session data</strong> — cleared when the browser tab is closed</li>
+          <li><strong>Session data</strong> — expires after inactivity or logout, with an eight-hour absolute maximum</li>
           <li><strong>Approved content</strong> — retained permanently in the research catalogue; personal attribution pseudonymised on account deletion</li>
           <li><strong>Communications</strong> — max. 3 years (§§ 195, 199 BGB)</li>
         </ul>
@@ -101,7 +101,11 @@ function PrivacyContent() {
         </p>
         <p>
           <strong className="text-on-surface">Supabase</strong> — self-hosted on THD VM;
-          no data transfer to Supabase Inc.
+          optional catalogue/workflow storage only, not authentication; no data transfer to Supabase Inc.
+        </p>
+        <p>
+          <strong className="text-on-surface">Keycloak, PostgreSQL, and Redis</strong> —
+          self-hosted authentication, account, and server-side session storage on THD-managed infrastructure.
         </p>
       </Section>
 
@@ -229,8 +233,7 @@ function TermsContent({ onReadToBottom }: { onReadToBottom: () => void }) {
       <Section title="3. Contributor Registration">
         <p>
           Researchers may register as Contributors to submit parameters.
-          Requirements: a valid email address or ORCID iD, a scientific or research affiliation,
-          and acceptance of these terms and the{" "}
+          Requirements: a username, valid email address, password, and acceptance of these terms and the{" "}
           <a href="/privacy" target="_blank" rel="noopener" className="text-primary hover:underline">
             Privacy Policy
           </a>.

@@ -8,7 +8,7 @@ services:
       - "8000"
     networks:
       - default
-      - opentech   # reaches Supabase Kong at http://supabase-kong:8000
+      - opentech   # backend-only access to Supabase PostgREST/Kong
 
   nginx:
     image: nginx:alpine
@@ -16,17 +16,19 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      NGINX_ENVSUBST_FILTER: OPENTECHDB_AUTH_UPSTREAM
+      OPENTECHDB_AUTH_UPSTREAM: ${OPENTECHDB_AUTH_UPSTREAM:?set OPENTECHDB_AUTH_UPSTREAM in .env}
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/nginx.conf:/etc/nginx/templates/default.conf.template:ro
       - /var/www/opentech-db:/usr/share/nginx/html:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
     networks:
       - default
-      - opentech   # proxies /supabase/ to supabase-kong
 
 networks:
   default: {}

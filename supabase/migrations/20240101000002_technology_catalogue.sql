@@ -33,18 +33,10 @@ CREATE TABLE IF NOT EXISTS technology_instances (
     extra_fields                     JSONB NOT NULL DEFAULT '{}'
 );
 
--- Enable Row Level Security (Supabase best practice)
+-- Enable Row Level Security. All access goes through the backend service role;
+-- the browser receives no Supabase credential.
 ALTER TABLE technologies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE technology_instances ENABLE ROW LEVEL SECURITY;
-
--- Allow unrestricted SELECT for the anon role (public read)
-CREATE POLICY "Allow public read on technologies"
-    ON technologies FOR SELECT
-    USING (true);
-
-CREATE POLICY "Allow public read on technology_instances"
-    ON technology_instances FOR SELECT
-    USING (true);
 
 -- Allow service_role full access (used by backend / migration scripts)
 CREATE POLICY "Allow service role full access on technologies"

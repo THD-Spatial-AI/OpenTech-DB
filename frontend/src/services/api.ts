@@ -21,13 +21,21 @@ import type {
   CreateTechnologyPayload,
   AuthUser,
   SubmissionRecord,
-  AdminLoginResponse,
 } from "../types/api";
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
 const BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
   "http://localhost:8000/api/v1";
+
+const AUTH_BASE_URL =
+  (import.meta.env.VITE_AUTH_API_BASE_URL as string | undefined) ??
+  "/auth-api";
+
+// Every browser request carries the encrypted HttpOnly Keycloak session
+// cookies. Tokens are intentionally unavailable to JavaScript.
+const fetch: typeof window.fetch = (input, init) =>
+  window.fetch(input, { ...init, credentials: "include" });
 
 // ── Shared fetch wrapper ──────────────────────────────────────────────────────
 
@@ -168,14 +176,12 @@ export function fetchOntologySchema(): Promise<OntologySchema> {
  */
 export async function submitTechnology(
   payload: CreateTechnologyPayload,
-  token?: string | null
 ): Promise<{ id: string; technology_name: string }> {
   const response = await fetch(`${BASE_URL}/technologies`, {
     method: "POST",
     headers: {
       ...HEADERS,
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(payload),
   });
@@ -197,72 +203,170 @@ export async function submitTechnology(
 
 // ── Auth endpoints ────────────────────────────────────────────────────────────
 
-/**
- * GET /auth/me
- * Validates and returns the current user for a custom JWT.
- * Called only for the ORCID path; Supabase sessions are managed by the
- * Supabase client directly and do not require this endpoint.
- */
-export async function fetchCurrentUser(token: string): Promise<AuthUser> {
-  const response = await fetch(`${BASE_URL}/auth/me`, {
+export interface AuthSessionResponse {
+  user: AuthUser;
+  session?: { authenticated?: boolean; timeout_minutes?: number };
+}
+
+type AuthErrorBody = {
+  detail?: string;
+  error?: string;
+  message?: string;
+  errors?: Record<string, string>;
+};
+
+async function authError(response: Response): Promise<Error> {
+  try {
+    const body = (await response.json()) as AuthErrorBody;
+    const fieldError = body.errors && Object.values(body.errors)[0];
+    return new Error(fieldError || body.detail || body.message || body.error || `Authentication error ${response.status}`);
+  } catch {
+    return new Error(`Authentication error ${response.status}`);
+  }
+}
+
+async function csrfToken(): Promise<string> {
+  const response = await fetch(`${AUTH_BASE_URL}/csrf-token`, { headers: HEADERS });
+  if (!response.ok) throw await authError(response);
+  const body = (await response.json()) as { csrf_token?: string };
+  if (!body.csrf_token) throw new Error("Authentication service did not return a CSRF token.");
+  return body.csrf_token;
+}
+
+async function authPost<T>(path: string, body?: unknown): Promise<T> {
+  const csrf = await csrfToken();
+  const response = await fetch(`${AUTH_BASE_URL}${path}`, {
+    method: "POST",
     headers: {
       ...HEADERS,
-      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrf,
     },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!response.ok) throw new Error("Session expired — please sign in again.");
-  return response.json() as Promise<AuthUser>;
+  if (!response.ok) throw await authError(response);
+  return response.json() as Promise<T>;
 }
 
-/**
- * Returns the backend URL that initiates the ORCID OAuth flow.
- * The FastAPI backend handles the full OAuth dance with ORCID's servers
- * and redirects back to the SPA with ?token=<jwt> on success.
- *
- * GitHub OAuth is now handled entirely by Supabase
- * (supabase.auth.signInWithOAuth({ provider: 'github' })).
- */
-export function getOrcidOAuthUrl(): string {
-  return `${BASE_URL}/auth/orcid`;
+/** Return the public identity attached to the opaque Go-managed session. */
+export async function refreshAuthSession(): Promise<AuthSessionResponse> {
+  const response = await fetch(`${AUTH_BASE_URL}/auth/me`, { headers: HEADERS });
+  if (!response.ok) throw new Error("No active Keycloak session.");
+  return response.json() as Promise<AuthSessionResponse>;
 }
 
-// ── Admin endpoints ────────────────────────────────────────────────────────────────
+export async function loginWithKeycloak(emailOrUsername: string, password: string): Promise<AuthSessionResponse> {
+  return authPost<AuthSessionResponse>("/login", { username: emailOrUsername, password });
+}
 
-export async function adminLogin(
+export async function registerWithKeycloak(
+  username: string,
   email: string,
-  password: string
-): Promise<AdminLoginResponse> {
-  let response: Response;
-  try {
-    response = await fetch(`${BASE_URL}/auth/admin/login`, {
-      method: "POST",
-      headers: { ...HEADERS, "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-  } catch {
-    // Backend unreachable (server not running, CORS preflight failed, etc.)
-    const err = new Error("Backend unreachable — is the server running?");
-    (err as Error & { code: string }).code = "NETWORK_ERROR";
-    throw err;
-  }
-  if (response.status === 401) {
-    const err = new Error("Invalid admin credentials.");
-    (err as Error & { code: string }).code = "INVALID_CREDENTIALS";
-    throw err;
-  }
-  if (!response.ok) {
-    const err = new Error(`Admin login failed (${response.status}).`);
-    (err as Error & { code: string }).code = "SERVER_ERROR";
-    throw err;
-  }
-  return response.json() as Promise<AdminLoginResponse>;
+  password: string,
+  passwordConfirmation: string,
+): Promise<{ message: string; user: { username: string } }> {
+  return authPost("/register", {
+    username,
+    email,
+    password,
+    password_confirmation: passwordConfirmation,
+  });
 }
 
-export async function fetchMySubmissions(
-  token: string
-): Promise<SubmissionRecord[]> {
+export function getKeycloakProviderLoginUrl(
+  provider: "github" | "orcid",
+  returnTo = "/",
+): string {
+  const query = new URLSearchParams({ return_to: returnTo });
+  return `${AUTH_BASE_URL}/auth/provider/${provider}?${query.toString()}`;
+}
+
+export async function logoutFromKeycloak(): Promise<void> {
+  await authPost<{ success?: boolean }>("/logout");
+}
+
+export function getKeycloakAccountUrl(): string {
+  return `${AUTH_BASE_URL}/auth/account`;
+}
+
+export async function keepKeycloakSessionAlive(): Promise<void> {
+  const response = await fetch(`${AUTH_BASE_URL}/auth/keep-alive`, { headers: HEADERS });
+  if (!response.ok) throw new Error("Keycloak session expired.");
+}
+
+// ── Personal API tokens ─────────────────────────────────────────────────────
+
+export interface PersonalApiToken {
+  id: number;
+  name: string;
+  token_prefix: string;
+  scope: "read" | "full";
+  expires_at: string | null;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+export interface CreatedPersonalApiToken {
+  id: number;
+  name: string;
+  /** Full plaintext secret. It is returned by the server only once. */
+  token: string;
+  token_prefix: string;
+  scope: "read" | "full";
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface CreatePersonalApiTokenPayload {
+  name: string;
+  scope: "read" | "full";
+  /** 0 means no automatic expiry; otherwise the backend caps this at 365. */
+  expires_in_days: number;
+}
+
+async function personalTokenError(response: Response): Promise<Error> {
+  try {
+    const body = (await response.json()) as { detail?: string };
+    return new Error(body.detail || `API token error ${response.status}`);
+  } catch {
+    return new Error(`API token error ${response.status}`);
+  }
+}
+
+/** List token metadata. The server never returns previously issued secrets. */
+export async function fetchPersonalApiTokens(): Promise<PersonalApiToken[]> {
+  const response = await fetch(`${BASE_URL}/profile/api-tokens`, { headers: HEADERS });
+  if (!response.ok) throw await personalTokenError(response);
+  return response.json() as Promise<PersonalApiToken[]>;
+}
+
+/** Generate a token. The plaintext in this response cannot be retrieved again. */
+export async function createPersonalApiToken(
+  payload: CreatePersonalApiTokenPayload,
+): Promise<CreatedPersonalApiToken> {
+  const response = await fetch(`${BASE_URL}/profile/api-tokens`, {
+    method: "POST",
+    headers: { ...HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw await personalTokenError(response);
+  return response.json() as Promise<CreatedPersonalApiToken>;
+}
+
+export async function revokePersonalApiToken(tokenId: number): Promise<void> {
+  const response = await fetch(
+    `${BASE_URL}/profile/api-tokens/${encodeURIComponent(String(tokenId))}`,
+    { method: "DELETE", headers: HEADERS },
+  );
+  if (!response.ok) throw await personalTokenError(response);
+}
+
+// ── Admin endpoints ──────────────────────────────────────────────────────────
+
+export async function fetchMySubmissions(): Promise<SubmissionRecord[]> {
   const response = await fetch(`${BASE_URL}/submissions/mine`, {
-    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+    headers: HEADERS,
   });
   if (!response.ok) {
     let detail = `Error ${response.status}`;
@@ -273,14 +377,13 @@ export async function fetchMySubmissions(
 }
 
 export async function fetchAdminSubmissions(
-  token: string,
   statusFilter?: string
 ): Promise<SubmissionRecord[]> {
   const url = statusFilter
     ? `${BASE_URL}/admin/submissions?status=${encodeURIComponent(statusFilter)}`
     : `${BASE_URL}/admin/submissions`;
   const response = await fetch(url, {
-    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+    headers: HEADERS,
   });
   if (!response.ok) {
     let detail = `Server error ${response.status}`;
@@ -291,7 +394,6 @@ export async function fetchAdminSubmissions(
 }
 
 export async function actOnSubmission(
-  token: string,
   submissionId: string,
   action: "approve" | "reject",
   reason?: string,
@@ -302,7 +404,7 @@ export async function actOnSubmission(
     `${BASE_URL}/admin/submissions/${encodeURIComponent(submissionId)}`,
     {
       method: "POST",
-      headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { ...HEADERS, "Content-Type": "application/json" },
       body: JSON.stringify({
         action,
         reason: reason || undefined,
@@ -332,11 +434,9 @@ export interface CatalogueTechEntry {
   source: string;
 }
 
-export async function fetchAdminCatalogueTechnologies(
-  token: string
-): Promise<CatalogueTechEntry[]> {
+export async function fetchAdminCatalogueTechnologies(): Promise<CatalogueTechEntry[]> {
   const response = await fetch(`${BASE_URL}/admin/technologies`, {
-    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+    headers: HEADERS,
   });
   if (!response.ok) {
     let detail = `Error ${response.status}`;
@@ -347,7 +447,6 @@ export async function fetchAdminCatalogueTechnologies(
 }
 
 export async function adminEditTechnology(
-  token: string,
   technologyId: string,
   patch: Partial<Omit<CatalogueTechEntry, "technology_id" | "source">>
 ): Promise<{ status: string; technology_id: string }> {
@@ -355,7 +454,7 @@ export async function adminEditTechnology(
     `${BASE_URL}/admin/technologies/${encodeURIComponent(technologyId)}`,
     {
       method: "PATCH",
-      headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { ...HEADERS, "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     }
   );
@@ -368,14 +467,13 @@ export async function adminEditTechnology(
 }
 
 export async function adminDeleteTechnology(
-  token: string,
   technologyId: string
 ): Promise<{ status: string; technology_id: string; technology_name: string }> {
   const response = await fetch(
     `${BASE_URL}/admin/technologies/${encodeURIComponent(technologyId)}`,
     {
       method: "DELETE",
-      headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+      headers: HEADERS,
     }
   );
   if (!response.ok) {
@@ -426,14 +524,13 @@ export interface ProfileSubmissionData {
 }
 
 export async function fetchAdminProfileSubmissions(
-  token: string,
   statusFilter?: string
 ): Promise<ProfileSubmissionRecord[]> {
   const url = statusFilter
     ? `${BASE_URL}/admin/timeseries/submissions?status=${encodeURIComponent(statusFilter)}`
     : `${BASE_URL}/admin/timeseries/submissions`;
   const response = await fetch(url, {
-    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+    headers: HEADERS,
   });
   if (!response.ok) {
     let detail = `Server error ${response.status}`;
@@ -444,12 +541,11 @@ export async function fetchAdminProfileSubmissions(
 }
 
 export async function fetchAdminProfileSubmissionData(
-  token: string,
   submissionId: string,
 ): Promise<ProfileSubmissionData> {
   const response = await fetch(
     `${BASE_URL}/admin/timeseries/submissions/${encodeURIComponent(submissionId)}/data`,
-    { headers: { ...HEADERS, Authorization: `Bearer ${token}` } },
+    { headers: HEADERS },
   );
   if (!response.ok) {
     let detail = `Server error ${response.status}`;
@@ -460,7 +556,6 @@ export async function fetchAdminProfileSubmissionData(
 }
 
 export async function actOnProfileSubmission(
-  token: string,
   submissionId: string,
   action: "approve" | "reject",
   reason?: string,
@@ -469,7 +564,7 @@ export async function actOnProfileSubmission(
     `${BASE_URL}/admin/timeseries/submissions/${encodeURIComponent(submissionId)}`,
     {
       method: "POST",
-      headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { ...HEADERS, "Content-Type": "application/json" },
       body: JSON.stringify({ action, reason: reason || undefined }),
     }
   );
@@ -528,9 +623,8 @@ export async function fetchScraperStatus(): Promise<ScraperStatus> {
   return response.json() as Promise<ScraperStatus>;
 }
 
-export async function fetchScraperRuns(limit = 20, token?: string): Promise<{ count: number; runs: ScraperRun[] }> {
-  const authHeaders = token ? { ...HEADERS, Authorization: `Bearer ${token}` } : HEADERS;
-  const response = await fetch(`${BASE_URL}/scraper/runs?limit=${limit}`, { headers: authHeaders });
+export async function fetchScraperRuns(limit = 20): Promise<{ count: number; runs: ScraperRun[] }> {
+  const response = await fetch(`${BASE_URL}/scraper/runs?limit=${limit}`, { headers: HEADERS });
   if (!response.ok) {
     let detail = `Error ${response.status}`;
     try { detail = (await response.json()).detail ?? detail; } catch { /* ignore */ }
@@ -540,12 +634,11 @@ export async function fetchScraperRuns(limit = 20, token?: string): Promise<{ co
 }
 
 export async function triggerScraperRun(
-  token: string,
   options?: { tech_ids?: string[]; sources?: string[] }
 ): Promise<{ status: string; message: string }> {
   const response = await fetch(`${BASE_URL}/scraper/run`, {
     method: "POST",
-    headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: { ...HEADERS, "Content-Type": "application/json" },
     body: JSON.stringify(options ?? {}),
   });
   if (!response.ok) {
@@ -559,12 +652,10 @@ export async function triggerScraperRun(
   return response.json() as Promise<{ status: string; message: string }>;
 }
 
-export async function stopScraperRun(
-  token: string,
-): Promise<{ status: string; message: string; run_id?: string }> {
+export async function stopScraperRun(): Promise<{ status: string; message: string; run_id?: string }> {
   const response = await fetch(`${BASE_URL}/scraper/stop`, {
     method: "POST",
-    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+    headers: HEADERS,
   });
   if (!response.ok) {
     let detail = `Error ${response.status}`;
@@ -578,16 +669,15 @@ export async function stopScraperRun(
 }
 
 export async function fetchScraperCandidates(
-  options?: { status?: string; technology_id?: string; limit?: number; token?: string }
+  options?: { status?: string; technology_id?: string; limit?: number }
 ): Promise<{ count: number; candidates: ScraperCandidate[] }> {
   const params = new URLSearchParams();
   if (options?.status)        params.set("status", options.status);
   if (options?.technology_id) params.set("technology_id", options.technology_id);
   if (options?.limit)         params.set("limit", String(options.limit));
   const qs = params.toString();
-  const authHeaders = options?.token ? { ...HEADERS, Authorization: `Bearer ${options.token}` } : HEADERS;
   const response = await fetch(`${BASE_URL}/scraper/candidates${qs ? `?${qs}` : ""}`, {
-    headers: authHeaders,
+    headers: HEADERS,
   });
   if (!response.ok) {
     let detail = `Error ${response.status}`;
@@ -598,14 +688,10 @@ export async function fetchScraperCandidates(
   return { count: data.count, candidates: data.candidates.map(normalizeCandidate) };
 }
 
-export async function fetchScraperCandidate(
-  candidateId: string,
-  token?: string
-): Promise<ScraperCandidate> {
-  const authHeaders = token ? { ...HEADERS, Authorization: `Bearer ${token}` } : HEADERS;
+export async function fetchScraperCandidate(candidateId: string): Promise<ScraperCandidate> {
   const response = await fetch(
     `${BASE_URL}/scraper/candidates/${encodeURIComponent(candidateId)}`,
-    { headers: authHeaders }
+    { headers: HEADERS }
   );
   if (!response.ok) {
     let detail = `Error ${response.status}`;
@@ -616,7 +702,6 @@ export async function fetchScraperCandidate(
 }
 
 export async function approveScraperCandidate(
-  token: string,
   candidateId: string,
   options?: { reviewed_by?: string; notes?: string }
 ): Promise<{ status: string; candidate: ScraperCandidate }> {
@@ -624,7 +709,7 @@ export async function approveScraperCandidate(
     `${BASE_URL}/scraper/candidates/${encodeURIComponent(candidateId)}/approve`,
     {
       method: "POST",
-      headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { ...HEADERS, "Content-Type": "application/json" },
       body: JSON.stringify(options ?? {}),
     }
   );
@@ -640,7 +725,6 @@ export async function approveScraperCandidate(
 }
 
 export async function rejectScraperCandidate(
-  token: string,
   candidateId: string,
   reason?: string
 ): Promise<{ status: string; candidate: ScraperCandidate }> {
@@ -648,7 +732,7 @@ export async function rejectScraperCandidate(
     `${BASE_URL}/scraper/candidates/${encodeURIComponent(candidateId)}/reject`,
     {
       method: "POST",
-      headers: { ...HEADERS, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { ...HEADERS, "Content-Type": "application/json" },
       body: JSON.stringify({ reason: reason ?? "", reviewed_by: undefined }),
     }
   );
@@ -663,12 +747,10 @@ export async function rejectScraperCandidate(
 
 // ── Timeseries pipeline trigger ───────────────────────────────────────────────
 
-export async function runTimeseriesPipeline(
-  token: string,
-): Promise<{ status: string; message: string }> {
+export async function runTimeseriesPipeline(): Promise<{ status: string; message: string }> {
   const response = await fetch(`${BASE_URL}/admin/timeseries/pipeline/run`, {
     method: "POST",
-    headers: { ...HEADERS, Authorization: `Bearer ${token}` },
+    headers: HEADERS,
   });
   if (!response.ok) {
     let detail = `Error ${response.status}`;

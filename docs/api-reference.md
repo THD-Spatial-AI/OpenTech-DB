@@ -52,7 +52,7 @@ Interactive documentation is available at `http://localhost:8000/docs` (Swagger 
 |---|---|---|
 | `GET` | `/timeseries` | Paginated list of profile metadata |
 | `GET` | `/timeseries/{id}/data` | Full hourly data array for one profile |
-| `POST` | `/timeseries/submit` | Contributor upload (requires Bearer JWT) |
+| `POST` | `/timeseries/submit` | Contributor upload (requires the Go-managed session cookie) |
 | `GET` | `/admin/timeseries/submissions` | List pending submissions (admin only) |
 | `PATCH` | `/admin/timeseries/{id}/approve` | Approve a submission (admin only) |
 
@@ -60,13 +60,45 @@ Interactive documentation is available at `http://localhost:8000/docs` (Swagger 
 
 ---
 
-## Authentication
+## Authentication service
+
+These routes are exposed through the same-origin `/auth-api` proxy and are not
+part of the FastAPI `/api/v1` base URL.
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/auth/orcid` | Redirect to ORCID OAuth login page |
-| `GET` | `/auth/orcid/callback` | OAuth callback; exchanges code for JWT, redirects to frontend |
-| `GET` | `/auth/me` | Validate Bearer JWT and return user profile |
+| `GET` | `/auth-api/csrf-token` | Issue the CSRF double-submit token |
+| `POST` | `/auth-api/login` | Sign in with username/email and password |
+| `POST` | `/auth-api/register` | Register username and email in Keycloak |
+| `GET` | `/auth-api/auth/provider/{github\|orcid}` | Begin a Keycloak-brokered provider flow |
+| `GET` | `/auth-api/auth/me` | Return public identity for the opaque session |
+| `POST` | `/auth-api/logout` | Revoke Keycloak and local sessions |
+
+---
+
+## Personal API tokens
+
+These FastAPI routes require the opaque Keycloak browser session and are used
+by the profile page. A personal API token cannot call these management routes.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/profile/api-tokens` | List my token metadata (never full secrets) |
+| `POST` | `/profile/api-tokens` | Generate a token; the full secret is returned once |
+| `DELETE` | `/profile/api-tokens/{id}` | Revoke one of my tokens |
+
+Generate request fields are `name`, `scope` (`read` or `full`), and
+`expires_in_days` (`0` through `365`; `0` means no automatic expiry). Send the
+generated token to any FastAPI endpoint with:
+
+```http
+Authorization: Bearer otdb_<complete-secret>
+```
+
+Read tokens accept only `GET`/`HEAD`. Full tokens can call contributor writes
+when contributor access was present at generation time. Personal tokens never
+receive administrator access. Invalid, expired, and revoked tokens all return
+`401`; token secrets are not accepted in query parameters.
 
 ---
 

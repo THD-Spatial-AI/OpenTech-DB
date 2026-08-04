@@ -26,6 +26,9 @@ const BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
   "http://localhost:8000/api/v1";
 
+const fetch: typeof window.fetch = (input, init) =>
+  window.fetch(input, { ...init, credentials: "include" });
+
 // ── Shared fetch wrapper ──────────────────────────────────────────────────────
 
 const HEADERS: HeadersInit = {
@@ -114,21 +117,19 @@ export function fetchTimeSeriesData(profileId: string): Promise<TimeSeriesData> 
 /**
  * Uploads a new time-series profile.
  * Accepts a `FormData` object containing the CSV file and metadata fields.
- * Requires a valid Bearer token (contributor role).
+ * Requires an authenticated Keycloak contributor session.
  *
  * IMPORTANT: Do NOT set the `Content-Type` header manually — the browser
  * must set it automatically to include the multipart boundary string.
  */
 export async function uploadTimeSeriesProfile(
   formData: FormData,
-  token?: string | null
 ): Promise<TimeSeriesUploadResponse> {
   const response = await fetch(`${BASE_URL}/timeseries/upload`, {
     method: "POST",
     headers: {
       // Accept only — Content-Type deliberately omitted for multipart FormData
       Accept: "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: formData,
   });
@@ -152,7 +153,6 @@ export async function uploadTimeSeriesProfile(
 
 export async function deleteTimeSeriesProfile(
   profileId: string,
-  token?: string | null,
 ): Promise<void> {
   const response = await fetch(
     `${BASE_URL}/timeseries/${encodeURIComponent(profileId)}`,
@@ -160,7 +160,6 @@ export async function deleteTimeSeriesProfile(
       method: "DELETE",
       headers: {
         Accept: "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     },
   );

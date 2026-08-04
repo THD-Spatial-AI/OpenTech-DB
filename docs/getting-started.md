@@ -4,6 +4,7 @@
 
 - Python 3.11+
 - Node.js 20+ (frontend only)
+- Docker with Compose v2
 - Git
 
 ---
@@ -57,8 +58,7 @@ Create `frontend/.env.local`:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000
-VITE_SUPABASE_URL=https://<your-project>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
+VITE_AUTH_API_BASE_URL=/auth-api
 ```
 
 ---
@@ -79,56 +79,55 @@ docker run -p 8000:8000 -v ./data:/app/data opentech-db
 
 ---
 
-## Backend environment variables
+## Authentication and backend environment
 
-The server **will not start** without the three variables marked required below. Generate them locally — no external accounts needed.
-
-### Required (server crashes without these)
-
-```env
-# 1. Random secret for signing JWTs — generate once, keep it stable
-JWT_SECRET_KEY=<random-32-byte-string>
-
-# 2. Built-in admin credentials
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD_HASH=<bcrypt hash>
-```
-
-Generate the values:
+Use the repository setup commands to generate independent Keycloak, Go-session,
+Redis, PostgreSQL, and backend validation secrets and start both the data and
+authentication containers:
 
 ```bash
-# JWT secret
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-
-# bcrypt hash of your chosen password
-python -c "import bcrypt; print(bcrypt.hashpw(b'your-password', bcrypt.gensalt(12)).decode())"
+make install
 ```
 
-### Optional — ORCID login (researcher authentication)
+`make install` creates the Python environment, installs frontend packages,
+starts the Supabase data services, applies pending migrations, generates local
+secrets, and starts Keycloak, its PostgreSQL database, Redis, and the Go auth
+service. Use `make auth` later when only the authentication stack needs to be
+started or rebuilt.
+
+The backend consumes only the opaque Go-managed session:
 
 ```env
-ORCID_CLIENT_ID=<your-orcid-client-id>
-ORCID_CLIENT_SECRET=<your-orcid-client-secret>
-ORCID_REDIRECT_URI=http://localhost:8000/api/v1/auth/orcid/callback
-ORCID_ENV=sandbox          # "sandbox" for local dev, "production" for deployment
+AUTH_SERVICE_URL=http://localhost:8001
+AUTH_REALM=opentechdb
+AUTH_INTERNAL_SECRET=<generated-by-make-configure>
 FRONTEND_URL=http://localhost:5173
+CORS_ORIGINS=http://localhost:5173
 ```
 
-Register your application at <https://orcid.org/developer-tools> to obtain ORCID credentials. Without these, the ORCID login button will be disabled but everything else works.
+Configure GitHub and ORCID credentials in the Keycloak Admin Console under the
+`opentechdb` realm. They are not backend or frontend environment variables.
 
-### Optional — Supabase (enables scraper candidate storage and Supabase auth)
+### Supabase data services
+
+Supabase remains a server-side catalogue/workflow and personal-token database.
+Its Auth/GoTrue component is disabled and the browser receives no Supabase key.
 
 ```env
 SUPABASE_URL=https://<your-project>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 ```
 
-Run the migration once after configuring Supabase:
+Apply every migration in order after configuring Supabase. For the local CLI
+stack, apply migrations that were added after the database was first started:
 
 ```bash
-# Apply scraper tables migration
-psql "$SUPABASE_DB_URL" -f db/migrations/001_scraper_tables.sql
+supabase migration up --local
 ```
+
+Production self-hosting uses `bash deploy/supabase/apply-migrations.sh`.
+Migration 013 is required for profile-generated API tokens and stores only
+token hashes linked to immutable Keycloak subjects; it creates no local user.
 
 ### Scraper API keys (optional — enables premium sources)
 
@@ -156,8 +155,7 @@ curl http://localhost:8000/api/v1/technologies/ccgt
 # Get PyPSA-ready parameters for CCGT (7% discount rate)
 curl "http://localhost:8000/api/v1/adapt/pypsa/ccgt?discount_rate=0.07"
 
-# Reload data from disk (after editing JSON files)
-curl -X POST http://localhost:8000/api/v1/debug/reload
+# Admin-only reloads are performed from the authenticated admin UI.
 ```
 
 ---

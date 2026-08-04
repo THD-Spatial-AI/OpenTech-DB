@@ -6,12 +6,9 @@ pydantic-settings>=2.2.0
 python-multipart>=0.0.9
 orjson>=3.9.0
 PyYAML>=6.0.1
-httpx>=0.27.0        # for async testing / optional client
-python-jose[cryptography]>=3.3.0  # JWT signing/verification for ORCID tokens
-PyJWT>=2.8.0                      # Supabase JWT verification (python-jose breaks with cryptography>=41)
-bcrypt>=4.1.0        # Secure password hashing for admin credentials
+httpx>=0.27.0        # Server-to-server Go session validation and async testing
 slowapi>=0.1.9       # Rate limiting middleware
-supabase>=2.0.0      # Supabase Python client — stores contributor submissions in Postgres
+supabase>=2.0.0      # Backend-only data client — catalogue/workflows and hashed personal tokens
 python-dotenv>=1.0.0 # Load .env into os.environ at startup
 
 # ---------------------------------------------------------------------------

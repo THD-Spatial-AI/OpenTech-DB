@@ -18,6 +18,7 @@ load_dotenv()  # load .env before any env-dependent imports
 
 import json
 import logging
+import os
 import uuid as _uuid
 from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
@@ -31,9 +32,18 @@ from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from starlette.concurrency import run_in_threadpool
 
 from api.routes import router as tech_router, debug_router, ontology_router, admin_router, submissions_router
-from api.auth import router as auth_router
+from api.auth_session import AuthServiceUnavailable, has_session_cookie, validate_request_session
+from api.personal_tokens import (
+    InvalidAuthorizationHeader,
+    PersonalTokenStoreUnavailable,
+    bearer_token_from_request,
+    router as personal_tokens_router,
+    scope_allows_method,
+    validate_personal_token,
+)
 from api.timeseries import router as timeseries_router, admin_ts_router
 from api.scraper_routes import router as scraper_router
 from adapters.pypsa_adapter import to_pypsa
@@ -120,7 +130,7 @@ app = FastAPI(lifespan=_lifespan,
         },
         {
             "name":        "Auth",
-            "description": "Authentication via ORCID OAuth and built-in admin credentials.",
+            "description": "Authentication is owned by the standalone Go service and OpenTech DB Keycloak realm.",
         },
         {
             "name":        "Ontology",
@@ -148,6 +158,90 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
+_default_origins = [
+    os.getenv("FRONTEND_URL", "http://localhost:5173"),
+    "https://otdb.th-deg.de",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://localhost:4173",
+]
+_configured_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("CORS_ORIGINS", "").split(",")
+    if origin.strip()
+]
+_allowed_origins = list(dict.fromkeys(_configured_origins or _default_origins))
+_trusted_origins = set(_allowed_origins)
+
+
+@app.middleware("http")
+async def authenticate_request(request: Request, call_next):
+    """Resolve one opaque Go session or personal API token, never both."""
+    request.state.auth_user = None
+    request.state.auth_method = None
+    request.state.api_token_id = None
+    request.state.auth_service_unavailable = False
+    cookie_present = has_session_cookie(request)
+
+    try:
+        plaintext_token = bearer_token_from_request(request)
+    except InvalidAuthorizationHeader:
+        return JSONResponse(
+            {"detail": "Invalid Authorization header."},
+            status_code=401,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if plaintext_token is not None and cookie_present:
+        return JSONResponse(
+            {"detail": "Use either a personal API token or a browser session, not both."},
+            status_code=400,
+        )
+
+    if plaintext_token is not None:
+        try:
+            token = await run_in_threadpool(validate_personal_token, plaintext_token)
+        except PersonalTokenStoreUnavailable:
+            return JSONResponse(
+                {"detail": "Personal API token validation is unavailable."},
+                status_code=503,
+            )
+        if token is None:
+            return JSONResponse(
+                {"detail": "Invalid API token."},
+                status_code=401,
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        if not scope_allows_method(token.scope, request.method):
+            return JSONResponse(
+                {"detail": "This API token is read-only."},
+                status_code=403,
+            )
+        request.state.auth_user = token.user
+        request.state.auth_method = "api_token"
+        request.state.api_token_id = token.token_id
+
+    elif cookie_present:
+        try:
+            request.state.auth_user = await validate_request_session(request)
+            if request.state.auth_user is not None:
+                request.state.auth_method = "session"
+        except AuthServiceUnavailable:
+            request.state.auth_service_unavailable = True
+
+    if cookie_present and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+        origin = (request.headers.get("Origin") or "").rstrip("/")
+        if origin not in _trusted_origins:
+            return JSONResponse(
+                {"detail": "Untrusted origin for cookie-authenticated request."},
+                status_code=403,
+            )
+
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     """Propagate or generate X-Request-ID for every response."""
@@ -159,18 +253,10 @@ async def add_request_id(request: Request, call_next):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://otdb.th-deg.de",   # production
-        "http://localhost:5173",    # Vite default
-        "http://localhost:5174",    # Vite fallback
-        "http://localhost:5175",    # Vite fallback (further)
-        "http://localhost:5176",    # Vite fallback
-        "http://localhost:4173",    # Vite `npm run preview`
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    # Authorization header must be explicitly exposed for GET /auth/me
-    allow_headers=["Authorization", "Content-Type", "Accept"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Request-ID"],
 )
 
 # ---------------------------------------------------------------------------
@@ -178,10 +264,10 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 app.include_router(tech_router,        prefix="/api/v1")
 app.include_router(debug_router,       prefix="/api/v1")
-app.include_router(auth_router,        prefix="/api/v1")
 app.include_router(ontology_router,    prefix="/api/v1")
 app.include_router(admin_router,       prefix="/api/v1")
 app.include_router(submissions_router, prefix="/api/v1")
+app.include_router(personal_tokens_router, prefix="/api/v1")
 app.include_router(timeseries_router,  prefix="/api/v1")
 app.include_router(admin_ts_router,    prefix="/api/v1")
 app.include_router(scraper_router,     prefix="/api/v1")

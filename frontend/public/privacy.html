@@ -228,7 +228,7 @@
     </tr>
     <tr>
       <td><strong>Bestandsdaten</strong></td>
-      <td>E-Mail-Adresse, ORCID iD, Name, Institution, Registrierungsdatum</td>
+      <td>Benutzername, E-Mail-Adresse, Keycloak-Konto-ID, Registrierungsdatum und ggf. verknüpfte GitHub-/ORCID-Identität</td>
       <td>Art. 6(1)(a)</td>
     </tr>
     <tr>
@@ -243,7 +243,7 @@
     </tr>
     <tr>
       <td><strong>Sitzungsdaten</strong></td>
-      <td>ORCID OAuth-Token, Supabase-Session-Token, HS256-JWT (nur im sessionStorage des Browsers)</td>
+      <td>Zufällige, nicht aussagekräftige Sitzungs-ID im HttpOnly-Cookie und CSRF-Token; Keycloak-Tokens verbleiben serverseitig in Redis</td>
       <td>Art. 6(1)(a)</td>
     </tr>
     <tr>
@@ -285,7 +285,7 @@
     </tr>
     <tr>
       <td>Sitzungsdaten</td>
-      <td>Automatisch beim Schließen des Browser-Tabs (ORCID-Token max. 24 h; Supabase-Session ca. 1 h)</td>
+      <td>Bei Abmeldung oder nach Inaktivität; absolute Höchstdauer einer Anwendungssitzung: 8 Stunden</td>
     </tr>
     <tr>
       <td>Kommunikationsdaten</td>
@@ -318,7 +318,13 @@
   </div>
   <p>
     <strong>Supabase</strong> wird als Open-Source-Software ausschließlich selbst gehostet auf der
-    THD-eigenen VM betrieben. Es findet keine Datenübermittlung an Supabase Inc. statt.
+    THD-eigenen VM für optionale Katalog- und Workflowdaten betrieben, nicht zur Authentifizierung.
+    Es findet keine Datenübermittlung an Supabase Inc. statt.
+  </p>
+  <p>
+    <strong>Keycloak, PostgreSQL und Redis</strong> werden auf THD-verwalteter Infrastruktur für
+    Benutzerkonten, Rollen und serverseitige Sitzungen betrieben. Die Realm-Daten von OpenTech-DB
+    sind von anderen Anwendungen getrennt.
   </p>
 
   <h3>6.3 Eigenständig Verantwortliche Dritte (Art. 4 Nr. 7 DSGVO)</h3>
@@ -341,9 +347,10 @@
   <h2>7. Clientseitige Datenspeicherung</h2>
   <p>
     Die Plattform setzt <strong>keine Tracking-Cookies</strong> und keine externen
-    Analysedienste ein. Im <code>sessionStorage</code> des Browsers werden ausschließlich
-    Authentifizierungstoken (ORCID OAuth-Token, Supabase-Session-Token) für die Dauer der
-    Browser-Sitzung gespeichert. Diese werden beim Schließen des Browser-Tabs automatisch gelöscht.
+    Analysedienste ein. Der Browser erhält nur ein zufälliges, nicht auslesbares
+    <code>session_id</code>-HttpOnly-Cookie sowie ein CSRF-Schutz-Token. Zugriffs- und
+    Aktualisierungstokens von Keycloak werden nicht im Browser-Speicher abgelegt, sondern
+    ausschließlich serverseitig in Redis gespeichert.
   </p>
 
   <!-- 8. Rights -->

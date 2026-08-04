@@ -135,17 +135,15 @@ export interface TechnologyCatalogueResponse {
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
-/**
- * Unified user shape returned by the FastAPI backend (GET /auth/me).
- * Supabase users are mapped to this shape inside AuthContext via
- * mapSupabaseUser(); ORCID users come directly from the /auth/me endpoint.
- */
+/** Public identity returned by the standalone Go authentication service. */
 export interface AuthUser {
   id: string;
   username: string;
   email: string;
+  realm: "opentechdb";
+  roles: string[];
   avatar_url?: string | null;
-  /** "github" | "orcid" | "email" | "admin" */
+  /** Keycloak itself or a provider brokered by this realm. */
   auth_provider: string;
   /** Whether the data-steward role has been granted */
   is_contributor: boolean;
@@ -196,16 +194,11 @@ export interface SubmissionRecord {
   domain:           string | null;
   oeo_class:        string | null;
   description:      string | null;
-  submitter_email:  string | null;  // user who submitted (linked to Supabase auth)
+  submitter_email:  string | null;  // realm email claim used for attribution
   rejection_reason: string | null;  // populated when admin rejects
   pr_url:           string | null;  // GitHub PR URL created on approval
   filename:         string;          // empty for DB records
   payload:          CreateTechnologyPayload | null;  // full submission details
-}
-
-export interface AdminLoginResponse {
-  token: string;
-  user:  AuthUser;
 }
 
 // ── Scraper pipeline ──────────────────────────────────────────────────────────

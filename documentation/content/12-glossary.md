@@ -4,10 +4,10 @@
 |------|------------|
 | **ADOPTNet0** | Agent-based Decarbonisation Optimisation and Planning Tool for Net Zero. Energy system model developed at THD. |
 | **Adapter** | A module (`adapters/*.py`) that translates an OEO-aligned `Technology` object into parameters required by a specific modelling framework. |
-| **AdminPanel** | React component (`components/admin/AdminPanel.tsx`) for reviewing contributor submissions and managing users. Guarded by `isAdmin` flag. |
+| **AdminPanel** | React component (`components/admin/AdminPanel.tsx`) for reviewing contributor and scraper submissions. Guarded by `isAdmin`. User administration stays in Keycloak. |
 | **arc42** | A documentation template for software and system architectures (www.arc42.org). |
 | **ATB** | Annual Technology Baseline. Annual cost and performance report published by NREL. |
-| **AuthContext** | React context (`context/AuthContext.tsx`) managing JWT, user identity, and `isAdmin` flag across the SPA. |
+| **AuthContext** | React context (`context/AuthContext.tsx`) loading public identity and role state from the Go session API. It does not store identity-provider tokens. |
 | **CAPEX** | Capital Expenditure. Upfront investment cost. Stored as `capex_per_kw` in EUR or USD per kW of installed capacity. |
 | **Calliope** | Open-source energy system modelling framework (<https://calliope.readthedocs.io>). |
 | **Carrier** | Energy carrier or commodity flowing through a technology (electricity, natural_gas, hydrogen, heat, etc.). Mapped to OEO vocabulary. |
@@ -19,7 +19,8 @@
 | **ECharts** | Apache ECharts charting library used via `echarts-for-react` in the frontend for cost and efficiency visualisations. |
 | **EquipmentInstance** | A single row of parameters representing one manufacturer model, vintage year, or projection scenario within a Technology. |
 | **ErrorBoundary** | React component (`components/ErrorBoundary.tsx`) that catches rendering errors and displays a fallback UI instead of crashing the SPA. |
-| **JWT** | JSON Web Token. Used to authenticate contributors and admins; issued by the backend after ORCID login; stored in `sessionStorage`. |
+| **JWT** | JSON Web Token. Keycloak tokens are held by the Go service in Redis and are never exposed to React; the browser uses an opaque session cookie. |
+| **Keycloak** | Identity and access-management server. OpenTech accounts and roles live in the isolated `opentechdb` realm. |
 | **Leaflet** | Open-source JavaScript mapping library used in `MapPickerModal.tsx` for geographic location selection. |
 | **LRU cache** | Least Recently Used cache. Python `@lru_cache` memoises JSON loading; invalidated by `POST /debug/reload`. |
 | **MapPickerModal** | React component using Leaflet to let contributors select a geographic location when submitting a time-series profile. |
@@ -27,7 +28,7 @@
 | **OEO URI** | A fully-qualified IRI pointing to a specific concept in the OEO, e.g. `https://openenergy-platform.org/ontology/oeo/OEO_00000044`. |
 | **OEP** | Open Energy Platform. German open-data platform for energy system research. |
 | **OPEX** | Operational Expenditure. Fixed (`opex_fixed_per_kw_yr`) and variable (`opex_variable_per_mwh`). |
-| **ORCID** | Open Researcher and Contributor ID. A persistent digital identifier for researchers, used as the primary login method for contributors. |
+| **ORCID** | Open Researcher and Contributor ID. It can be configured as an optional Keycloak identity broker for contributors. |
 | **OSeMOSYS** | Open Source Energy Modelling System. Linear programming energy model. |
 | **ParameterValue** | Pydantic model wrapping a single numeric parameter with `value`, `unit`, `min`, `max`, `source`, and `year`. |
 | **PowerPlant** | Technology subclass for dispatchable thermal and nuclear generation. |
@@ -36,7 +37,8 @@
 | **PyPSA** | Python for Power System Analysis. Open-source power system modelling framework (<https://pypsa.org>). |
 | **React Flow** | Library for node-based diagrams, used in the frontend for system topology visualisation. |
 | **SPA** | Single-Page Application. The frontend is a React SPA served as static files; all routing is client-side. |
-| **Supabase** | Open-source Firebase alternative providing managed auth (email, GitHub OAuth), database, and user metadata. Used for frontend session management and admin role storage. |
+| **Supabase** | Backend-only PostgreSQL/PostgREST data platform for catalogue/workflow records and hashed personal API-token metadata. Its Auth/GoTrue component is disabled for OpenTech DB. |
+| **Personal API token** | Revocable `otdb_` bearer secret for scripts. The complete token is shown once; FastAPI stores only a SHA-256 hash and never grants admin through it. |
 | **Technology** | Base Pydantic model representing an energy technology entry in the database. |
 | **TechnologyCategory** | Enum: `generation`, `storage`, `transmission`, `conversion`. |
 | **TimeSeriesCatalogue** | React component for browsing, searching, and managing hourly time-series profiles. |

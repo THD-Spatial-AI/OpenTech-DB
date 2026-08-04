@@ -30,50 +30,15 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Annotated
-
-from fastapi import APIRouter, BackgroundTasks, Body, Header, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Query, Request
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
+
+from api._auth_helpers import _require_admin
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/scraper", tags=["Scraper"])
-
-# ---------------------------------------------------------------------------
-# Security helper — mirrors the JWT-based check used in api/routes.py
-# ---------------------------------------------------------------------------
-
-def _require_admin(authorization: str | None) -> None:
-    """Raise 401 if no/invalid token, 403 if authenticated but not admin."""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required.")
-
-    import base64 as _b64, json as _json, time as _t
-    token = authorization.removeprefix("Bearer ")
-
-    def _b64d(s: str) -> bytes:
-        return _b64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
-
-    try:
-        parts = token.split(".")
-        if len(parts) != 3:
-            raise ValueError("Bad JWT structure")
-        payload = _json.loads(_b64d(parts[1]))
-    except Exception as exc:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {exc}") from exc
-
-    exp = payload.get("exp", 0)
-    if exp and _t.time() > exp:
-        raise HTTPException(status_code=401, detail="Token expired.")
-
-    is_admin = (
-        payload.get("is_admin")
-        or payload.get("app_metadata", {}).get("is_admin")
-    )
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="Admin privileges required.")
-
 
 # ---------------------------------------------------------------------------
 # Request / response models
@@ -85,14 +50,12 @@ class RunRequest(BaseModel):
 
 
 class ApproveRequest(BaseModel):
-    reviewed_by: str | None = None
     notes: str = ""
     dry_run: bool = False  # if True, return merge preview without writing
 
 
 class RejectRequest(BaseModel):
     reason: str = ""
-    reviewed_by: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +87,8 @@ def _get_store():
         "and the last pipeline run summary."
     ),
 )
-def get_status() -> ORJSONResponse:
+def get_status(request: Request) -> ORJSONResponse:
+    _require_admin(request)
     try:
         from scrapers.config import ScraperConfig
         from scrapers.pipeline import get_current_run_status, get_current_run_log_tail
@@ -141,7 +105,7 @@ def get_status() -> ORJSONResponse:
         })
     except Exception as exc:
         logger.exception("Status endpoint error")
-        raise HTTPException(500, f"Internal error: {exc}") from exc
+        raise HTTPException(500, "Could not load scraper status.") from exc
 
 
 @router.post(
@@ -150,15 +114,15 @@ def get_status() -> ORJSONResponse:
     description=(
         "Starts a scraping pipeline run. Optionally restrict to specific "
         "technology IDs and/or sources.\n\n"
-        "**Requires admin token** header `X-Admin-Token`."
+        "Requires an OpenTech realm admin session."
     ),
 )
 def trigger_run(
+    request: Request,
     body: RunRequest = Body(default_factory=RunRequest),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    authorization: Annotated[str | None, Header()] = None,
 ) -> ORJSONResponse:
-    _require_admin(authorization)
+    _require_admin(request)
 
     try:
         from scrapers.pipeline import get_current_run_status
@@ -204,9 +168,9 @@ def trigger_run(
     description="Requests a safe stop of the currently running scraping pipeline.",
 )
 def stop_run(
-    authorization: Annotated[str | None, Header()] = None,
+    request: Request,
 ) -> ORJSONResponse:
-    _require_admin(authorization)
+    _require_admin(request)
     try:
         from scrapers.pipeline import request_stop_current_run
         result = request_stop_current_run(reason="admin_api")
@@ -225,7 +189,7 @@ def stop_run(
         )
     except Exception as exc:
         logger.exception("Stop endpoint error")
-        raise HTTPException(500, f"Internal error: {exc}") from exc
+        raise HTTPException(500, "Could not stop scraper run.") from exc
 
 
 @router.get(
@@ -234,17 +198,17 @@ def stop_run(
     description="Returns the last N pipeline run summaries, newest first.",
 )
 def get_run_history(
+    request: Request,
     limit: int = Query(20, ge=1, le=100),
-    authorization: Annotated[str | None, Header()] = None,
 ) -> ORJSONResponse:
-    _require_admin(authorization)
+    _require_admin(request)
     try:
         store = _get_store()
         history = store.get_run_history(limit=limit)
         return ORJSONResponse({"count": len(history), "runs": history})
     except Exception as exc:
         logger.exception("Run history endpoint error")
-        raise HTTPException(500, f"Internal error: {exc}") from exc
+        raise HTTPException(500, "Could not load scraper run history.") from exc
 
 
 @router.get(
@@ -253,12 +217,12 @@ def get_run_history(
     description="Returns a list of candidates filtered by status and/or technology.",
 )
 def list_candidates(
+    request: Request,
     status: str | None = Query(None, description="pending | approved | rejected"),
     technology_id: str | None = Query(None, description="Filter by technology_id"),
     limit: int = Query(50, ge=1, le=500),
-    authorization: Annotated[str | None, Header()] = None,
 ) -> ORJSONResponse:
-    _require_admin(authorization)
+    _require_admin(request)
     from scrapers.storage import CandidateStatus
 
     _status: CandidateStatus | None = None
@@ -278,10 +242,10 @@ def list_candidates(
     summary="Get a single candidate",
 )
 def get_candidate(
+    request: Request,
     candidate_id: str,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> ORJSONResponse:
-    _require_admin(authorization)
+    _require_admin(request)
     store = _get_store()
     item  = store.get_candidate(candidate_id)
     if item is None:
@@ -295,19 +259,19 @@ def get_candidate(
     description=(
         "Approves the candidate and merges its proposed instance into the "
         "catalogue JSON file.\n\n"
-        "**Requires admin token** header `X-Admin-Token`."
+        "Requires an OpenTech realm admin session."
     ),
 )
 def approve_candidate(
+    request: Request,
     candidate_id: str,
     body: ApproveRequest = Body(default_factory=ApproveRequest),
-    authorization: Annotated[str | None, Header()] = None,
 ) -> ORJSONResponse:
-    _require_admin(authorization)
+    identity = _require_admin(request)
     pipeline = _get_pipeline()
     updated  = pipeline.approve_candidate(
         candidate_id,
-        reviewed_by=body.reviewed_by,
+        reviewed_by=str(identity.get("preferred_username") or "admin"),
         notes=body.notes,
         dry_run=body.dry_run,
     )
@@ -332,14 +296,14 @@ def approve_candidate(
 @router.post(
     "/candidates/{candidate_id}/reject",
     summary="Reject a candidate",
-    description="Archives the candidate as rejected.\n\n**Requires admin token**.",
+    description="Archives the candidate as rejected. Requires an OpenTech realm admin session.",
 )
 def reject_candidate(
+    request: Request,
     candidate_id: str,
     body: RejectRequest = Body(default_factory=RejectRequest),
-    authorization: Annotated[str | None, Header()] = None,
 ) -> ORJSONResponse:
-    _require_admin(authorization)
+    identity = _require_admin(request)
     from scrapers.storage import CandidateStore, CandidateStatus
 
     store   = _get_store()
@@ -347,7 +311,7 @@ def reject_candidate(
         candidate_id,
         CandidateStatus.REJECTED,
         review_notes=body.reason,
-        reviewed_by=body.reviewed_by,
+        reviewed_by=str(identity.get("preferred_username") or "admin"),
     )
     if updated is None:
         raise HTTPException(404, f"Candidate '{candidate_id}' not found.")

@@ -3,9 +3,8 @@
  * ────────────────────────────────
  * Admin review dashboard for pending technology submissions.
  *
- * Auth is handled by AuthContext — the user must be logged in with
- * is_admin: true (set when signing in with admin credentials via the
- * standard Sign In form).  No separate login form in this component.
+ * Auth is handled by the backend Keycloak session. The user must carry the
+ * Keycloak ``admin`` role; tokens remain in encrypted HttpOnly cookies.
  */
 
 import { useState, useCallback, useTransition, useEffect, useRef } from "react";
@@ -26,6 +25,9 @@ import type { TimeSeriesProfile, ProfileType, ProfileResolution } from "../../ty
 import { useAuth } from "../../context/AuthContext";
 import type { SubmissionRecord, CreateTechnologyInstancePayload } from "../../types/api";
 import ScraperPanel from "./ScraperPanel";
+
+const fetch: typeof window.fetch = (input, init) =>
+  window.fetch(input, { ...init, credentials: "include" });
 
 const TS_UNIT_OPTIONS = [
   "pu", "%", "W", "kW", "MW", "GW", "TW",
@@ -125,11 +127,9 @@ function EditText({
 
 function SubmissionCard({
   record,
-  token,
   onAction,
 }: {
   record: SubmissionRecord;
-  token: string;
   onAction: (id: string, action: "approve" | "reject", prUrl?: string) => void;
 }) {
   const [expanded,    setExpanded]    = useState(false);
@@ -173,7 +173,6 @@ function SubmissionCard({
     try {
       const edited = buildEditedPayload();
       const result = await actOnSubmission(
-        token,
         record.submission_id,
         action,
         reason || undefined,
@@ -186,7 +185,7 @@ function SubmissionCard({
     } finally {
       setActing(false);
     }
-  }, [token, record.submission_id, reason, adminNotes, buildEditedPayload, onAction]);
+  }, [record.submission_id, reason, adminNotes, buildEditedPayload, onAction]);
 
   const isPending = record.status === "pending_review";
   const date = new Date(record.submitted_at).toLocaleString("en-GB", {
@@ -761,12 +760,10 @@ function adminComputeStats(values: number[]): AdminStats {
 /** Detail panel — Info / Chart / Data tabs with full editing. */
 function ProfileDetailPanel({
   profile,
-  token,
   onDeleted,
   onUpdated,
 }: {
   profile: TimeSeriesProfile;
-  token: string;
   onDeleted: () => void;
   onUpdated: (updated: TimeSeriesProfile) => void;
 }) {
@@ -865,7 +862,7 @@ function ProfileDetailPanel({
     setDataError(null);
     try {
       const res = await fetch(`${BASE_URL}/timeseries/${profile.profile_id}/data`, {
-        headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+        headers: { Accept: "application/json" },
       });
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const d = (await res.json()) as { points: { timestamp: string; value: number }[] };
@@ -876,7 +873,7 @@ function ProfileDetailPanel({
     } finally {
       setLoadingData(false);
     }
-  }, [token, profile.profile_id, BASE_URL]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile.profile_id, BASE_URL]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if ((activeTab === "chart" || activeTab === "data") && points === null && !loadingData) {
@@ -897,7 +894,7 @@ function ProfileDetailPanel({
       if (pYear)    body.year    = Number(pYear);
       const res = await fetch(`${BASE_URL}/timeseries/${profile.profile_id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -933,7 +930,7 @@ function ProfileDetailPanel({
     try {
       const res = await fetch(`${BASE_URL}/timeseries/${profile.profile_id}/data`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ points: pts }),
       });
       if (!res.ok) {
@@ -952,7 +949,7 @@ function ProfileDetailPanel({
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await deleteTimeSeriesProfile(profile.profile_id, token);
+      await deleteTimeSeriesProfile(profile.profile_id);
       invalidateTimeSeriesCatalogue();
       onDeleted();
     } catch (_e) {
@@ -1744,7 +1741,7 @@ function ProfileDetailPanel({
   );
 }
 
-function CatalogueProfilesTab({ token }: { token: string }) {
+function CatalogueProfilesTab() {
   const [profiles,  setProfiles]  = useState<TimeSeriesProfile[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading,   startLoad]    = useTransition();
@@ -1763,7 +1760,6 @@ function CatalogueProfilesTab({ token }: { token: string }) {
         const res = await fetch(`${BASE_URL}/timeseries?limit=500`, {
           headers: {
             Accept: "application/json",
-            Authorization: `Bearer ${token}`,
           },
         });
         if (!res.ok) throw new Error(`API error ${res.status}`);
@@ -1773,7 +1769,7 @@ function CatalogueProfilesTab({ token }: { token: string }) {
         setLoadError(e instanceof Error ? e.message : "Failed to load profiles.");
       }
     });
-  }, [token, BASE_URL]);
+  }, [BASE_URL]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -1944,7 +1940,6 @@ function CatalogueProfilesTab({ token }: { token: string }) {
             <ProfileDetailPanel
               key={selected.profile_id}
               profile={selected}
-              token={token}
               onDeleted={handleDeleted}
               onUpdated={handleUpdated}
             />
@@ -1976,12 +1971,10 @@ const DOMAIN_BADGE: Record<string, string> = {
 /** Inline editor rendered in the right panel — no overlay or backdrop. */
 function TechInlineEditor({
   tech,
-  token,
   onSave,
   onDeleted,
 }: {
   tech: CatalogueTechEntry;
-  token: string;
   onSave: (updated: CatalogueTechEntry) => void;
   onDeleted: () => void;
 }) {
@@ -2021,7 +2014,7 @@ function TechInlineEditor({
     setSaving(true);
     setError(null);
     try {
-      await adminEditTechnology(token, tech.technology_id, {
+      await adminEditTechnology(tech.technology_id, {
         technology_name: name,
         carrier,
         oeo_class: oeoClass,
@@ -2039,7 +2032,7 @@ function TechInlineEditor({
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await adminDeleteTechnology(token, tech.technology_id);
+      await adminDeleteTechnology(tech.technology_id);
       onDeleted();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -2237,7 +2230,7 @@ function TechInlineEditor({
   );
 }
 
-function CatalogueManager({ token }: { token: string }) {
+function CatalogueManager() {
   const [subTab,            setSubTab]            = useState<CatalogueSubTab>("technologies");
   const [techs,             setTechs]             = useState<CatalogueTechEntry[] | null>(null);
   const [loadError,         setLoadError]         = useState<string | null>(null);
@@ -2250,13 +2243,13 @@ function CatalogueManager({ token }: { token: string }) {
     startLoad(async () => {
       setLoadError(null);
       try {
-        const data = await fetchAdminCatalogueTechnologies(token);
+        const data = await fetchAdminCatalogueTechnologies();
         setTechs(data);
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : "Failed to load catalogue.");
       }
     });
-  }, [token]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -2318,7 +2311,7 @@ function CatalogueManager({ token }: { token: string }) {
         ))}
       </div>
 
-      {subTab === "profiles" && <CatalogueProfilesTab token={token} />}
+      {subTab === "profiles" && <CatalogueProfilesTab />}
 
       {subTab === "technologies" && (
         <>
@@ -2452,7 +2445,6 @@ function CatalogueManager({ token }: { token: string }) {
                 <TechInlineEditor
                   key={selected.technology_id}
                   tech={selected}
-                  token={token}
                   onSave={handleSaved}
                   onDeleted={handleDeleted}
                 />
@@ -2577,13 +2569,11 @@ function fmtVal(v: number): string {
 
 function ProfileSubmissionCard({
   record,
-  token,
   onAction,
   checked,
   onCheck,
 }: {
   record: ProfileSubmissionRecord;
-  token: string;
   onAction: (id: string, action: "approve" | "reject") => void;
   checked?: boolean;
   onCheck?: (id: string) => void;
@@ -2608,16 +2598,16 @@ function ProfileSubmissionCard({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setChartLoading(true);
     setChartError(null);
-    fetchAdminProfileSubmissionData(token, record.submission_id)
+    fetchAdminProfileSubmissionData(record.submission_id)
       .then((d) => { setChartData(d); setChartLoading(false); })
       .catch((e) => { setChartError(e instanceof Error ? e.message : "Failed to load data."); setChartLoading(false); });
-  }, [expanded, chartData, chartLoading, token, record.submission_id]);
+  }, [expanded, chartData, chartLoading, record.submission_id]);
 
   const doAction = (action: "approve" | "reject") => {
     setActionError(null);
     startAct(async () => {
       try {
-        await actOnProfileSubmission(token, record.submission_id, action, action === "reject" ? rejectReason : undefined);
+        await actOnProfileSubmission(record.submission_id, action, action === "reject" ? rejectReason : undefined);
         onAction(record.submission_id, action);
         setConfirming(null);
       } catch (e) {
@@ -2824,7 +2814,7 @@ type StatusTab = "all" | "pending_review" | "approved" | "rejected";
 type PanelTab  = "submissions" | "catalogue" | "profiles" | "scraper";
 
 export default function AdminPanel() {
-  const { user, token, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [submissions,        setSubmissions]        = useState<SubmissionRecord[] | null>(null);
   const [profileSubmissions, setProfileSubmissions] = useState<ProfileSubmissionRecord[] | null>(null);
   const [loadError,          setLoadError]          = useState<string | null>(null);
@@ -2838,11 +2828,11 @@ export default function AdminPanel() {
   const [bulkProfileActing,  setBulkProfileActing]  = useState(false);
   const [bulkProfileProgress,setBulkProfileProgress]= useState<{done:number;total:number}|null>(null);
 
-  const load = useCallback((tok: string) => {
+  const load = useCallback(() => {
     startLoad(async () => {
       setLoadError(null);
       try {
-        const data = await fetchAdminSubmissions(tok);
+        const data = await fetchAdminSubmissions();
         setSubmissions(data);
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : "Failed to load submissions.");
@@ -2850,11 +2840,11 @@ export default function AdminPanel() {
     });
   }, []);
 
-  const loadProfiles = useCallback((tok: string) => {
+  const loadProfiles = useCallback(() => {
     startProfileLoad(async () => {
       setProfileLoadError(null);
       try {
-        const data = await fetchAdminProfileSubmissions(tok);
+        const data = await fetchAdminProfileSubmissions();
         setProfileSubmissions(data);
       } catch (e) {
         setProfileLoadError(e instanceof Error ? e.message : "Failed to load profile submissions.");
@@ -2862,16 +2852,16 @@ export default function AdminPanel() {
     });
   }, []);
 
-  // Auto-load once when admin is confirmed and token is available.
+  // Auto-load once when the Keycloak admin role is confirmed.
   // Must be inside useEffect — calling startTransition during render is illegal.
   useEffect(() => {
-    if (isAdmin && token) {
-      load(token);
-      loadProfiles(token);
+    if (isAdmin) {
+      load();
+      loadProfiles();
     }
-    // Run only once on mount (or when isAdmin/token first become truthy)
+    // Run only once on mount (or when isAdmin first becomes true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, token]);
+  }, [isAdmin]);
 
   const handleAction = useCallback(
     (id: string, action: "approve" | "reject", prUrl?: string) => {
@@ -2940,14 +2930,13 @@ export default function AdminPanel() {
     });
 
   const handleBulkProfileApprove = async () => {
-    if (!token) return;
     const ids = [...checkedProfiles];
     if (!ids.length) return;
     setBulkProfileActing(true);
     setBulkProfileProgress({ done: 0, total: ids.length });
     for (let i = 0; i < ids.length; i++) {
       try {
-        await actOnProfileSubmission(token, ids[i], "approve");
+        await actOnProfileSubmission(ids[i], "approve");
         handleProfileAction(ids[i], "approve");
       } catch { /* continue on individual failure */ }
       setBulkProfileProgress({ done: i + 1, total: ids.length });
@@ -2958,14 +2947,13 @@ export default function AdminPanel() {
   };
 
   const handleBulkProfileReject = async () => {
-    if (!token) return;
     const ids = [...checkedProfiles];
     if (!ids.length) return;
     setBulkProfileActing(true);
     setBulkProfileProgress({ done: 0, total: ids.length });
     for (let i = 0; i < ids.length; i++) {
       try {
-        await actOnProfileSubmission(token, ids[i], "reject");
+        await actOnProfileSubmission(ids[i], "reject");
         handleProfileAction(ids[i], "reject");
       } catch { /* continue on individual failure */ }
       setBulkProfileProgress({ done: i + 1, total: ids.length });
@@ -3032,7 +3020,7 @@ export default function AdminPanel() {
             <button
               type="button"
               disabled={loading}
-              onClick={() => token && load(token)}
+              onClick={load}
               className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
                          border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
             >
@@ -3074,13 +3062,13 @@ export default function AdminPanel() {
       <div className="px-8 py-7 space-y-6">
 
       {/* ── Catalogue management panel ── */}
-      {panelTab === "catalogue" && token && (
-        <CatalogueManager token={token} />
+      {panelTab === "catalogue" && (
+        <CatalogueManager />
       )}
 
       {/* ── Scraper pipeline panel ── */}
-      {panelTab === "scraper" && token && (
-        <ScraperPanel token={token} />
+      {panelTab === "scraper" && (
+        <ScraperPanel />
       )}
 
       {/* ── Profile submissions panel ── */}
@@ -3161,7 +3149,7 @@ export default function AdminPanel() {
             <button
               type="button"
               disabled={profileLoading}
-              onClick={() => token && loadProfiles(token)}
+              onClick={loadProfiles}
               className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600
                          border border-slate-200 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors"
             >
@@ -3191,7 +3179,6 @@ export default function AdminPanel() {
               <ProfileSubmissionCard
                 key={record.submission_id}
                 record={record}
-                token={token!}
                 onAction={handleProfileAction}
                 checked={checkedProfiles.has(record.submission_id)}
                 onCheck={toggleProfileCheck}
@@ -3279,7 +3266,6 @@ export default function AdminPanel() {
             <SubmissionCard
               key={record.submission_id}
               record={record}
-              token={token!}
               onAction={handleAction}
             />
           ))}

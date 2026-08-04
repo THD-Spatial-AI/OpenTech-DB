@@ -1,142 +1,97 @@
 # Deployment View
 
-## Option A — Local Development (Python / venv)
+## Local Development
 
-```
-Developer workstation (Windows / Linux / macOS)
-+----------------------------------------------+
-|  Python 3.11 (.venv)                         |
-|                                              |
-|  uvicorn main:app --reload --port 8000       |
-|     |                                        |
-|     | HTTP :8000                             |
-|     v                                        |
-|  FastAPI / opentech-db process               |
-|     |                                        |
-|     | reads                                  |
-|     v                                        |
-|  data/   (local filesystem)                  |
-|                                              |
-|  Vite dev server --port 5173                 |
-|     |  (frontend/)                            |
-|     | HTTP :5173                             |
-|     v                                        |
-|  React 19 SPA (hot-reload)                   |
-|     | calls API at localhost:8000             |
-+----------------------------------------------+
-        |
-        | Browser → localhost:5173
-        | Browser → localhost:8000/docs (Swagger)
-        v
-  Developer browser / Postman / notebooks
-```
+Local development keeps the same security boundaries as production:
 
-### Steps to start locally
+```text
+Browser :5173
+   ├── /api/v1 ──> FastAPI :8000 ──> local Supabase :54321
+   └── /auth-api ─> Go auth :8001 ──> Keycloak :8080
+                                      ├── PostgreSQL (Keycloak only)
+                                      └── Redis (server-side sessions)
+```
 
 ```bash
-# Backend
-cd opentech-db
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# Linux / macOS
-source .venv/bin/activate
+make install
 
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-
-# Frontend (separate terminal)
-cd frontend
-npm install
-npm run dev        # starts Vite on http://localhost:5173
+# Separate terminals
+make backend
+make frontend
 ```
 
-## Option B — Containerised Deployment (Docker)
+`make install` installs the Python and frontend dependencies, starts the
+Supabase data services with Auth disabled, applies pending migrations, and
+starts the local Keycloak, PostgreSQL, Redis, and Go service using
+`keycloak/compose.local.yml`. `make supabase` and `make auth` remain available
+for starting either stack independently.
 
-A `Dockerfile` and `docker-compose.yml` are included in the repository root. The current container serves only the **backend API**. The frontend is built separately and can be served via a static host or a second container.
+## Production
 
-```
-Host machine
-+--------------------------------------------------+
-|  Docker Engine                                   |
-|                                                  |
-|  +--------------------------------------------+  |
-|  | opentech-db container  (python:3.11-slim)  |  |
-|  |   uvicorn main:app --host 0.0.0.0 --port 8000  |
-|  |                                            |  |
-|  |   /app/data  ← volume mount (./data)       |  |
-|  |   /app/documentation ← static /project-docs|  |
-|  +--------------------------------------------+  |
-|         | port 8000 exposed                    |  |
-+--------------------------------------------------+
-        |
-        | HTTP :8000
-        v
-  Clients (browser, model scripts, CI pipelines)
-```
+The application host runs the static frontend/Nginx and FastAPI. The Supabase
+data API is connected to FastAPI on a backend-only Docker network. A shared
+remote Keycloak server may host multiple applications, but OpenTech uses its own
+`opentechdb` realm, confidential client, and Go/Redis session service.
 
-### Quick start with Docker Compose (recommended)
-
-```bash
-# Build image and start the service
-docker compose up --build
-
-# Rebuild after dependency changes
-docker compose up --build --force-recreate
-
-# Run in detached mode
-docker compose up -d
+```text
+Internet
+   |
+   v
+OpenTech Nginx (TLS)
+   ├── /api/* ─────────> FastAPI ──> Supabase PostgREST/Kong ──> PostgreSQL
+   ├── /auth-api/* ─────> remote Go auth ──> Redis
+   └── static SPA                         └─> Keycloak/opentechdb
 ```
 
-### Without Docker Compose
+Production Supabase is defined in `deploy/supabase/compose.yml`. It contains
+PostgreSQL, PostgREST, and Kong only; GoTrue is intentionally absent. Kong
+accepts only the backend service-role credential, and Nginx exposes no
+Supabase route.
 
-```bash
-docker build -t opentech-db .
-docker run -p 8000:8000 -v ./data:/app/data opentech-db
-```
-
-> Mounting `data/` as a volume allows updating JSON files without rebuilding the image.
-
-### Dockerfile summary
-
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-## Infrastructure Requirements
-
-| Component | Minimum | Recommended |
-|---|---|---|
-| Python | 3.11 | 3.12 |
-| Node.js (frontend build) | 18 | 20 LTS |
-| RAM | 256 MB (backend) | 1 GB |
-| CPU | 1 core | 2 cores |
-| Disk | 100 MB | 1 GB (for data expansion) |
-| OS | Windows 10 / Ubuntu 20.04 | Any |
-| Network | localhost only | HTTP/HTTPS behind a reverse proxy |
+The remote authentication stack is defined in `keycloak/compose.yml`. Its
+PostgreSQL database contains Keycloak's own identity model. It is independent
+of the Supabase data PostgreSQL database.
 
 ## Environment Variables
 
-| Variable | Used by | Description |
-|---|---|---|
-| `ADMIN_USERNAME` | docker-compose / backend | Admin credentials for protected endpoints |
-| `ADMIN_PASSWORD` | docker-compose / backend | Admin credentials |
-| `ORCID_CLIENT_ID` | backend (`auth.py`) | ORCID OAuth app client ID |
-| `ORCID_CLIENT_SECRET` | backend (`auth.py`) | ORCID OAuth app client secret |
-| `ORCID_REDIRECT_URI` | backend (`auth.py`) | OAuth callback URL |
-| `JWT_SECRET` | backend (`auth.py`) | Secret for signing JWTs |
-| `VITE_SUPABASE_URL` | frontend build | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | frontend build | Supabase anonymous key |
-| `VITE_API_BASE_URL` | frontend build | Base URL of the FastAPI backend |
+### FastAPI/application host
 
-## Notes
+| Variable | Description |
+|---|---|
+| `AUTH_SERVICE_URL` | Server-to-server Go auth endpoint |
+| `AUTH_INTERNAL_SECRET` | 32+ character secret shared only with the Go service |
+| `AUTH_REALM` | Exact realm name, `opentechdb` |
+| `FRONTEND_URL` / `CORS_ORIGINS` | Exact trusted application origins |
+| `SUPABASE_URL` | Backend-only data API URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Backend-only PostgREST credential |
+| `OPENTECHDB_AUTH_UPSTREAM` | Nginx upstream for `/auth-api` |
+| `VITE_API_BASE_URL` | Public FastAPI base path or URL |
+| `VITE_AUTH_API_BASE_URL` | Same-origin auth path, normally `/auth-api` |
 
-- No database, message broker, or external cache is required.
-- For public deployment, place uvicorn behind **nginx** or **Caddy** with TLS.
-- The `--reload` flag is for development only; remove it in production.
-- The Docker image mounts `data/` as a volume so JSON catalogue files can be edited without rebuilding.
+### Keycloak/auth host
+
+| Variable | Description |
+|---|---|
+| `KEYCLOAK_DB_*` | Keycloak's technical PostgreSQL credentials |
+| `KEYCLOAK_ADMIN_*` | Bootstrap administrator credentials |
+| `REDIS_PASSWORD` | Go session-store credential |
+| `OPENTECHDB_CLIENT_SECRET` | Confidential client secret for this realm/client |
+| `AUTH_INTERNAL_SECRET` | Must match FastAPI's value |
+| `KEYCLOAK_DOMAIN` | Public Keycloak/auth host |
+| `OPENTECHDB_FRONTEND_URL` | Canonical application origin |
+| `OPENTECHDB_AUTH_PUBLIC_URL` | Application's same-origin `/auth-api` URL |
+| `OPENTECHDB_AUTH_CALLBACK_URL` | Go OIDC callback under `/auth-api` |
+
+There are no frontend Supabase keys, built-in application-admin credentials,
+or FastAPI JWT-signing secrets. Admins are realm users carrying the `admin`
+role.
+
+## Operational Requirements
+
+- Use TLS on both public hosts.
+- Restrict Supabase and `/internal/*` auth traffic to trusted hosts/networks.
+- Back up the Keycloak and Supabase PostgreSQL stores separately.
+- Treat Redis as the active session store; losing it logs users out but does not
+  delete their Keycloak accounts.
+- Apply SQL migrations before deploying backend code that depends on new
+  columns.

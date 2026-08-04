@@ -13,7 +13,7 @@ The system provides:
 - Built-in **adapter modules** that translate OEO records into PyPSA and Calliope model parameters.
 - A **React 19 web frontend** for browsing, visualising, and contributing technology data.
 - A **time-series profile catalogue** with hourly capacity factors and load profiles linked to technology records.
-- **Authentication** via ORCID OAuth and Supabase, enabling contributor workflows and admin review.
+- **Authentication** via a Go session service and an isolated Keycloak realm, enabling contributor workflows and admin review without exposing identity-provider tokens to React.
 
 ## Functional Requirements (Top 8)
 

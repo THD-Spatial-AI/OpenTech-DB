@@ -18,6 +18,7 @@ import { useState } from "react";
 import type { TechnologyCategory } from "../types/api";
 import { useAuth } from "../context/AuthContext";
 import logoIconOnly from "../assets/icon_no_title.png";
+import { LegalDialog } from "./LegalDialogs";
 
 // ── Exported types ────────────────────────────────────────────────────────────
 
@@ -340,6 +341,13 @@ export default function SideNavBar({
             )}
           </button>
         )}
+
+        {/* Legal dialogs */}
+        <div className="flex gap-3 px-2 pt-2 flex-wrap">
+          <LegalDialog type="privacy" />
+          <LegalDialog type="impressum" />
+          <LegalDialog type="terms" />
+        </div>
       </div>
     </aside>
   );

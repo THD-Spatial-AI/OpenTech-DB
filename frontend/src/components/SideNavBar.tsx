@@ -347,6 +347,9 @@ export default function SideNavBar({
           <LegalDialog type="privacy" />
           <LegalDialog type="impressum" />
           <LegalDialog type="terms" />
+          <LegalDialog type="consent" />
+          <LegalDialog type="disclaimer" />
+          <LegalDialog type="acknowledgements" />
         </div>
       </div>
     </aside>

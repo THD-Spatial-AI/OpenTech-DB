@@ -20,6 +20,7 @@ const AdminPanel           = lazy(() => import("./components/admin/AdminPanel"))
 const TimeSeriesCatalogue  = lazy(() => import("./components/timeseries/TimeSeriesCatalogue"));
 const WorldMapView         = lazy(() => import("./components/worldmap/WorldMapView"));
 import { useAuth } from "./context/AuthContext";
+import ConsentBanner, { getStoredConsent } from "./components/ConsentBanner";
 
 // ── Grid loading skeleton ─────────────────────────────────────────────────────
 
@@ -95,6 +96,7 @@ export default function App() {
   const [activeView, setActiveView]         = useState<ActiveView>("catalogue");
   const [showAuth, setShowAuth]             = useState(false);
   const [authInitialError, setAuthInitialError] = useState<string | undefined>();
+  const [showConsent, setShowConsent]       = useState(() => getStoredConsent() === null);
 
   // Filters are always empty — the filter UI was removed from the sidebar.
   // Kept as a stable constant so TechGrid's prop type is satisfied.
@@ -133,6 +135,9 @@ export default function App() {
         name="description"
         content="OEO-aligned open energy technology parameter database."
       />
+
+      {/* First-visit consent banner */}
+      {showConsent && <ConsentBanner onDecide={() => setShowConsent(false)} />}
 
       {/* Handles ?token= from ORCID OAuth redirect; ?auth_error= from failed OAuth */}
       <OAuthCallback

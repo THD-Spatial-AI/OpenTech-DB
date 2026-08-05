@@ -14,9 +14,12 @@ otdb.th-deg.de {
     reverse_proxy /project-docs/* backend:8000
 
     # ── Legal pages (clean URLs without .html extension) ────────────────────
-    rewrite /privacy    /privacy.html
-    rewrite /impressum  /impressum.html
-    rewrite /terms      /terms.html
+    rewrite /privacy          /privacy.html
+    rewrite /impressum        /impressum.html
+    rewrite /terms            /terms.html
+    rewrite /consent          /consent.html
+    rewrite /disclaimer       /disclaimer.html
+    rewrite /acknowledgements /acknowledgements.html
 
     # ── Static frontend (SPA) ───────────────────────────────────────────────
     reverse_proxy frontend:80

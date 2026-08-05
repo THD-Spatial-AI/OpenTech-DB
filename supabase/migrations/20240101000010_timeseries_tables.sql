@@ -20,10 +20,7 @@
 -- Existing local files can be bulk-imported via:
 --   python scripts/import_timeseries_to_supabase.py  (TBD utility script)
 --
--- RLS summary (same pattern as technology_submissions, migration 005):
---   service_role  – full access (backend uses service-role key)
---   authenticated – no direct access
---   anon          – no access
+-- RLS summary: only the backend service role has access.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -44,6 +41,7 @@ CREATE TABLE IF NOT EXISTS timeseries_submissions (
     description      TEXT        NOT NULL DEFAULT '',
     n_timesteps      INT         NOT NULL DEFAULT 0,
     submitted_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    user_id          TEXT,                    -- immutable Keycloak subject; no user-table FK
     submitter_email  TEXT,
     status           TEXT        NOT NULL DEFAULT 'pending_review'
                          CHECK (status IN ('pending_review', 'approved', 'rejected')),
@@ -57,6 +55,7 @@ CREATE TABLE IF NOT EXISTS timeseries_submissions (
 
 CREATE INDEX IF NOT EXISTS idx_ts_sub_status       ON timeseries_submissions (status);
 CREATE INDEX IF NOT EXISTS idx_ts_sub_submitted_at ON timeseries_submissions (submitted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ts_sub_user_id      ON timeseries_submissions (user_id);
 CREATE INDEX IF NOT EXISTS idx_ts_sub_fingerprint
     ON timeseries_submissions (location, carrier, year, type, source_name);
 
@@ -97,13 +96,7 @@ CREATE INDEX IF NOT EXISTS idx_ts_prof_fingerprint
 
 ALTER TABLE timeseries_profiles ENABLE ROW LEVEL SECURITY;
 
--- Catalogue metadata is public; data points require the service role.
-CREATE POLICY "ts_prof_public_read_meta"
-    ON timeseries_profiles FOR SELECT
-    TO anon, authenticated
-    USING (true);
-
-CREATE POLICY "ts_prof_service_role_write"
+CREATE POLICY "ts_prof_service_role_access"
     ON timeseries_profiles FOR ALL
     TO service_role
     USING (true) WITH CHECK (true);

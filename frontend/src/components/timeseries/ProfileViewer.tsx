@@ -39,7 +39,6 @@ import * as echarts from "echarts";
 import type { EChartsOption } from "echarts";
 import type { TimeSeriesData, TimeSeriesProfile } from "../../types/timeseries";
 import ErrorBoundary from "../ErrorBoundary";
-import { useAuth } from "../../context/AuthContext";
 import { deleteTimeSeriesProfile } from "../../services/timeseries";
 
 // ────────────────────────────────────────────────────────────────────
@@ -342,8 +341,6 @@ function ProfileViewerContent({
   onDelete?: () => void;
 }) {
   const data = use(dataPromise);
-  const { token } = useAuth();
-
   const { color } = getPalette(profile.type);
 
   // Convert once to numeric timestamps
@@ -467,13 +464,13 @@ function ProfileViewerContent({
     if (!onDelete) return;
     setDeleting(true);
     try {
-      await deleteTimeSeriesProfile(profile.profile_id, token);
+      await deleteTimeSeriesProfile(profile.profile_id);
       onDelete();
     } catch {
       setDeleting(false);
       setConfirmDelete(false);
     }
-  }, [onDelete, profile.profile_id, token]);
+  }, [onDelete, profile.profile_id]);
 
   const pal = getPalette(profile.type);
 

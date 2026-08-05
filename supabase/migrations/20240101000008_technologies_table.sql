@@ -11,10 +11,7 @@
 --     trippable through model_validate(). Includes all instances and parameters.
 --   • `is_active` — soft-delete flag; loaders only read WHERE is_active = TRUE.
 --
--- RLS summary (all access goes through FastAPI with service-role key):
---   service_role   – full access
---   authenticated  – no direct access
---   anon           – no access
+-- RLS summary: all access goes through FastAPI with the service-role key.
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS technologies (
@@ -75,4 +72,4 @@ CREATE POLICY "service_role_full_access" ON technologies
     USING (true)
     WITH CHECK (true);
 
--- No policies for anon / authenticated — all reads/writes go through the backend.
+-- No browser-role policies: all reads/writes go through the backend.

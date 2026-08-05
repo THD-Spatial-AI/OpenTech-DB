@@ -1,125 +1,96 @@
 # Context & Scope
+
 ## Business Context
 
-The `opentech-db` system sits at the centre of an energy modelling workflow. It receives data inputs from **curators** (researchers who maintain JSON files or submit via the web UI) and exposes a REST API consumed by **modelling framework clients**, plus a **web frontend** used directly by researchers and non-technical users.
+OpenTech DB sits between researchers who curate energy-technology data and
+modelling clients that consume it. The public catalogue is readable without an
+account. Contributor and administrative operations require a session from the
+isolated Keycloak `opentechdb` realm.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                          External Actors                             │
-│                                                                      │
-│  [Data Curator]──JSON files──►[opentech-db API]◄──────[Web Frontend] │
-│                                        │             (React 19 SPA)  │
-│                           ┌────────────┼────────────┐                │
-│                           ▼            ▼            ▼                │
-│                       [PyPSA]     [Calliope]  [OSeMOSYS /            │
-│                       models       models     ADOPTNet0]             │
-│                                                                      │
-│  [ORCID / Supabase]◄──────auth──────[Web Frontend]                  │
-│  [OEP / Open Energy Platform]◄──oeo_uri links (human/bot)           │
-└──────────────────────────────────────────────────────────────────────┘
+```text
+Data curators ──> React/FastAPI ──> Supabase data service
+                        │               (catalogue + workflow)
+                        ├──> PyPSA / Calliope / OSeMOSYS / ADOPTNet0 clients
+                        └──> Go auth service ──> Keycloak opentechdb realm
+                                                   ├── username/email
+                                                   ├── GitHub broker
+                                                   └── ORCID broker
 ```
 
-| Partner System | Direction | Interface | Description |
+| Partner system | Direction | Interface | Description |
 |---|---|---|---|
-| Data Curator (human) | → opentech-db | JSON files on disk OR web UI submission form | Creates/updates technology JSON files in `data/<category>/`, or submits via `ContributorWorkspace`. |
-| Web Frontend (React SPA) | ↔ opentech-db | HTTP REST via `services/api.ts` | Displays technology catalogue, charts, time-series profiles; allows contributor submissions. |
-| PyPSA model scripts | ← opentech-db | HTTP REST + `/adapt/pypsa/{id}` | Retrieves PyPSA-ready parameter dicts. |
-| Calliope model scripts | ← opentech-db | HTTP REST + `/adapt/calliope/{id}` and `/technologies/{id}/calliope` | Retrieves Calliope YAML-ready dicts. |
-| OSeMOSYS / ADOPTNet0 | ← opentech-db | HTTP REST `/technologies/{id}` | Retrieves raw OEO-aligned records; adapters to be implemented. |
-| ORCID OAuth provider | ↔ frontend/backend | OAuth 2.0 redirect flow (`/auth/orcid`, `/auth/orcid/callback`) | Researcher identity verification for contributor login. |
-| Supabase | ↔ frontend | Supabase JS SDK v2 | Email/password and GitHub OAuth session management; admin role sync. |
-| Open Energy Platform (OEP) | ↔ link | `oeo_uri` hyperlinks | Records reference OEO concept URIs for semantic interoperability. |
+| Data curator | → OpenTech DB | Web submission or reviewed JSON seed change | Creates Technologies, Instances, and Profiles. |
+| React SPA | ↔ FastAPI | JSON HTTP under `/api/v1` | Browses data and performs protected workflow operations. |
+| Go auth service | ↔ browser/FastAPI | Same-origin `/auth-api`; protected `/internal/validate-session` | Owns opaque browser sessions and server-side Keycloak tokens. |
+| Keycloak | ↔ Go auth service | OpenID Connect | Owns accounts, credentials, identity-provider links, and the `contributor`/`admin` roles. |
+| Supabase | ↔ FastAPI | Backend-only PostgREST service-role access | Stores catalogue, time-series, scraper, workflow data, and hashed personal API-token metadata. It is not an identity provider. |
+| PyPSA/Calliope clients | ← FastAPI | Framework adapter endpoints | Receive model-ready parameter dictionaries. |
+| OSeMOSYS/ADOPTNet0 clients | ← FastAPI | REST adapter endpoints | Receive framework-specific exports. |
+| Open Energy Platform | ↔ links | `oeo_uri` | Resolves ontology concepts referenced by catalogue records. |
 
 ## Integration Protocols
 
-All client systems communicate with `opentech-db` exclusively via **plain HTTP + JSON**. No special client library is required; any HTTP client (Python `requests`, R `httr`, curl, wget, Julia `HTTP.jl`, etc.) can query the API.
+Public modelling clients need only HTTP and JSON. Browser authentication is
+cookie-based; React never receives a Keycloak or Supabase token. Users may
+create an `otdb_` personal bearer token from their profile for non-browser API
+clients; FastAPI stores only its hash.
 
-### Request patterns used by modelling frameworks
-
-| Use Case | Method | Path | Notes |
+| Use case | Method | Path | Access |
 |---|---|---|---|
-| List all technologies in a domain | `GET` | `/api/v1/technologies/category/{cat}` | Returns `{total, technologies[]}`. Supported categories: `generation`, `storage`, `transmission`, `conversion`. |
-| Retrieve full technology detail | `GET` | `/api/v1/technologies/{id}` | Returns all instances with flat numeric fields. |
-| Get a specific instance | `GET` | `/api/v1/technologies/{id}/instances/{iid}` | Returns one equipment instance record. |
-| PyPSA-ready parameters | `GET` | `/api/v1/adapt/pypsa/{id}` | Returns `{carrier, p_nom, efficiency, capital_cost, marginal_cost, ...}`. Accepts `instance_index` and `discount_rate` query params. |
-| Calliope single-tech config | `GET` | `/api/v1/technologies/{id}/calliope` | Returns `{essentials, constraints, costs}` YAML-ready dict. |
-| Calliope bulk export | `GET` | `/api/v1/technologies/calliope?category={cat}` | Returns a full `techs:` block for all technologies in a category. |
-| Time-series catalogue | `GET` | `/api/v1/timeseries` | Paginated list of hourly profiles (capacity factors, load series). |
-| Time-series data | `GET` | `/api/v1/timeseries/{id}/data` | Full hourly data array for one profile. |
-| Submit new profile | `POST` | `/api/v1/timeseries/submit` | Contributor uploads a profile file + metadata; stored as pending. |
-| Admin: review submissions | `GET` | `/api/v1/admin/timeseries/submissions` | Admin-only; lists pending profiles for approval. |
-| Force data reload | `POST` | `/api/v1/debug/reload` | Clears the in-memory cache and re-reads all JSON files from disk. |
+| List technologies | `GET` | `/api/v1/technologies` | Public |
+| Retrieve a Technology | `GET` | `/api/v1/technologies/{id}` | Public |
+| Retrieve an Instance | `GET` | `/api/v1/technologies/{id}/instances/{iid}` | Public |
+| PyPSA export | `GET` | `/api/v1/adapt/pypsa/{id}` | Public |
+| Calliope export | `GET` | `/api/v1/technologies/{id}/calliope` | Public |
+| Browse Profiles | `GET` | `/api/v1/timeseries` | Public |
+| Submit a Technology | `POST` | `/api/v1/technologies` | Contributor/admin |
+| Upload a Profile | `POST` | `/api/v1/timeseries/upload` | Contributor/admin |
+| Review submissions | `GET/PATCH` | `/api/v1/admin/...` | Admin |
+| Reload catalogue cache | `POST` | `/api/v1/debug/reload` | Admin |
 
-### Typical integration flows
+## Typical Flows
 
-**Energy modelling script (Python / PyPSA)**
-1. Model script calls `GET /api/v1/adapt/pypsa/{tech_id}?instance_index=N&discount_rate=0.07`.
-2. API returns a pre-annualised parameter dict with all PyPSA-required fields.
-3. Script calls `network.add("Generator", name, **params)` without any manual unit conversion.
+### Modelling client
 
-**Calliope model preparation**
-1. Preprocessing script calls `GET /api/v1/technologies/calliope?category=generation`.
-2. Response is written directly to `model/techs_generation.yaml`.
-3. `model.yaml` imports this file; no technology parameters are hard-coded in the model.
+1. The client requests a Technology or framework-specific adapter endpoint.
+2. FastAPI loads the active catalogue from Supabase, or JSON when Supabase is
+   not configured, and validates it with Pydantic.
+3. The client receives a plain JSON response with no authentication dependency.
 
-**Web frontend browsing**
-1. User opens the React SPA; `SideNavBar` shows category tabs.
-2. `App.tsx` wraps `TechGrid` in `<Suspense>`; `services/api.ts` fetches catalogue via `use()` hook.
-3. User clicks a technology card → `DetailsModal` opens; `TechCharts` renders ECharts cost/efficiency bars.
-4. User navigates to time-series tab → `TimeSeriesCatalogue` lists profiles; `ProfileViewer` renders hourly chart.
+### Contributor
 
-**Contributor submission flow**
-1. Contributor logs in via ORCID or Supabase (`AuthPage`).
-2. Opens `ContributorWorkspace`; fills technology form or uploads a time-series profile via `UploadProfile`.
-3. Submission stored as pending; admin reviews via `AdminPanel` and approves/rejects.
+1. The user signs in on `AuthPage` with username/email and password, or starts
+   a Keycloak-brokered GitHub/ORCID login.
+2. The Go service stores Keycloak tokens in Redis and sets an opaque HttpOnly
+   session cookie.
+3. React submits through FastAPI with credentials enabled.
+4. FastAPI validates the session with the Go service, then stores the immutable
+   Keycloak subject and optional email as workflow attribution.
+5. Supabase contains the submission record but no application-user row.
 
-**Notebook / data exploration**
-1. Analyst calls `GET /api/v1/technologies/category/generation`.
-2. For each technology, fetches `GET /api/v1/technologies/{id}` to obtain all instances.
-3. Builds a `pandas.DataFrame` covering all instances across all categories for comparison.
+### Administrator
+
+1. Keycloak grants the user the `admin` realm role.
+2. FastAPI obtains only filtered OpenTech roles from the Go validation endpoint.
+3. The administrator reviews and approves/rejects submissions; Supabase is
+   accessed solely through FastAPI's service-role client.
 
 ## Technical Context
 
-The system consists of two processes: the **FastAPI backend** (Python) and the **Vite/React frontend** (TypeScript). In production they can be served on the same host; in development the Vite dev server runs independently on a separate port.
+```text
+┌──────────────────── application host ────────────────────┐
+│ React SPA ── /api/v1 ──> FastAPI ── service role ─────┐ │
+│     │                        │                         │ │
+│     └── /auth-api ──────────┼──────────────────────┐  │ │
+└──────────────────────────────┼──────────────────────┼──┘ │
+                               │                      │    │
+                      Supabase PostgreSQL/       Go auth service
+                      PostgREST (data only)           │
+                                                  Redis + Keycloak
+                                                  realm: opentechdb
+```
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                   opentech-db backend                    │
-│                                                          │
-│  ┌─────────┐   ┌───────────────────────────────────────┐ │
-│  │ main.py │──►│ FastAPI routers                       │ │
-│  └─────────┘   │  tech_router  (routes.py)             │ │
-│                │  auth_router  (auth.py)                │ │
-│                │  timeseries_router (timeseries.py)     │ │
-│                │  admin_router, submissions_router      │ │
-│                │  ontology_router                       │ │
-│                │  adapter endpoints (main.py)           │ │
-│                └────────────┬──────────────────────────┘ │
-│          ┌──────────────────┼─────────────┐              │
-│          ▼                  ▼             ▼              │
-│  ┌──────────────┐  ┌─────────────┐  ┌───────────┐        │
-│  │ JSON loader  │  │  Adapters   │  │  Pydantic │        │
-│  │ (dual-format)│  │ pypsa/      │  │  schemas  │        │
-│  └──────┬───────┘  │ calliope    │  └───────────┘        │
-│         │          └─────────────┘                       │
-│         ▼                                                │
-│  data/ (filesystem)                                      │
-└──────────────────────────────────────────────────────────┘
-         ▲ HTTP /api/v1/
-         │
-┌────────────────────────────────────┐
-│       React 19 Frontend (SPA)      │
-│  Vite 8 · TailwindCSS · Zustand 5  │
-│  Leaflet · ECharts · React Flow    │
-│  Supabase JS v2                    │
-└────────────────────────────────────┘
-│         └─►│  data/ (filesystem) │   │
-│            └──────────────────────┘   │
-│  ┌────────────────┐ ┌──────────────┐  │
-│  │ pypsa_adapter  │ │calliope_     │  │
-│  │                │ │adapter       │  │
-│  └────────────────┘ └──────────────┘  │
-└───────────────────────────────────────┘
-       ▲ HTTP :8000
-  [Client scripts / notebooks]
-```
+The Keycloak/auth stack may run on another server or share a Keycloak instance
+with other applications. Realm and client isolation keep OpenTech identities
+separate. Local development uses its own Keycloak/PostgreSQL/Redis Compose
+stack with the same realm name and contract.

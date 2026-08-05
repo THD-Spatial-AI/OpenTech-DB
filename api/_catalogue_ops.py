@@ -93,18 +93,7 @@ def _notify_submitter(
     reason: str | None = None,
     pr_url: str | None = None,
 ) -> None:
-    """
-    Send a best-effort status-change email to the submission author.
-
-    Requires the following env vars:
-      SMTP_HOST     — e.g. "smtp.gmail.com"
-      SMTP_PORT     — default 587
-      SMTP_USER     — login username (also used as From when SMTP_FROM is absent)
-      SMTP_PASSWORD — login password
-      SMTP_FROM     — optional sender address
-
-    Silently logs and returns when unconfigured or on any send error.
-    """
+    """Send a best-effort submission status email when SMTP is configured."""
     import smtplib
     import ssl
     from email.mime.text import MIMEText
@@ -121,7 +110,8 @@ def _notify_submitter(
     if not smtp_host or not smtp_user:
         logger.debug(
             "SMTP not configured — skipping notification to %s for '%s'",
-            email, tech_name,
+            email,
+            tech_name,
         )
         return
 
@@ -144,8 +134,8 @@ def _notify_submitter(
 
     msg = MIMEText("\n".join(lines))
     msg["Subject"] = subject
-    msg["From"]    = from_addr
-    msg["To"]      = email
+    msg["From"] = from_addr
+    msg["To"] = email
 
     try:
         ctx = ssl.create_default_context()

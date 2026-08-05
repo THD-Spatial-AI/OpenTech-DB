@@ -45,33 +45,6 @@ enabled = false
 enabled = false
 
 [auth]
-enabled = true
-site_url = "http://127.0.0.1:5173"
-additional_redirect_urls = ["http://127.0.0.1:5173", "http://localhost:5173"]
-jwt_expiry = 3600
-enable_refresh_token_rotation = true
-refresh_token_reuse_interval = 10
-enable_signup = true
-enable_anonymous_sign_ins = false
-minimum_password_length = 6
-
-[auth.email]
-enable_signup = true
-double_confirm_changes = true
-# Disable email confirmations for local dev — users log in immediately
-enable_confirmations = false
-secure_password_change = false
-otp_length = 6
-otp_expiry = 86400
-
-[auth.sms]
-enable_signup = false
-
-# GitHub OAuth — disabled by default for local dev.
-# To enable: create a GitHub OAuth App with callback
-#   http://127.0.0.1:54321/auth/v1/callback
-# then set GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET env vars.
-[auth.external.github]
 enabled = false
-client_id = "env(GITHUB_CLIENT_ID)"
-secret = "env(GITHUB_CLIENT_SECRET)"
+# Supabase is data-only. Users, passwords, OAuth providers, and roles are
+# managed exclusively by the isolated Keycloak opentechdb realm.

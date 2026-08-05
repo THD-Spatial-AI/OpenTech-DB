@@ -55,7 +55,7 @@
     <mxCell id="fe_admin" value="AdminPanel&#xa;ScraperPanel (review queue)" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="fe_group">
       <mxGeometry x="180" y="140" width="145" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="fe_auth" value="AuthPage&#xa;ORCID / Supabase&#xa;OAuthCallback" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="fe_group">
+    <mxCell id="fe_auth" value="AuthPage&#xa;Go session API&#xa;Keycloak brokers" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="fe_group">
       <mxGeometry x="340" y="140" width="145" height="60" as="geometry" />
     </mxCell>
     <mxCell id="fe_state" value="State: AuthContext · Zustand&#xa;use() · useDeferredValue&#xa;startTransition · useOptimistic" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="fe_group">
@@ -81,7 +81,7 @@
     <!-- ═══════════════════════════════════════════════════ -->
     <!-- HTTP ARROW FE → BACKEND -->
     <!-- ═══════════════════════════════════════════════════ -->
-    <mxCell id="arr_fe_be" value="HTTP + Bearer JWT" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#1a237e;fontColor=#1a237e;fontSize=11;fontStyle=1;endArrow=block;startArrow=block;startFill=0;endFill=1;" edge="1" parent="1">
+    <mxCell id="arr_fe_be" value="HTTP + opaque session cookie" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#1a237e;fontColor=#1a237e;fontSize=11;fontStyle=1;endArrow=block;startArrow=block;startFill=0;endFill=1;" edge="1" parent="1">
       <mxGeometry relative="1" as="geometry">
         <Array as="points">
           <mxPoint x="827" y="360" />
@@ -106,7 +106,7 @@
     <mxCell id="be_routes" value="routes.py&#xa;/technologies · /adapt&#xa;CRUD + Adapters" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="be_group">
       <mxGeometry x="20" y="50" width="165" height="80" as="geometry" />
     </mxCell>
-    <mxCell id="be_auth" value="auth.py&#xa;/auth · ORCID OAuth&#xa;JWT HS256" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="be_group">
+    <mxCell id="be_auth" value="auth_session.py&#xa;Go internal validation&#xa;realm + role filter" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="be_group">
       <mxGeometry x="200" y="50" width="165" height="80" as="geometry" />
     </mxCell>
     <mxCell id="be_timeseries" value="timeseries.py&#xa;/timeseries&#xa;catalogue · submit · approve" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="be_group">
@@ -127,7 +127,7 @@
     <mxCell id="data_group" value="Data Layer" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=12;rounded=1;arcSize=4;" vertex="1" parent="1">
       <mxGeometry x="240" y="570" width="190" height="220" as="geometry" />
     </mxCell>
-    <mxCell id="data_json" value="data/*.json&#xa;(55+ technologies)" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="data_group">
+    <mxCell id="data_json" value="data/*.json&#xa;seeds + local fallback" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="data_group">
       <mxGeometry x="15" y="40" width="160" height="50" as="geometry" />
     </mxCell>
     <mxCell id="data_gen" value="generation/ · conversion/&#xa;storage/ · transmission/" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="data_group">
@@ -175,7 +175,7 @@
     <mxCell id="db_group" value="Database / Storage" style="swimlane;startSize=30;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=12;rounded=1;arcSize=4;" vertex="1" parent="1">
       <mxGeometry x="900" y="570" width="200" height="220" as="geometry" />
     </mxCell>
-    <mxCell id="db_supabase" value="Supabase (PostgreSQL)&#xa;technologies · timeseries&#xa;profiles · scraper_candidates&#xa;scraper_runs · users" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="db_group">
+    <mxCell id="db_supabase" value="Supabase (PostgreSQL)&#xa;technologies · timeseries&#xa;profiles · scraper_candidates&#xa;submissions · no users" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="db_group">
       <mxGeometry x="15" y="40" width="170" height="80" as="geometry" />
     </mxCell>
     <mxCell id="db_migrations" value="db/migrations/&#xa;SQL migration files" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="db_group">
@@ -189,16 +189,16 @@
     <mxCell id="auth_group" value="Authentication" style="swimlane;startSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=12;rounded=1;arcSize=4;" vertex="1" parent="1">
       <mxGeometry x="1120" y="570" width="200" height="220" as="geometry" />
     </mxCell>
-    <mxCell id="auth_orcid" value="ORCID OAuth 2.0&#xa;→ JWT HS256" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="auth_group">
+    <mxCell id="auth_orcid" value="Keycloak realm&#xa;opentechdb · users · roles" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="auth_group">
       <mxGeometry x="15" y="40" width="170" height="45" as="geometry" />
     </mxCell>
-    <mxCell id="auth_supabase" value="Supabase Auth&#xa;Email / GitHub OAuth" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="auth_group">
+    <mxCell id="auth_supabase" value="Go auth service&#xa;Keycloak tokens in Redis" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="auth_group">
       <mxGeometry x="15" y="95" width="170" height="45" as="geometry" />
     </mxCell>
-    <mxCell id="auth_builtin" value="Built-in Admin&#xa;bcrypt + env var secret" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="auth_group">
+    <mxCell id="auth_builtin" value="Browser session&#xa;opaque HttpOnly cookie" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="auth_group">
       <mxGeometry x="15" y="150" width="170" height="45" as="geometry" />
     </mxCell>
-    <mxCell id="auth_jwt_note" value="Bearer JWT on all protected routes" style="text;html=1;strokeColor=none;fillColor=none;fontSize=9;fontColor=#b85450;fontStyle=2;" vertex="1" parent="auth_group">
+    <mxCell id="auth_jwt_note" value="Supabase Auth / GoTrue disabled" style="text;html=1;strokeColor=none;fillColor=none;fontSize=9;fontColor=#b85450;fontStyle=2;" vertex="1" parent="auth_group">
       <mxGeometry x="10" y="200" width="180" height="18" as="geometry" />
     </mxCell>
 
@@ -236,7 +236,7 @@
     <mxCell id="ext_academic" value="Academic APIs&#xa;OpenAlex · arXiv&#xa;Crossref · Scopus" style="shape=mxgraph.cisco.servers.standard_server;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
       <mxGeometry x="1020" y="970" width="80" height="70" as="geometry" />
     </mxCell>
-    <mxCell id="ext_supabase" value="Supabase Cloud" style="shape=mxgraph.cisco.servers.standard_server;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+    <mxCell id="ext_supabase" value="Self-hosted Supabase&#xa;data only" style="shape=mxgraph.cisco.servers.standard_server;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
       <mxGeometry x="1130" y="970" width="80" height="70" as="geometry" />
     </mxCell>
 

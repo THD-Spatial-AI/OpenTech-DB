@@ -42,31 +42,31 @@ beforeEach(() => {
 describe('ScraperPanel', () => {
   it('shows a loading spinner before status resolves', () => {
     mockFetchStatus.mockReturnValue(new Promise(() => {})) // never resolves
-    render(<ScraperPanel token="test-token" />)
+    render(<ScraperPanel />)
     expect(screen.getByText('Loading scraper status…')).toBeInTheDocument()
   })
 
   it('shows "Run Now" button once status has loaded', async () => {
     const statusPromise = Promise.resolve(fakeStatus)
     mockFetchStatus.mockReturnValue(statusPromise)
-    render(<ScraperPanel token="test-token" />)
+    render(<ScraperPanel />)
     await act(async () => { await statusPromise })
     expect(screen.getByRole('button', { name: /run now/i })).toBeInTheDocument()
   })
 
-  it('calls triggerScraperRun with the token when Run Now is clicked', async () => {
+  it('calls triggerScraperRun through the cookie-authenticated API when Run Now is clicked', async () => {
     const statusPromise = Promise.resolve(fakeStatus)
     mockFetchStatus.mockReturnValue(statusPromise)
     mockTriggerRun.mockResolvedValue({ status: 'started', message: 'Run started' })
-    render(<ScraperPanel token="test-token" />)
+    render(<ScraperPanel />)
     await act(async () => { await statusPromise })
     await userEvent.click(screen.getByRole('button', { name: /run now/i }))
-    expect(mockTriggerRun).toHaveBeenCalledWith('test-token')
+    expect(mockTriggerRun).toHaveBeenCalledWith()
   })
 
   it('displays an error message when status fetch fails', async () => {
     mockFetchStatus.mockRejectedValue(new Error('Failed to load scraper status.'))
-    render(<ScraperPanel token="test-token" />)
+    render(<ScraperPanel />)
     await waitFor(() => {
       expect(screen.getByText('Failed to load scraper status.')).toBeInTheDocument()
     })

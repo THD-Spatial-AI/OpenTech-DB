@@ -13,7 +13,6 @@ import DetailsModal from "./components/DetailsModal";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProfilePage from "./components/profile/ProfilePage";
 import AuthPage from "./components/auth/AuthPage";
-import OAuthCallback from "./components/auth/OAuthCallback";
 
 const ContributorWorkspace = lazy(() => import("./components/contributor/ContributorWorkspace"));
 const AdminPanel           = lazy(() => import("./components/admin/AdminPanel"));
@@ -95,14 +94,14 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeView, setActiveView]         = useState<ActiveView>("catalogue");
   const [showAuth, setShowAuth]             = useState(false);
-  const [authInitialError, setAuthInitialError] = useState<string | undefined>();
   const [showConsent, setShowConsent]       = useState(() => getStoredConsent() === null);
 
   // Filters are always empty — the filter UI was removed from the sidebar.
   // Kept as a stable constant so TechGrid's prop type is satisfied.
   const filters = DEFAULT_FILTERS;
 
-  const { user } = useAuth();
+  const { user, authError } = useAuth();
+  const authVisible = !user && (showAuth || Boolean(authError));
 
   // useDeferredValue keeps typing responsive while Suspense re-renders
   const deferredSearch = useDeferredValue(searchQuery);
@@ -139,23 +138,16 @@ export default function App() {
       {/* First-visit consent banner */}
       {showConsent && <ConsentBanner onDecide={() => setShowConsent(false)} />}
 
-      {/* Handles ?token= from ORCID OAuth redirect; ?auth_error= from failed OAuth */}
-      <OAuthCallback
-        onAuthError={(msg) => {
-          setAuthInitialError(msg);
-          setShowAuth(true);
-        }}
-      />
 
       {/* Full-page auth overlay */}
-      {showAuth && !user && (
+      {authVisible && (
         <AuthPage
-          onSuccess={() => { setShowAuth(false); setAuthInitialError(undefined); }}
-          initialError={authInitialError}
+          onSuccess={() => setShowAuth(false)}
+          initialError={authError ?? undefined}
         />
       )}
 
-      <div className={showAuth && !user ? "hidden" : "bg-surface font-body text-on-surface antialiased min-h-screen overflow-x-clip"}>
+      <div className={authVisible ? "hidden" : "bg-surface font-body text-on-surface antialiased min-h-screen overflow-x-clip"}>
         {/* ── Side nav ──────────────────────────────────────────────── */}
         <SideNavBar
           activeCategory={activeCategory}
@@ -303,4 +295,3 @@ export default function App() {
     </>
   );
 }
-

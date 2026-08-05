@@ -69,7 +69,7 @@ from typing import Annotated, Any, Literal
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, Body, HTTPException, Query, Path as FPath, Header, Request, Response
+from fastapi import APIRouter, Body, HTTPException, Query, Path as FPath, Request, Response
 from fastapi.responses import ORJSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -110,7 +110,7 @@ from api._loader import (
 from api._auth_helpers import (
     _get_sb,
     _require_admin,
-    _extract_user_from_token,
+    _require_contributor,
     SubmissionRecord,
     _row_to_record,
     _SUBMISSIONS_TABLE,
@@ -134,13 +134,13 @@ admin_router    = APIRouter(prefix="/admin",          tags=["Admin"])
 # ---------------------------------------------------------------------------
 
 @debug_router.get("/data", summary="Diagnose data loading")
-def debug_data(authorization: str | None = Header(default=None)):
+def debug_data(request: Request):
     """
     Shows DATA_DIR path, every JSON file found, and whether it loaded
     successfully (with full error message on failure).
     Handles both catalogue and legacy individual JSON formats.
     """
-    _require_admin(authorization)
+    _require_admin(request)
     from pydantic import ValidationError
 
     result = {
@@ -195,9 +195,9 @@ def debug_data(authorization: str | None = Header(default=None)):
 
 
 @debug_router.post("/reload", summary="Clear the technology cache and reload from database")
-def reload_cache(authorization: str | None = Header(default=None)):
+def reload_cache(request: Request):
     """Force a full reload of all technologies (from Supabase when configured, otherwise JSON files) without restarting the server."""
-    _require_admin(authorization)
+    _require_admin(request)
     _load_all_technologies.cache_clear()
     _build_ontology_schema.cache_clear()
     techs = _get_all()
@@ -1354,7 +1354,6 @@ class SubmissionResponse(BaseModel):
 def submit_technology(
     request: Request,
     payload: dict = Body(...),
-    authorization: Annotated[str | None, Header()] = None,
 ) -> SubmissionResponse:
     """
     Accept a contributor-submitted technology for admin review.
@@ -1363,8 +1362,10 @@ def submit_technology(
     and linked to the authenticated user.  Falls back to local JSON files when
     Supabase is not configured (``SUPABASE_SERVICE_ROLE_KEY`` env var absent).
     """
+    identity = _require_contributor(request)
     tech_name = str(payload.get("technology_name", "unknown")).strip() or "unknown"
-    user_id, user_email = _extract_user_from_token(authorization)
+    user_id = str(identity.get("sub") or "")
+    user_email = str(identity.get("email") or "")
 
     # ── Supabase path ──────────────────────────────────────────────────────────
     sb = _get_sb()
@@ -1444,18 +1445,18 @@ def patch_submission(
     request: Request,
     submission_id: str,
     patch: SubmissionPatch,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> SubmissionResponse:
     """
     Edit a pending submission before it enters admin review.
 
-    Only the original submitter (matched by ``user_id`` in the JWT) or an
+    Only the original submitter (matched by the immutable Keycloak subject) or an
     admin may modify a submission.  Approved or rejected submissions cannot
     be edited.
 
     Supabase must be configured; returns 501 otherwise.
     """
-    user_id, _ = _extract_user_from_token(authorization)
+    identity = _require_contributor(request)
+    user_id = str(identity.get("sub") or "")
 
     sb = _get_sb()
     if sb is None:
@@ -1484,7 +1485,7 @@ def patch_submission(
     # Authorization: the original submitter or an admin
     is_admin = False
     try:
-        _require_admin(authorization)
+        _require_admin(request)
         is_admin = True
     except HTTPException:
         pass
@@ -1534,14 +1535,14 @@ def patch_submission(
     summary="List all catalogue technologies (admin only)",
 )
 def admin_list_technologies(
-    authorization: Annotated[str | None, Header()] = None,
+    request: Request,
 ) -> list[dict]:
     """
     Returns the raw catalogue entries (with technology_id) so the admin
     panel can display an editable list without relying on the public
     TechnologySummary schema.
     """
-    _require_admin(authorization)
+    _require_admin(request)
 
     entries: list[dict] = []
     for domain_dir in sorted(DATA_DIR.iterdir()):
@@ -1576,11 +1577,11 @@ def admin_list_technologies(
     summary="List all technology submissions",
 )
 def list_submissions(
-    authorization: Annotated[str | None, Header()] = None,
+    request: Request,
     status_filter: str | None = Query(None, alias="status"),
 ) -> list[SubmissionRecord]:
     """Return all submissions (from Supabase or local files), newest first."""
-    _require_admin(authorization)
+    _require_admin(request)
 
     # ── Supabase path ──────────────────────────────────────────────────────────
     sb = _get_sb()
@@ -1652,9 +1653,9 @@ class AdminActionRequest(BaseModel):
     summary="Approve or reject a pending submission",
 )
 def act_on_submission(
+    request: Request,
     submission_id: str,
     body: AdminActionRequest,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
     """
     Set the status of a submission to ``approved`` or ``rejected``.
@@ -1662,8 +1663,8 @@ def act_on_submission(
     * **approve** — opens a GitHub PR to merge the technology into the catalogue JSON.
     * **reject**  — marks the row ``rejected`` with an optional reason.
     """
-    admin_payload = _require_admin(authorization)
-    admin_email   = admin_payload.get("email", "admin")
+    admin_payload = _require_admin(request)
+    admin_email = admin_payload.get("email", "admin")
 
     if body.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'.")
@@ -1732,7 +1733,6 @@ def act_on_submission(
             if pr_url:
                 response["pr_url"] = pr_url
 
-            # Notify the submitter (best-effort)
             _notify_submitter(
                 row.get("submitter_email"),
                 result_status,
@@ -1779,6 +1779,7 @@ def act_on_submission(
     logger.info("Admin %s submission %s (file fallback)", body.action, submission_id)
 
     result_status = record["status"]
+
     _notify_submitter(
         record.get("submitter_email"),
         result_status,
@@ -1809,8 +1810,8 @@ class BulkActionRequest(BaseModel):
     summary="Bulk approve or reject pending submissions",
 )
 def bulk_act_on_submissions(
+    request: Request,
     body: BulkActionRequest,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
     """
     Approve or reject up to 50 pending submissions in a single request.
@@ -1828,8 +1829,8 @@ def bulk_act_on_submissions(
           "failed":    [{"id": "…", "error": "…"}, …]
         }
     """
-    admin_payload = _require_admin(authorization)
-    admin_email   = admin_payload.get("email", "admin")
+    admin_payload = _require_admin(request)
+    admin_email = admin_payload.get("email", "admin")
 
     if body.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'.")
@@ -1957,9 +1958,9 @@ def _find_catalogue_file_for_tech(technology_id: str) -> tuple | None:
     summary="Edit a live catalogue technology (admin only)",
 )
 def admin_edit_technology(
+    request: Request,
     technology_id: Annotated[str, FPath(description="technology_id from the catalogue JSON")],
     patch: CatalogueTechPatch,
-    authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
     """
     Partially update a technology entry in the catalogue JSON file.
@@ -1969,7 +1970,7 @@ def admin_edit_technology(
 
     Requires an admin Bearer token.
     """
-    _require_admin(authorization)
+    _require_admin(request)
 
     result = _find_catalogue_file_for_tech(technology_id)
     if result is None:
@@ -2005,8 +2006,8 @@ def admin_edit_technology(
     summary="Delete a live catalogue technology (admin only)",
 )
 def admin_delete_technology(
+    request: Request,
     technology_id: Annotated[str, FPath(description="technology_id from the catalogue JSON")],
-    authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
     """
     Remove a technology entry from the catalogue JSON file entirely.
@@ -2015,7 +2016,7 @@ def admin_delete_technology(
 
     Requires an admin Bearer token.
     """
-    _require_admin(authorization)
+    _require_admin(request)
 
     result = _find_catalogue_file_for_tech(technology_id)
     if result is None:
@@ -2050,21 +2051,16 @@ submissions_router = APIRouter(prefix="/submissions", tags=["Submissions"])
     summary="List the current user's own submissions",
 )
 def get_my_submissions(
-    authorization: Annotated[str | None, Header()] = None,
+    request: Request,
 ) -> list[SubmissionRecord]:
     """
     Return all submissions made by the currently authenticated user, newest first.
 
-    The caller must supply a valid Supabase or ORCID JWT as
-    ``Authorization: Bearer <token>``.  The ``user_id`` claim is used to
-    filter; no admin privileges are required.
+    The caller must have a valid Go-managed OpenTech realm session. The Keycloak
+    subject is used to filter; no admin privileges are required.
     """
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required.")
-
-    user_id, _ = _extract_user_from_token(authorization)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid or unrecognised token.")
+    identity = _require_contributor(request)
+    user_id = str(identity.get("sub") or "")
 
     # ── Supabase path ──────────────────────────────────────────────────────────
     sb = _get_sb()

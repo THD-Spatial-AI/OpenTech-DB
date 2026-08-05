@@ -109,8 +109,8 @@ function PrivacyContent() {
 
         <p className="font-semibold text-on-surface">Session Storage (cleared on tab close)</p>
         <div className="bg-surface-container border border-outline-variant/15 px-3 py-2 text-sm">
-          <p><strong>ORCID access token / Supabase JWT</strong></p>
-          <p>Storage Period: Duration of the browser session</p>
+          <p><strong>Session token / Keycloak JWT</strong></p>
+          <p>Storage Period: Duration of the browser session (max. 8 hours)</p>
           <p>
             Purpose: Authenticates the signed-in user with the OpenTech-DB API, granting
             access to the Contributor Workspace. Cleared automatically when the browser tab
@@ -154,8 +154,15 @@ function PrivacyContent() {
 
         <p className="font-semibold text-on-surface">Supabase (Self-Hosted)</p>
         <p>
-          Contributor account data (email, ORCID iD, institution) are stored in a PostgreSQL
-          database hosted on DIT's own infrastructure. No data is transmitted to Supabase Inc.
+          Supabase is used for optional catalogue and workflow data, self-hosted on DIT's
+          own infrastructure. No data is transmitted to Supabase Inc.
+        </p>
+        <p className="font-semibold text-on-surface">Keycloak, PostgreSQL &amp; Redis (Self-Hosted)</p>
+        <p>
+          Authentication, user accounts, and server-side session storage are handled by
+          Keycloak, PostgreSQL, and Redis — all self-hosted on THD-managed infrastructure.
+          Keycloak access and refresh tokens are never stored in the browser; they remain
+          server-side in Redis.
         </p>
       </Section>
 
@@ -668,9 +675,8 @@ function TermsContent({ onReadToBottom }: { onReadToBottom: () => void }) {
 
       <Section title="3. Contributor Registration">
         <p>
-          Researchers may register as Contributors to submit parameters. Requirements: a valid
-          email address or ORCID iD, a scientific or research affiliation, and acceptance of
-          these terms and the{" "}
+          Researchers may register as Contributors to submit parameters.
+          Requirements: a username, valid email address, password, and acceptance of these terms and the{" "}
           <a href="/privacy" target="_blank" rel="noopener" className="text-primary hover:underline">
             Privacy Policy
           </a>.

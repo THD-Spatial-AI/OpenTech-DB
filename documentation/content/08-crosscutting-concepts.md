@@ -38,9 +38,9 @@ adapters) is format-agnostic.
 
 ## 5. In-memory Caching
 
-The `@lru_cache(maxsize=1)` on `_load_all_technologies()` ensures JSON files are parsed
-exactly once per process lifetime. The `POST /api/v1/debug/reload` endpoint explicitly
-clears the cache for hot-reload without server restart.
+The `@lru_cache(maxsize=1)` on `_load_all_technologies()` ensures the Supabase
+catalogue (or JSON fallback) is loaded once per process lifetime. The admin-only
+`POST /api/v1/debug/reload` endpoint clears the cache without a server restart.
 
 ## 6. Logging
 
@@ -82,15 +82,19 @@ This is applied consistently in `adapters/pypsa_adapter.py`.
 
 ## 10. Authentication & Authorisation
 
-- **ORCID OAuth** (`api/auth.py`): researchers log in via their ORCID iD. The backend
-  exchanges the OAuth code, issues a signed JWT, and redirects to the frontend with
-  `?token=<jwt>`. The frontend stores the token in `sessionStorage`.
-- **Supabase** (`frontend/src/lib/supabase.ts`): manages email/password and GitHub OAuth
-  sessions for the frontend. Admin role is stored as Supabase user metadata and synced
-  into `AuthContext`.
-- **Route protection**: `AdminPanel` and `ContributorWorkspace` are guarded by
-  `isAdmin` / `isAuthenticated` flags from `AuthContext`. Backend admin endpoints
-  validate the JWT on the `Authorization: Bearer` header.
+- **Keycloak realm**: the isolated `opentechdb` realm owns username/email,
+  credentials, optional GitHub/ORCID identity brokers, and application roles.
+- **Go session service**: exchanges credentials/codes with Keycloak, stores its
+  tokens in Redis, and returns only opaque HttpOnly cookies to the browser.
+- **FastAPI boundary**: `api/auth_session.py` validates the opaque session using
+  the shared-secret-protected Go internal endpoint. The realm name and filtered
+  `contributor`/`admin` roles are checked before protected operations.
+- **Supabase boundary**: Supabase is data-only. GoTrue is disabled, there is no
+  React Supabase client, and workflow subjects are not database-user foreign keys.
+- **Personal tokens**: FastAPI accepts hashed `otdb_` bearer tokens generated
+  from the profile. The secret is shown once; read scope is GET/HEAD only,
+  admin is always removed, and token-management routes require a Go-validated
+  browser session.
 
 ## 11. Frontend State Management
 
@@ -108,13 +112,13 @@ This is applied consistently in `adapters/pypsa_adapter.py`.
 Contributor uploads profile (UploadProfile.tsx)
     |
     v
-POST /api/v1/timeseries/submit  → stored in data/timeseries/pending/
+POST /api/v1/timeseries/upload  → Supabase pending row (JSON fallback locally)
     |
     v
 Admin reviews (AdminPanel.tsx)
     |
-    +-- approve → moved to data/timeseries/, catalogue updated
-    +-- reject  → removed from pending/
+    +-- approve → approved profile stored and submission status updated
+    +-- reject  → submission status and reason updated
     |
     v
 Available at GET /api/v1/timeseries/{id}/data
@@ -123,7 +127,8 @@ Referenced by VREPlant.profile_key
 
 ## 13. CORS Policy
 
-CORS is configured explicitly in `main.py`. In development, origins `localhost:5173`,
-`5174`, `5175`, and `4173` (Vite dev + preview) are allowed. The `Authorization`,
-`Content-Type`, and `Accept` headers are whitelisted.
-In production the allowed origin list must be updated to the deployed frontend URL.
+CORS is configured explicitly in `main.py` with credentials enabled and exact
+origins. Cookie-authenticated write requests also pass a separate exact `Origin`
+check. `Authorization`, `Content-Type`, `Accept`, and `X-Request-ID` are accepted
+as custom headers for explicitly trusted origins. Production must set
+`FRONTEND_URL`/`CORS_ORIGINS` to the deployed application origin.

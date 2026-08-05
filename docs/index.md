@@ -25,7 +25,7 @@ Key capabilities:
 - **Automated scraper pipeline** — pulls data from OpenAlex, Semantic Scholar, NREL ATB, IRENA, and more
 - **React 19 SPA** for browsing, visualising, and contributing data
 - **World map view** — geographic visualisation of technology instances by country
-- **Contributor workflow** with ORCID + Supabase authentication and admin review
+- **Contributor workflow** with isolated Keycloak authentication and admin review
 
 ---
 
@@ -80,7 +80,7 @@ The API is publicly accessible — no setup required for read-only access:
 | [Framework Adapters](adapters.md) | PyPSA and Calliope adapters, CRF formula |
 | [Scraper Pipeline](scrapers.md) | Automated data acquisition from academic sources |
 | [Time-Series Catalogue](timeseries.md) | Hourly profiles, contributor upload |
-| [Authentication](authentication.md) | ORCID OAuth, Supabase auth, admin setup |
+| [Authentication](authentication.md) | Go sessions, Keycloak realm, providers, and admin roles |
 | [Web Frontend](frontend.md) | React SPA views, state management, build instructions |
 
 ---

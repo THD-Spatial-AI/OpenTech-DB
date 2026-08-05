@@ -69,7 +69,6 @@ function ConfidenceBar({ value }: { value: number }) {
 
 function CandidateDetailModal({
   candidate,
-  token,
   onClose,
   onAction,
   currentIndex,
@@ -78,7 +77,6 @@ function CandidateDetailModal({
   onNext,
 }: {
   candidate: ScraperCandidate;
-  token: string;
   onClose: () => void;
   onAction: (id: string, newStatus: "approved" | "rejected") => void;
   currentIndex?: number;
@@ -97,7 +95,7 @@ function CandidateDetailModal({
     setActing(true);
     setActionError(null);
     try {
-      await approveScraperCandidate(token, candidate.candidate_id);
+      await approveScraperCandidate(candidate.candidate_id);
       onAction(candidate.candidate_id, "approved");
       onClose();
     } catch (e) {
@@ -111,7 +109,7 @@ function CandidateDetailModal({
     setActing(true);
     setActionError(null);
     try {
-      await rejectScraperCandidate(token, candidate.candidate_id, rejectReason || undefined);
+      await rejectScraperCandidate(candidate.candidate_id, rejectReason || undefined);
       onAction(candidate.candidate_id, "rejected");
       onClose();
     } catch (e) {
@@ -935,7 +933,7 @@ function DashboardTab({
 const STATUS_OPTIONS = ["all", "pending", "approved", "rejected"] as const;
 type CandidateFilter = (typeof STATUS_OPTIONS)[number];
 
-function CandidatesTab({ token }: { token: string }) {
+function CandidatesTab() {
   const [candidates,    setCandidates]    = useState<ScraperCandidate[] | null>(null);
   const [loadError,     setLoadError]     = useState<string | null>(null);
   const [filter,        setFilter]        = useState<CandidateFilter>("pending");
@@ -958,7 +956,6 @@ function CandidatesTab({ token }: { token: string }) {
       status: status === "all" ? undefined : status,
       technology_id: (techId && techId !== "all") ? techId : undefined,
       limit: 500,
-      token,
     })
       .then((res) => setCandidates(res.candidates))
       .catch((e) => setLoadError(e instanceof Error ? e.message : "Failed to load candidates."))
@@ -996,7 +993,7 @@ function CandidatesTab({ token }: { token: string }) {
     setBulkProgress({ done: 0, total: ids.length });
     for (let i = 0; i < ids.length; i++) {
       try {
-        await approveScraperCandidate(token, ids[i]);
+        await approveScraperCandidate(ids[i]);
         setCandidates((prev) =>
           prev ? prev.map((c) => c.candidate_id === ids[i] ? { ...c, status: "approved" } : c) : prev
         );
@@ -1016,7 +1013,7 @@ function CandidatesTab({ token }: { token: string }) {
     setBulkProgress({ done: 0, total: ids.length });
     for (let i = 0; i < ids.length; i++) {
       try {
-        await rejectScraperCandidate(token, ids[i]);
+        await rejectScraperCandidate(ids[i]);
         setCandidates((prev) =>
           prev ? prev.map((c) => c.candidate_id === ids[i] ? { ...c, status: "rejected" } : c) : prev
         );
@@ -1347,7 +1344,6 @@ function CandidatesTab({ token }: { token: string }) {
       {selected && (
         <CandidateDetailModal
           candidate={selected}
-          token={token}
           onClose={() => setSelectedIndex(null)}
           onAction={(id, newStatus) => handleAction(id, newStatus, true)}
           currentIndex={selectedIndex ?? undefined}
@@ -1364,7 +1360,7 @@ function CandidatesTab({ token }: { token: string }) {
 
 // ── Timeseries Pipeline Tab ───────────────────────────────────────────────────
 
-function TimeseriesPipelineTab({ token }: { token: string }) {
+function TimeseriesPipelineTab() {
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [loadError,    setLoadError]    = useState<string | null>(null);
   const [loadingCount, setLoadingCount] = useState(false);
@@ -1375,11 +1371,11 @@ function TimeseriesPipelineTab({ token }: { token: string }) {
   const loadCount = useCallback(() => {
     setLoadingCount(true);
     setLoadError(null);
-    fetchAdminProfileSubmissions(token, "pending_review")
+    fetchAdminProfileSubmissions("pending_review")
       .then((subs) => setPendingCount(subs.length))
       .catch((e) => setLoadError(e instanceof Error ? e.message : "Failed to load count."))
       .finally(() => setLoadingCount(false));
-  }, [token]);
+  }, []);
 
   useEffect(() => { loadCount(); }, [loadCount]);
 
@@ -1388,7 +1384,7 @@ function TimeseriesPipelineTab({ token }: { token: string }) {
     setRunMsg(null);
     setRunError(null);
     try {
-      const res = await runTimeseriesPipeline(token);
+      const res = await runTimeseriesPipeline();
       setRunMsg(res.message ?? "Pipeline started.");
       setTimeout(loadCount, 3000);
     } catch (e) {
@@ -1523,7 +1519,7 @@ function TimeseriesPipelineTab({ token }: { token: string }) {
 
 type ScraperTab = "dashboard" | "candidates" | "timeseries";
 
-export default function ScraperPanel({ token }: { token: string }) {
+export default function ScraperPanel() {
   const [tab,          setTab]          = useState<ScraperTab>("dashboard");
   const [status,       setStatus]       = useState<ScraperStatus | null>(null);
   const [statusErr,    setStatusErr]    = useState<string | null>(null);
@@ -1550,7 +1546,7 @@ export default function ScraperPanel({ token }: { token: string }) {
   const loadRuns = useCallback(() => {
     setRunsLoading(true);
     setRunsError(null);
-    fetchScraperRuns(30, token)
+    fetchScraperRuns(30)
       .then((data) => setRuns(data.runs))
       .catch((e) => setRunsError(e instanceof Error ? e.message : "Failed to load run history."))
       .finally(() => setRunsLoading(false));
@@ -1583,7 +1579,7 @@ export default function ScraperPanel({ token }: { token: string }) {
     setRunMsg(null);
     setRunStartTime(new Date());
     try {
-      const res = await triggerScraperRun(token);
+      const res = await triggerScraperRun();
       setRunMsg(res.message);
       loadStatus();
       loadRuns();
@@ -1601,7 +1597,7 @@ export default function ScraperPanel({ token }: { token: string }) {
   const handleStop = async () => {
     setStopping(true);
     try {
-      const res = await stopScraperRun(token);
+      const res = await stopScraperRun();
       setRunMsg(res.message);
       loadStatus();
       loadRuns();
@@ -1698,11 +1694,11 @@ export default function ScraperPanel({ token }: { token: string }) {
       )}
 
       {tab === "candidates" && (
-        <CandidatesTab token={token} />
+        <CandidatesTab />
       )}
 
       {tab === "timeseries" && (
-        <TimeseriesPipelineTab token={token} />
+        <TimeseriesPipelineTab />
       )}
     </div>
   );

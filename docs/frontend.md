@@ -66,15 +66,22 @@ Guarded by `isAdmin` flag in `AuthContext`. Two sub-panels:
 - **`AdminPanel.tsx`** — review pending technology and time-series submissions (approve / reject with notes).
 - **`ScraperPanel.tsx`** — display current scraper pipeline status, trigger manual runs, browse scraped candidates, and approve/reject individual parameter extractions for merging into the catalogue.
 
-### Authentication (`AuthPage` + `OAuthCallback`)
+### Authentication (`AuthPage` + `AuthContext`)
 
-Three login methods:
+The original username/email login is backed by the standalone Go/Keycloak
+service and an opaque HttpOnly cookie. `ProfilePage` remains a read-only
+Keycloak identity summary and links to the Keycloak Account Console for
+password/MFA/profile changes. Its personal-token panel calls FastAPI to
+generate, list, and revoke OpenTech API tokens; a newly generated secret stays
+in component memory only and is displayed once.
 
-1. **ORCID OAuth** — redirects to `orcid.org`; callback stores JWT in `sessionStorage`.
-2. **Supabase email / password** — standard credential login.
-3. **GitHub OAuth via Supabase** — one-click social login.
+The original sign-in design supports username/email plus password and
+Keycloak-brokered GitHub/ORCID buttons. All flows terminate in the standalone
+Go auth service. React receives only public user fields and an opaque HttpOnly
+session cookie; Keycloak access/refresh tokens never enter JavaScript storage.
 
-`AuthContext.tsx` provides the global `user`, `token`, and `isAdmin` state across the entire SPA.
+`AuthContext.tsx` provides global `user`, loading, and `isAdmin` state. Roles
+come only from the isolated Keycloak `opentechdb` realm.
 
 ---
 
@@ -82,7 +89,7 @@ Three login methods:
 
 | Mechanism | Used for |
 |---|---|
-| **`AuthContext`** (React Context) | JWT, user identity, `isAdmin` flag |
+| **`AuthContext`** (React Context) | Public Keycloak identity and `isAdmin` flag; no token storage |
 | **Zustand store** | Active category, search query, UI state (modal open/closed) |
 | **React 19 `use()` + Promise cache** | Async data fetching with Suspense (no loading spinners) |
 | **`useDeferredValue`** | Non-blocking search input — keeps grid visible while typing |
@@ -99,6 +106,9 @@ The API client is a thin wrapper that:
 2. **Exposes Promises directly** — designed for React 19 `use()` inside `<Suspense>`, eliminating the need for `useEffect`/`useState` data-fetching boilerplate.
 3. **Provides manual cache invalidation** — call `invalidateCategory()` or `invalidateAll()` after a data mutation.
 
+Personal-token requests deliberately use the normal credentialed FastAPI
+client. The frontend never reads a Keycloak token or Supabase service key.
+
 ---
 
 ## Environment variables
@@ -107,8 +117,7 @@ Create `frontend/.env.local`:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000
-VITE_SUPABASE_URL=https://<your-project>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
+VITE_AUTH_API_BASE_URL=/auth-api
 ```
 
 ---
@@ -136,4 +145,3 @@ Serve `frontend/dist/` with any static file server (nginx, Caddy, Vercel, GitHub
 | ECharts | 6.x | Bar charts (CAPEX, efficiency) and line charts (time-series) |
 | Leaflet | 1.9 | Interactive world map and location picker |
 | Zustand | 5.x | Minimal global state management |
-| Supabase JS | 2.x | Auth sessions (email, GitHub, ORCID via JWT) |

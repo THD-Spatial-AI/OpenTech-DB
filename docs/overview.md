@@ -103,7 +103,7 @@ opentech-db/
 │
 ├── api/
 │   ├── routes.py                  # Technology CRUD + debug + ontology + admin routers
-│   ├── auth.py                    # ORCID OAuth 2.0 + JWT issuance + /auth/me
+│   ├── auth_session.py            # Validates opaque Go sessions server-to-server
 │   ├── timeseries.py              # Time-series catalogue: list, data, submit, approve
 │   └── scraper_routes.py          # Scraper management: status, run, candidates, review
 │
@@ -131,11 +131,13 @@ opentech-db/
 ├── db/
 │   └── migrations/                # SQL migrations for Supabase schema
 │
+├── keycloak/                      # Realm, Go auth service, and Compose stacks
+│
 ├── frontend/                      # React 19 SPA (TypeScript + Vite 8 + TailwindCSS)
 │   └── src/
 │       ├── components/            # TechGrid, TechCard, DetailsModal, WorldMap, Admin…
 │       ├── services/              # API client (promise memoisation for React use() hook)
-│       ├── context/               # AuthContext: ORCID JWT + Supabase session
+│       ├── context/               # AuthContext: opaque Go/Keycloak session state
 │       └── types/                 # TypeScript interfaces for API responses
 │
 ├── docs/                          # MkDocs documentation (this site)

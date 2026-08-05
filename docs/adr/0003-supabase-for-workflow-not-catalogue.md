@@ -1,23 +1,18 @@
-# Supabase stores workflow state only — not a catalogue mirror
+# Superseded: Supabase stores workflow state only
 
-The Supabase PostgreSQL database is used exclusively for transient workflow
-records: Candidate and Submission review queues, scraper run logs, and
-authentication. It is **not** a mirror of the technology catalogue.
+The original decision limited Supabase to workflow records and made JSON files
+the only catalogue store. It was superseded when the `technologies`,
+`technology_instances`, and time-series tables became the primary runtime data
+source, with repository JSON retained as seeds and a local fallback.
 
-The authoritative store for Technology, Instance, and Parameter data is the
-JSON catalogue under `data/`. That store is version-controlled, diff-able, and
-portable — no external account is needed to read or contribute to it.
+The current boundary is:
 
-Migration 002 created `technologies` and `technology_instances` tables that
-were never written to. Migration 004 drops them. Future contributors should
-not re-add Supabase tables for catalogue data.
-
-**Why:** A SQL mirror of the catalogue would introduce a second source of truth
-with no clear sync boundary. Any divergence between the JSON files and the
-database would be silent and hard to detect. The JSON store already satisfies
-all read requirements (served via FastAPI with an LRU cache); the operational
-benefits of a SQL catalogue mirror do not outweigh the consistency risk.
-
-**Consequence:** Adding or editing Technologies and Instances always means
-editing JSON files in `data/` (directly or via a GitHub PR triggered by the
-Approval workflow). Supabase is never the destination for catalogue writes.
+- Supabase PostgreSQL/PostgREST stores catalogue, time-series, scraper,
+  submission data, and hashed personal API-token metadata.
+- All Supabase access is performed server-side with the service-role key.
+- Supabase Auth/GoTrue is disabled and no Supabase user record is created.
+- Keycloak owns users and roles. Workflow rows may store an immutable Keycloak
+  subject and email as denormalized attribution, without a user-table foreign
+  key.
+- Approved catalogue changes can still be represented by a GitHub pull request
+  so the repository seed data remains reviewable and portable.

@@ -1,32 +1,18 @@
-"""
-api/_auth_helpers.py
-====================
-Supabase client, JWT auth helpers, and submission record model.
+"""Database helpers, Go-session authorization, and submission models.
 
-Exports used by api/routes.py:
-  _get_sb, _is_admin_claim, _decode_supabase_jwt, _require_admin,
-  _extract_user_from_token, SubmissionRecord, _row_to_record,
-  _SUBMISSIONS_TABLE
+Supabase remains an optional server-side data service in this module. It is
+not an identity provider. The standalone Go service owns Keycloak tokens and
+places a validated OpenTech realm user on ``request.state``.
 """
 from __future__ import annotations
 
-import base64 as _b64
-import json as _json_mod
-import logging
 import os
-import time as _time_mod
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from pydantic import BaseModel
-
-logger = logging.getLogger(__name__)
 
 _SUPABASE_URL      = os.getenv("SUPABASE_URL", "")
 _SUPABASE_SVC_KEY  = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-# Optional: set to the JWT Secret from Supabase Dashboard → Settings → API.
-# When present, Supabase tokens are verified cryptographically instead of
-# structurally. Required for any public deployment.
-_SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
 _SUBMISSIONS_TABLE = "technology_submissions"
 _sb_client         = None
 
@@ -42,141 +28,29 @@ def _get_sb():
     return _sb_client
 
 
-def _is_admin_claim(payload: dict) -> bool:
-    """True if the decoded JWT payload grants admin access (both token formats)."""
-    if payload.get("is_admin"):
-        return True
-    return bool(payload.get("app_metadata", {}).get("is_admin"))
+def _request_identity(request: Request) -> dict:
+    if getattr(request.state, "auth_service_unavailable", False):
+        raise HTTPException(status_code=503, detail="Authentication service unavailable.")
+    user = getattr(request.state, "auth_user", None)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    return user.as_identity()
 
 
-def _decode_supabase_jwt(token: str) -> dict:
-    """
-    Validate a Supabase JWT.
-
-    Strategy:
-    1. Peek at the header to discover the signing algorithm.
-    2. If alg==HS256 and SUPABASE_JWT_SECRET is set → verify signature with PyJWT.
-    3. Otherwise → structural-only check (iss, aud, exp).  A warning is logged
-       when the secret is present but the token uses a non-HS256 algorithm (e.g.
-       RS256), because that means the signature cannot be verified locally.
-    """
-    parts = token.split(".")
-    if len(parts) != 3:
-        raise ValueError("Malformed JWT — expected 3 parts")
-
-    def _b64d(s: str) -> bytes:
-        return _b64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
-
-    try:
-        header  = _json_mod.loads(_b64d(parts[0]))
-        payload = _json_mod.loads(_b64d(parts[1]))
-    except Exception as exc:
-        raise ValueError(f"Cannot decode JWT: {exc}") from exc
-
-    token_alg = header.get("alg", "").upper()
-
-    # ── Cryptographic path (HS256 + secret present) ──────────────────────────
-    if _SUPABASE_JWT_SECRET and token_alg == "HS256":
-        import jwt as _pyjwt
-        from jwt.exceptions import InvalidTokenError as _InvalidTokenError
-        aud = payload.get("aud")
-        audience = aud if isinstance(aud, list) else (aud or "authenticated")
-        try:
-            payload = _pyjwt.decode(
-                token,
-                _SUPABASE_JWT_SECRET,
-                algorithms=["HS256"],
-                audience=audience,
-            )
-        except _InvalidTokenError as exc:
-            raise ValueError(f"Supabase JWT signature invalid: {exc}") from exc
-        iss = payload.get("iss", "")
-        if not iss or "supabase" not in iss:
-            raise ValueError("Not a Supabase JWT")
-        return payload
-
-    # ── Structural-only path ─────────────────────────────────────────────────
-    if _SUPABASE_JWT_SECRET and token_alg != "HS256":
-        logger.warning(
-            "Supabase token uses alg=%s — cannot verify with SUPABASE_JWT_SECRET "
-            "(HS256 only). Falling back to structural check.", token_alg,
-        )
-    else:
-        logger.warning(
-            "SUPABASE_JWT_SECRET not set — Supabase token signatures are NOT "
-            "verified. Set SUPABASE_JWT_SECRET for production deployments."
-        )
-
-    iss = payload.get("iss", "")
-    if not iss or "supabase" not in iss:
-        raise ValueError("Not a Supabase JWT")
-
-    aud = payload.get("aud")
-    authenticated = (
-        (isinstance(aud, list) and "authenticated" in aud) or aud == "authenticated"
-    )
-    if not authenticated:
-        raise ValueError("JWT audience is not 'authenticated'")
-
-    exp = payload.get("exp", 0)
-    if exp and _time_mod.time() > exp:
-        raise ValueError("Token expired")
-
-    return payload
-
-
-def _require_admin(authorization: str | None) -> dict:
-    """
-    Validate the bearer token and return the decoded payload.
-
-    Accepts two token types:
-    • Our HS256 JWT   — built-in super-admin (POST /auth/admin/login)
-    • Supabase JWT    — users with app_metadata.is_admin set in Supabase
-
-    Raises HTTP 401 for missing/invalid tokens, 403 for non-admin tokens.
-    """
-    from api.auth import _decode_jwt
-
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Admin token required.")
-
-    token = authorization.removeprefix("Bearer ")
-    payload: dict | None = None
-
-    try:
-        payload = _decode_jwt(token)
-    except Exception:
-        pass
-
-    if payload is None:
-        try:
-            payload = _decode_supabase_jwt(token)
-        except ValueError as exc:
-            raise HTTPException(status_code=401, detail=str(exc))
-
-    if not _is_admin_claim(payload):
+def _require_admin(request: Request) -> dict:
+    """Require a Go-validated OpenTech realm session carrying ``admin``."""
+    identity = _request_identity(request)
+    if "admin" not in identity["roles"]:
         raise HTTPException(status_code=403, detail="Admin access required.")
+    return identity
 
-    return payload
 
-
-def _extract_user_from_token(authorization: str | None) -> tuple[str | None, str | None]:
-    """Return (user_id, email) from a Bearer JWT, or (None, None)."""
-    if not authorization or not authorization.startswith("Bearer "):
-        return None, None
-    token = authorization.removeprefix("Bearer ")
-    try:
-        p = _decode_supabase_jwt(token)
-        return p.get("sub"), p.get("email")
-    except Exception:
-        pass
-    try:
-        from api.auth import _decode_jwt
-        p = _decode_jwt(token)
-        return p.get("sub"), p.get("email")
-    except Exception:
-        pass
-    return None, None
+def _require_contributor(request: Request) -> dict:
+    """Require a Go-validated contributor or admin realm role."""
+    identity = _request_identity(request)
+    if not ({"contributor", "admin"} & set(identity["roles"])):
+        raise HTTPException(status_code=403, detail="Contributor access required.")
+    return identity
 
 
 class SubmissionRecord(BaseModel):

@@ -143,35 +143,29 @@ Browser                  React SPA               FastAPI
 
 ---
 
-## Scenario 7 — ORCID login and contributor submission
+## Scenario 7 — Keycloak login and contributor submission
 
 ```
-Browser/User             Frontend (React)         Backend              ORCID
-  |                          |                      |                    |
-  | click "Sign in"          |                      |                    |
-  |------------------------->|                      |                    |
-  |                          |-- GET /api/v1/auth/orcid -->              |
-  |                          |<-- 302 redirect to ORCID OAuth ---------->|
-  |<-- redirect browser -----|                      |                    |
-  |-----------------------------------------------------------> ORCID login
-  |<-- redirect ?code=... ----------------------------------------------------------|
-  |                          |                      |                    |
-  |-- GET /auth/orcid/callback?code=... ----------->|                    |
-  |                          |                      | exchange code      |
-  |                          |                      | issue JWT          |
-  |<-- redirect ?token=<jwt> |                      |                    |
-  |                          |                      |                    |
-  | OAuthCallback.tsx        |                      |                    |
-  | stores JWT in            |                      |                    |
-  | sessionStorage           |                      |                    |
-  |                          |                      |                    |
-  | ContributorWorkspace     |                      |                    |
-  | fill & submit form       |                      |                    |
-  |------------------------->|                      |                    |
-  |                          |-- POST /api/v1/timeseries/submit (+ JWT)->|
-  |                          |<-- 201 {status: pending} ----------------|
-  |                          |                      |                    |
+Browser/User       Frontend        Go auth + Redis       Keycloak        FastAPI
+  |                   |                  |                  |               |
+  | submit login      |                  |                  |               |
+  |------------------>| POST /auth-api/login              |               |
+  |                   |----------------->| token request -->|               |
+  |                   |                  |<-- tokens -------|               |
+  |                   |                  | store tokens     |               |
+  |                   |<-- opaque HttpOnly session cookie  |               |
+  |                   |                  |                  |               |
+  | submit profile    |                  |                  |               |
+  |------------------>| POST /api/v1/timeseries/upload + cookie ---------->|
+  |                   |                  |<-- validate-session -------------|
+  |                   |                  |-- filtered realm identity ------>|
+  |                   |                  |                  | store pending |
+  |                   |<----------------------- 202 {status: pending} -------|
 ```
+
+Provider login follows the same session outcome. GitHub or ORCID is brokered by
+Keycloak through the Go service; no provider or Keycloak token is placed in a
+URL or browser storage.
 
 ---
 
@@ -182,7 +176,7 @@ Admin browser            Frontend (AdminPanel)    Backend
   |                          |                      |
   | open AdminPanel          |                      |
   |------------------------->|                      |
-  |                          |-- GET /api/v1/admin/timeseries/submissions (+ JWT)
+  |                          |-- GET /api/v1/admin/timeseries/submissions (+ session cookie)
   |                          |<-- 200 [{status:pending, ...}] ----------|
   |                          |                      |                    |
   | click "Approve"          |                      |                    |

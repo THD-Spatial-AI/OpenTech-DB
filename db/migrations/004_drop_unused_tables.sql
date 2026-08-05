@@ -3,8 +3,8 @@
 -- =============================================================================
 -- The `technologies` and `technology_instances` tables (created in migration
 -- 002) were never used. The authoritative Technology and Instance records live
--- in the JSON catalogue under data/. Supabase stores workflow state only
--- (Candidates, Submissions, auth). See docs/adr/0003-supabase-for-workflow-not-catalogue.md.
+-- in the JSON catalogue under data/. Supabase stores data/workflow state only
+-- (candidates and submissions), never users or authentication records.
 --
 -- Safe to run multiple times (IF EXISTS guards).
 -- =============================================================================

@@ -9,11 +9,11 @@ FastAPI integrates with Pydantic so the schema in `schemas/models.py` simultaneo
 - auto-generates OpenAPI / Swagger docs;
 - provides type-safe Python objects across the codebase.
 
-### 2. JSON files as persistence (no database)
+### 2. Supabase data service with JSON seeds and fallback
 
-JSON on disk is version-controlled with the code, editable by any researcher, and fully
-portable. The trade-off (no concurrent writes) is acceptable because data changes slowly
-(curated, not real-time).
+Supabase PostgreSQL/PostgREST is the primary runtime data service for catalogue,
+time-series, scraper, and submission records. Only FastAPI and maintenance tools receive
+the service-role key. JSON files remain version-controlled seeds and allow local fallback.
 
 ### 3. Dual-format JSON loader
 
@@ -49,11 +49,11 @@ interactive technology browser without requiring users to write code. It uses Re
 `use()` hook inside `<Suspense>` for async data fetching, `startTransition` for
 category tab switches, and `useDeferredValue` to keep the search input responsive.
 
-### 9. Supabase + ORCID for authentication
+### 9. Go sessions and an isolated Keycloak realm
 
-ORCID OAuth establishes researcher identity aligned with academic workflows. Supabase
-manages sessions, admin roles, and email/GitHub sign-in as a lightweight alternative to
-a self-hosted identity provider.
+The existing login UI talks to a standalone Go service. Keycloak owns username/email,
+passwords, optional GitHub/ORCID brokers, and realm roles. Go keeps Keycloak tokens in
+Redis and gives the browser only opaque HttpOnly cookies. Supabase Auth is disabled.
 
 ### 10. Time-series profile catalogue as a first-class resource
 

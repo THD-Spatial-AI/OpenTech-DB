@@ -8,10 +8,8 @@
 -- Distinct from scraper_candidates (automated pipeline output, in migration 001).
 -- Both share the same lifecycle but carry different provenance metadata.
 --
--- RLS summary:
---   service_role   – full access (backend uses service-role key)
---   authenticated  – no direct access (all requests go through FastAPI backend)
---   anon           – no access
+-- RLS summary: only service_role has access. Browser/user identities are
+-- validated by FastAPI through the Go/Keycloak session boundary.
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS technology_submissions (
@@ -27,7 +25,7 @@ CREATE TABLE IF NOT EXISTS technology_submissions (
     rejection_reason  TEXT,
     pr_url            TEXT,       -- set when a GitHub PR is opened for approval
 
-    -- Contributor identity (TEXT to accommodate both Supabase UUIDs and ORCID iDs)
+    -- Immutable Keycloak subject; deliberately not a foreign key to a user table.
     user_id           TEXT,
     submitter_email   TEXT,
 
@@ -74,9 +72,8 @@ CREATE TRIGGER trg_submissions_updated_at
 -- Row-Level Security
 -- ---------------------------------------------------------------------------
 -- All reads and writes go through the FastAPI backend (service-role key),
--- never from the frontend directly. The service_role policy is therefore
--- sufficient. Contributor-scoped SELECT/INSERT policies (user_id = auth.uid())
--- can be added here when direct frontend Supabase queries are introduced.
+-- never from the frontend directly. The service_role policy is sufficient;
+-- user_id is compared with the Go-validated Keycloak subject in FastAPI.
 ALTER TABLE technology_submissions ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "service_role_full_access"

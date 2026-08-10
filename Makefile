@@ -17,9 +17,11 @@
 ifeq ($(OS),Windows_NT)
     PYTHON   := python
     VENV_BIN := .venv/Scripts
+    DEVNULL  := NUL
 else
     PYTHON   := python3
     VENV_BIN := .venv/bin
+    DEVNULL  := /dev/null
 endif
 
 PY  := $(VENV_BIN)/python
@@ -70,7 +72,7 @@ configure: .venv
 	@$(PY) tools/configure_env.py
 
 _check-docker:
-	@docker info > /dev/null 2>&1 \
+	@docker info > $(DEVNULL) 2>&1 \
 	  || (echo "" && echo "ERROR: Docker Desktop is not running. Please start it and try again." && exit 1)
 
 _install-supabase-cli:

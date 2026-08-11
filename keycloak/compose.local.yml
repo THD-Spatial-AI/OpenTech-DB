@@ -56,7 +56,7 @@ services:
     volumes:
       - ./realm/opentechdb-realm.json:/opt/keycloak/data/import/opentechdb-realm.json:ro
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8180:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,7 +110,7 @@ services:
       APP_URL: http://localhost:5173/auth-api
       FRONTEND_URL: http://localhost:5173
       KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8180
       KEYCLOAK_REALM: opentechdb
       KEYCLOAK_CLIENT_ID: opentechdb-auth
       KEYCLOAK_CLIENT_SECRET: ${OPENTECHDB_CLIENT_SECRET:?set OPENTECHDB_CLIENT_SECRET in .env.local}

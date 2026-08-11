@@ -1,5 +1,6 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+# POSIX sh — the Keycloak UBI9-micro image does not ship GNU bash.
+set -eu
 
 keycloak_url="${KEYCLOAK_URL:-http://keycloak:8080}"
 realm="${KEYCLOAK_REALM:-opentechdb}"
@@ -8,12 +9,15 @@ callback_url="${OPENTECHDB_AUTH_CALLBACK_URL:?set OPENTECHDB_AUTH_CALLBACK_URL}"
 frontend_url="${OPENTECHDB_FRONTEND_URL:?set OPENTECHDB_FRONTEND_URL}"
 kcadm="/opt/keycloak/bin/kcadm.sh"
 
-for attempt in $(seq 1 60); do
+# Wait for the Keycloak admin API to become ready (up to 120 s).
+attempt=0
+while [ "$attempt" -lt 60 ]; do
+  attempt=$((attempt + 1))
   if "$kcadm" config credentials \
-    --server "$keycloak_url" \
-    --realm master \
-    --user "$KEYCLOAK_ADMIN_USERNAME" \
-    --password "$KEYCLOAK_ADMIN_PASSWORD" >/dev/null 2>&1; then
+      --server "$keycloak_url" \
+      --realm master \
+      --user "$KEYCLOAK_ADMIN_USERNAME" \
+      --password "$KEYCLOAK_ADMIN_PASSWORD" >/dev/null 2>&1; then
     break
   fi
   if [ "$attempt" -eq 60 ]; then
@@ -23,7 +27,10 @@ for attempt in $(seq 1 60); do
   sleep 2
 done
 
-for attempt in $(seq 1 30); do
+# Wait for the realm to finish importing (up to 60 s).
+attempt=0
+while [ "$attempt" -lt 30 ]; do
+  attempt=$((attempt + 1))
   if "$kcadm" get "realms/$realm" >/dev/null 2>&1; then
     break
   fi
@@ -45,7 +52,8 @@ for role in manage-users view-users query-users view-realm; do
 done
 
 echo "Configuring OpenTech client callbacks"
-client_uuid="$($kcadm get clients --target-realm "$realm" --query "clientId=$client_id" --fields id --format csv --noquotes)"
+client_uuid="$("$kcadm" get clients --target-realm "$realm" \
+  --query "clientId=$client_id" --fields id --format csv --noquotes)"
 if [ -z "$client_uuid" ]; then
   echo "Client '$client_id' was not imported" >&2
   exit 1

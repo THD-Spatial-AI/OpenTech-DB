@@ -168,8 +168,8 @@ Local endpoints:
 | OpenTech frontend | `http://localhost:5173` |
 | FastAPI | `http://localhost:8000` |
 | Go auth API | `http://localhost:8001/api` |
-| Keycloak | `http://localhost:8080` |
-| Keycloak Admin Console | `http://localhost:8080/admin/` |
+| Keycloak | `http://localhost:8180` |
+| Keycloak Admin Console | `http://localhost:8180/admin/` |
 
 `make configure` creates `keycloak/.env.local`, generates independent secrets,
 and synchronizes only `AUTH_INTERNAL_SECRET` with the backend `.env`.

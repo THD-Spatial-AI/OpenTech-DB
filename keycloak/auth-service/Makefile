@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help pull up down dev build run stop clean logs
+.PHONY: help deps install pull up down dev build run stop clean logs
 
 help:
 	@echo "Auth Service - Available Commands"
@@ -13,14 +13,16 @@ help:
 	@echo "  make logs       View container logs"
 	@echo ""
 	@echo "Development:"
+	@echo "  make deps       Download Go module dependencies"
+	@echo "  make install    Alias for deps"
 	@echo "  make dev        Run auth-service locally (go run)"
 	@echo "  make build      Build auth-service binary"
 	@echo "  make run        Run built binary"
 	@echo ""
 	@echo "Container:"
-	@echo "  make build-image Build Docker image"
-	@echo "  make run-container Run auth-service in container"
-	@echo "  make stop-container Stop auth-service container"
+	@echo "  make build-image     Build Docker image"
+	@echo "  make run-container   Run auth-service in container"
+	@echo "  make stop-container  Stop auth-service container"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean      Remove containers, volumes and build artifacts"
@@ -30,6 +32,14 @@ help:
 	@echo "  Redis:      localhost:6379"
 	@echo "  Keycloak:   localhost:8080"
 	@echo "  Auth-Service: localhost:8081"
+
+deps:
+	@echo "Downloading Go dependencies..."
+	go mod tidy
+	go mod download
+	@echo "✓ Dependencies ready"
+
+install: deps
 
 pull:
 	@echo "Pulling required containers..."
@@ -45,7 +55,7 @@ up:
 	@echo "✓ Services started:"
 	@echo "  PostgreSQL: localhost:5433"
 	@echo "  Redis:      localhost:6379"
-	@echo "  Keycloak:   http://localhost:8080"
+	@echo "  Keycloak:   http://localhost:8180"
 
 down:
 	docker compose down
@@ -55,11 +65,11 @@ logs:
 
 dev:
 	@echo "Starting auth-service..."
-	go run main.go
+	go run ./cmd/main.go
 
 build:
 	@echo "Building auth-service..."
-	go build -o main .
+	go build -o main ./cmd/
 	@echo "✓ Built: ./main"
 
 run: build

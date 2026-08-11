@@ -14,9 +14,9 @@
 ### Backend
 
 ```bash
-# 1 – Clone the repository
-git clone https://mygit.th-deg.de/thd-spatial-ai/opentech-db.git
-cd opentech-db
+# 1 – Clone the repository and its pinned authentication stack
+git clone --recurse-submodules https://github.com/THD-Spatial-AI/OpenTech-DB.git
+cd OpenTech-DB
 
 # 2 – Create and activate a virtual environment
 python -m venv .venv
@@ -93,7 +93,8 @@ make install
 starts the Supabase data services, applies pending migrations, generates local
 secrets, and starts Keycloak, its PostgreSQL database, Redis, and the Go auth
 service. Use `make auth` later when only the authentication stack needs to be
-started or rebuilt.
+started or rebuilt. Both commands initialize the pinned `keycloak-auth`
+submodule automatically; `make auth-init` can be used to fetch it separately.
 
 The backend consumes only the opaque Go-managed session:
 

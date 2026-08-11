@@ -57,22 +57,29 @@ Register via the OpenTech sign-in form (username, email, password). Grant the `a
 
 ## Make targets
 
-| Target          | Description |
-|-----------------|-------------|
-| `make install`  | **First time only** — installs all deps, generates secrets, starts all services |
-| `make start`    | **Day-to-day** — ensures services are up, then starts FastAPI + Vite |
-| `make configure`| Regenerate local secrets and synchronize `AUTH_INTERNAL_SECRET` |
-| `make auth`     | Start or rebuild the local Keycloak / Go auth stack |
-| `make auth-down`| Stop the local auth stack |
-| `make auth-logs`| Follow Keycloak and Go auth logs |
-| `make backend`  | Start FastAPI on `:8000` |
-| `make frontend` | Start Vite dev server on `:5173` |
-| `make dev`      | Start both servers in one terminal |
-| `make supabase` | Start local Supabase data services |
-| `make stop`     | Stop Supabase containers |
-| `make reset`    | Wipe local DB and re-run migrations |
-| `make lint`     | ESLint on the frontend |
-| `make build`    | Production frontend bundle |
+| Target              | Description |
+|---------------------|-------------|
+| `make install`      | **First time only** — installs all deps, generates secrets, starts all services |
+| `make start`        | **Day-to-day** — ensures services are up, then starts FastAPI + Vite |
+| `make configure`    | Regenerate local secrets and synchronize `AUTH_INTERNAL_SECRET` |
+| `make auth-init`    | Fetch the Keycloak/auth submodule at its pinned revision |
+| `make auth`         | Start or rebuild the local Keycloak / Go auth stack |
+| `make auth-check`   | Verify local credentials match the persisted auth database |
+| `make auth-reset`   | Guarded reset for disposable local authentication data |
+| `make auth-down`    | Stop the local auth stack |
+| `make auth-logs`    | Follow Keycloak and Go auth logs |
+| `make backend`      | Start FastAPI on `:8000` |
+| `make frontend`     | Start Vite dev server on `:5173` |
+| `make dev`          | Start both servers in one terminal |
+| `make supabase`     | Start local Supabase data services |
+| `make stop`         | Stop Supabase containers |
+| `make reset`        | Wipe local DB and re-run migrations |
+| `make lint`         | ESLint on the frontend |
+| `make build`        | Production frontend bundle |
+| `make docker-build` | Build all Docker images (backend + frontend) |
+| `make docker-up`    | Start production stack in background |
+| `make docker-down`  | Stop production stack |
+| `make docker-logs`  | Tail logs from all containers |
 
 ## Project structure
 

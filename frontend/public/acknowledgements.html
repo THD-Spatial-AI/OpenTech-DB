@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acknowledgements – OpenTech-DB</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1a56a0;
+      --primary-dark: #0c3068;
+      --surface: #f8f9fc;
+      --border: #e2e6ef;
+      --text: #1a1f2e;
+      --muted: #5a6475;
+      --accent-bg: #eef3fb;
+    }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 15px; line-height: 1.7; color: var(--text); background: var(--surface); }
+    header { background: var(--primary-dark); color: #fff; padding: 1.25rem 2rem; display: flex; align-items: center; gap: 1rem; }
+    header a { color: #fff; text-decoration: none; font-size: 0.8rem; opacity: 0.75; }
+    header a:hover { opacity: 1; }
+    header span { opacity: 0.4; }
+    main { max-width: 820px; margin: 2.5rem auto; padding: 0 1.5rem 4rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 0.25rem; }
+    .updated { font-size: 0.8rem; color: var(--muted); margin-bottom: 2rem; }
+    .intro { background: var(--accent-bg); border-left: 3px solid var(--primary); padding: 1rem 1.25rem; margin-bottom: 2rem; font-size: 0.95rem; color: var(--muted); }
+    h2 { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--primary); border-left: 2px solid var(--primary); padding-left: 0.6rem; margin: 2rem 0 0.75rem; }
+    p { margin-bottom: 0.75rem; color: var(--muted); }
+    .ack-row { display: flex; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+    .ack-row:last-child { border-bottom: none; }
+    .ack-name { font-weight: 600; color: var(--text); width: 160px; flex-shrink: 0; }
+    .ack-desc { color: var(--muted); font-size: 0.9rem; }
+    a { color: var(--primary); }
+    a:hover { text-decoration: underline; }
+    footer { text-align: center; padding: 2rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/">← Back to OpenTech-DB</a>
+    <span>|</span>
+    <a href="/privacy">Privacy Policy</a>
+    <span>|</span>
+    <a href="/impressum">Imprint</a>
+  </header>
+
+  <main>
+    <h1>Acknowledgements</h1>
+    <p class="updated">Last updated: August 2026</p>
+
+    <div class="intro">
+      We would like to extend our gratitude to the developers and contributors of the following
+      tools, frameworks, and data sources that make OpenTech-DB possible. Thank you for your
+      continuous innovation and commitment to open science.
+    </div>
+
+    <h2>Frontend</h2>
+    <div class="ack-row"><span class="ack-name">React 19</span><span class="ack-desc">Open-source JavaScript library for building user interfaces, maintained by Meta and a community of developers. Uses the new use() hook and concurrent rendering features.</span></div>
+    <div class="ack-row"><span class="ack-name">TypeScript</span><span class="ack-desc">Strongly typed superset of JavaScript providing compile-time safety and improved developer tooling across the entire codebase.</span></div>
+    <div class="ack-row"><span class="ack-name">Vite</span><span class="ack-desc">Next-generation frontend build tool providing fast hot module replacement and optimised production bundles.</span></div>
+    <div class="ack-row"><span class="ack-name">TailwindCSS</span><span class="ack-desc">Utility-first CSS framework used for the entire design system including custom colour tokens aligned with Material Design 3.</span></div>
+    <div class="ack-row"><span class="ack-name">Radix UI</span><span class="ack-desc">Accessible, unstyled component primitives providing the foundation for dialogs, tooltips, and other interactive UI components.</span></div>
+    <div class="ack-row"><span class="ack-name">Material Symbols</span><span class="ack-desc">Google's open-source variable icon font used throughout the interface for consistent iconography.</span></div>
+    <div class="ack-row"><span class="ack-name">Zustand</span><span class="ack-desc">Lightweight state management library used for UI state stores across the application.</span></div>
+    <div class="ack-row"><span class="ack-name">Leaflet</span><span class="ack-desc">Open-source mapping library powering the Technology World Map view for interactive geographic visualisation of deployment data.</span></div>
+    <div class="ack-row"><span class="ack-name">Apache ECharts</span><span class="ack-desc">Comprehensive charting and visualisation library used for technology parameter charts, time series profiles, and cost comparisons.</span></div>
+
+    <h2>Backend &amp; Infrastructure</h2>
+    <div class="ack-row"><span class="ack-name">FastAPI</span><span class="ack-desc">High-performance Python web framework providing the REST API with automatic OpenAPI documentation and Pydantic v2 validation.</span></div>
+    <div class="ack-row"><span class="ack-name">Pydantic v2</span><span class="ack-desc">Data validation and settings management library serving as the single source of truth for all technology parameter schemas.</span></div>
+    <div class="ack-row"><span class="ack-name">PostgreSQL</span><span class="ack-desc">Powerful open-source relational database system used for scraper candidates, runs, and contributor account data.</span></div>
+    <div class="ack-row"><span class="ack-name">Supabase</span><span class="ack-desc">Open-source Firebase alternative providing authentication (GoTrue) and database tooling. Self-hosted on DIT infrastructure — no data leaves the university.</span></div>
+    <div class="ack-row"><span class="ack-name">APScheduler</span><span class="ack-desc">Python task scheduling library running the automated data collection pipeline on the 1st and 15th of each month.</span></div>
+    <div class="ack-row"><span class="ack-name">Caddy</span><span class="ack-desc">Automatic HTTPS reverse proxy handling SSL termination, URL routing, and clean URL rewrites for the platform.</span></div>
+    <div class="ack-row"><span class="ack-name">Docker</span><span class="ack-desc">Container platform used for consistent deployment and orchestration of all platform services.</span></div>
+
+    <h2>Data Sources</h2>
+    <div class="ack-row"><span class="ack-name">NREL ATB</span><span class="ack-desc">National Renewable Energy Laboratory Annual Technology Baseline — a primary source of cost and performance projections for energy technologies in the United States.</span></div>
+    <div class="ack-row"><span class="ack-name">IRENA</span><span class="ack-desc">International Renewable Energy Agency — providing global renewable energy cost and capacity data used in the catalogue.</span></div>
+    <div class="ack-row"><span class="ack-name">IEA</span><span class="ack-desc">International Energy Agency — providing technology cost benchmarks and energy statistics referenced by catalogue parameters.</span></div>
+    <div class="ack-row"><span class="ack-name">OpenAlex</span><span class="ack-desc">Open-access scientific literature index used by the automated scraper pipeline to discover and extract parameters from peer-reviewed papers.</span></div>
+    <div class="ack-row"><span class="ack-name">Semantic Scholar</span><span class="ack-desc">AI-powered literature search engine used by the scraper to identify relevant energy technology publications.</span></div>
+    <div class="ack-row"><span class="ack-name">Crossref</span><span class="ack-desc">Scholarly metadata service used by the scraper pipeline to resolve DOIs and retrieve publication provenance for parameter sources.</span></div>
+    <div class="ack-row"><span class="ack-name">Open Energy Ontology</span><span class="ack-desc">A shared ontology for the energy domain developed by the open_eGo project, used as the conceptual framework for aligning technology definitions and parameter semantics in this database.</span></div>
+
+    <h2>Framework Adapters</h2>
+    <div class="ack-row"><span class="ack-name">PyPSA</span><span class="ack-desc">Python for Power System Analysis — open-source tool for simulating and optimising power systems. OpenTech-DB exports parameters directly to PyPSA-compatible format.</span></div>
+    <div class="ack-row"><span class="ack-name">Calliope</span><span class="ack-desc">Versatile energy system modelling framework. OpenTech-DB supports exports for both Calliope 0.6 and 0.7 with appropriate name and unit mappings.</span></div>
+    <div class="ack-row"><span class="ack-name">OSeMOSYS</span><span class="ack-desc">Open Source energy Modelling SYStem — a linear programming framework for long-term energy planning. OpenTech-DB provides OSeMOSYS-compatible parameter exports.</span></div>
+    <div class="ack-row"><span class="ack-name">AdOpT-NET0</span><span class="ack-desc">Energy system optimisation framework developed by the Utrecht University Energy &amp; Resources group. OpenTech-DB supports AdOpT-NET0 template export format.</span></div>
+
+    <p style="margin-top: 2rem; font-size: 0.85rem;">
+      OpenTech-DB is developed at THD Spatial AI, Deggendorf Institute of Technology.
+      Source code: <a href="https://github.com/THD-Spatial-AI/OpenTech-DB" target="_blank" rel="noopener">github.com/THD-Spatial-AI/OpenTech-DB</a>
+    </p>
+  </main>
+
+  <footer>
+    © 2026 Deggendorf Institute of Technology – THD Spatial AI ·
+    <a href="/privacy">Privacy Policy</a> · <a href="/impressum">Imprint</a>
+  </footer>
+</body>
+</html>

@@ -23,8 +23,10 @@ make frontend
 `make install` installs the Python and frontend dependencies, starts the
 Supabase data services with Auth disabled, applies pending migrations, and
 starts the local Keycloak, PostgreSQL, Redis, and Go service using
-`keycloak/compose.local.yml`. `make supabase` and `make auth` remain available
-for starting either stack independently.
+`keycloak/compose.local.yml`. The `keycloak/` directory is a pinned submodule of
+the standalone `keycloak-auth` repository and is initialized automatically.
+`make supabase` and `make auth` remain available for starting either stack
+independently.
 
 ## Production
 
@@ -48,9 +50,9 @@ PostgreSQL, PostgREST, and Kong only; GoTrue is intentionally absent. Kong
 accepts only the backend service-role credential, and Nginx exposes no
 Supabase route.
 
-The remote authentication stack is defined in `keycloak/compose.yml`. Its
-PostgreSQL database contains Keycloak's own identity model. It is independent
-of the Supabase data PostgreSQL database.
+The remote authentication stack is defined in the pinned submodule's
+`keycloak/compose.yml`. Its PostgreSQL database contains Keycloak's own identity
+model. It is independent of the Supabase data PostgreSQL database.
 
 ## Environment Variables
 

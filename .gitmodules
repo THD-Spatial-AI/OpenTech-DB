@@ -1,0 +1,3 @@
+[submodule "keycloak"]
+	path = keycloak
+	url = https://github.com/THD-Spatial-AI/keycloak-auth.git

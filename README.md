@@ -45,6 +45,17 @@ make frontend
 make auth
 ```
 
+`make auth` checks that `keycloak/.env.local` still matches the persisted
+Keycloak database before starting the stack. For disposable local data, an
+intentional reset is available with:
+
+```bash
+make auth-reset CONFIRM=delete-local-keycloak-data
+```
+
+The reset removes only the local Keycloak database and Redis sessions; it does
+not remove Supabase data.
+
 Authentication uses the standalone Go service and the isolated `opentechdb`
 Keycloak realm. React never receives Keycloak tokens and does not use
 `keycloak-js`. Signed-in users can create revocable, hashed personal API tokens

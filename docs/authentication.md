@@ -169,6 +169,17 @@ at the exact revision pinned by OpenTech DB. For a manual checkout, use:
 git submodule update --init --recursive
 ```
 
+Both `make install` and `make auth` verify that the generated local credentials
+match an existing Keycloak PostgreSQL volume before starting Keycloak. If an
+older environment file must be preserved, restore the complete file. If the
+local realm/users are disposable, reset only the authentication data with:
+
+```bash
+make auth-reset CONFIRM=delete-local-keycloak-data
+```
+
+This does not reset the separate Supabase database.
+
 Local endpoints:
 
 | Service | URL |

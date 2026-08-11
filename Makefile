@@ -9,7 +9,7 @@
 #
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: help install configure supabase auth-init auth auth-down auth-logs backend frontend stop reset lint build dev \
+.PHONY: help install configure supabase auth-init auth auth-check auth-reset auth-down auth-logs backend frontend stop reset lint build dev \
         docker-build docker-up docker-down docker-logs
 
 # ── Platform ─────────────────────────────────────────────────────────────────
@@ -28,6 +28,10 @@ PY  := $(VENV_BIN)/python
 PIP := $(VENV_BIN)/pip
 UV  := $(VENV_BIN)/uvicorn
 
+AUTH_ENV          ?= keycloak/.env.local
+AUTH_COMPOSE_FILE ?= keycloak/compose.local.yml
+AUTH_COMPOSE       = docker compose --env-file $(AUTH_ENV) -f $(AUTH_COMPOSE_FILE)
+
 # ── Default ───────────────────────────────────────────────────────────────────
 
 help:
@@ -38,6 +42,8 @@ help:
 	@echo "  make configure   generate matching backend/auth-service secrets"
 	@echo "  make auth-init   fetch the Keycloak/auth submodule at its pinned revision"
 	@echo "  make auth        start local Keycloak, Go auth, Postgres, and Redis"
+	@echo "  make auth-check  verify local credentials match the persisted auth database"
+	@echo "  make auth-reset  guarded reset for disposable local authentication data"
 	@echo "  make auth-down   stop the local authentication stack"
 	@echo "  make auth-logs   follow Keycloak and Go auth logs"
 	@echo "  make backend     start FastAPI on :8000"
@@ -121,14 +127,32 @@ auth-init:
 	@test -f keycloak/compose.local.yml \
 	  || (echo "ERROR: the keycloak-auth submodule could not be initialized." && exit 1)
 
-auth: _check-docker auth-init configure
-	docker compose --env-file keycloak/.env.local -f keycloak/compose.local.yml up -d --build
+auth: auth-check
+	$(AUTH_COMPOSE) up -d --build
+
+auth-check: _check-docker auth-init configure
+	@sh keycloak/scripts/check-persistent-credentials.sh \
+	  "$(AUTH_ENV)" \
+	  "$(AUTH_COMPOSE_FILE)" \
+	  "make auth" \
+	  "make auth-reset CONFIRM=delete-local-keycloak-data" \
+	  "all local Keycloak realm/user data and Redis sessions"
+
+auth-reset: _check-docker auth-init configure
+	@test "$(CONFIRM)" = "delete-local-keycloak-data" \
+	  || (echo "ERROR: this deletes all local Keycloak realms, users, and sessions." \
+	      && echo "Re-run with: make auth-reset CONFIRM=delete-local-keycloak-data" \
+	      && exit 1)
+	$(AUTH_COMPOSE) down -v --remove-orphans
+	@$(MAKE) --no-print-directory auth \
+	  AUTH_ENV="$(AUTH_ENV)" \
+	  AUTH_COMPOSE_FILE="$(AUTH_COMPOSE_FILE)"
 
 auth-down: auth-init
-	docker compose --env-file keycloak/.env.local -f keycloak/compose.local.yml down
+	$(AUTH_COMPOSE) down
 
 auth-logs: auth-init
-	docker compose --env-file keycloak/.env.local -f keycloak/compose.local.yml logs -f keycloak auth-service
+	$(AUTH_COMPOSE) logs -f keycloak auth-service
 
 # ── Dev servers ──────────────────────────────────────────────────────────────
 

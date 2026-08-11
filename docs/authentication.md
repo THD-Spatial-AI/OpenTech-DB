@@ -35,9 +35,12 @@ are separate per realm. A user in `enerplanet` is not automatically a user in
 and its own Go session service/configuration. FastAPI rejects any identity whose
 realm is not exactly `opentechdb`.
 
-Local development uses `keycloak/compose.local.yml`, with a local Keycloak and
-local Postgres/Redis. Production can point the application at a shared remote
-Keycloak deployment using `keycloak/compose.yml`.
+The authentication stack is pinned from the standalone
+[`keycloak-auth`](https://github.com/THD-Spatial-AI/keycloak-auth) repository as
+the `keycloak/` Git submodule. Local development uses
+`keycloak/compose.local.yml`, with a local Keycloak and local Postgres/Redis.
+Production can point the application at a shared remote Keycloak deployment
+using `keycloak/compose.yml`.
 
 ## Browser flows
 
@@ -159,7 +162,12 @@ make frontend
 
 `make install` starts both the Supabase data services and the complete local
 Keycloak/Go-auth/PostgreSQL/Redis stack. Use `make auth` later to start or
-rebuild only the authentication stack.
+rebuild only the authentication stack. Both commands fetch the auth submodule
+at the exact revision pinned by OpenTech DB. For a manual checkout, use:
+
+```bash
+git submodule update --init --recursive
+```
 
 Local endpoints:
 
@@ -200,11 +208,15 @@ Do not use `admin/admin` or commit either environment file.
 
 ## Remote deployment
 
-On the Keycloak/auth server, copy `keycloak/.env.example` to `keycloak/.env` and
-set the production host/callback values before running:
+On the Keycloak/auth server, use the standalone repository (or this
+application's initialized `keycloak/` submodule), copy `.env.example` to `.env`,
+and set the production host/callback values before running. From the OpenTech DB
+root:
 
 ```bash
-docker compose --env-file keycloak/.env -f keycloak/compose.yml up -d --build
+cp keycloak/.env.example keycloak/.env
+$EDITOR keycloak/.env
+make -C keycloak prod
 ```
 
 On the application server:
@@ -219,4 +231,7 @@ On the application server:
 For stronger production isolation, allow `/internal/*` only from the application
 server or a private network in addition to the shared-secret check.
 
-See the official Keycloak documentation for [container deployment](https://www.keycloak.org/server/containers), [realm import](https://www.keycloak.org/server/importExport), and [production configuration](https://www.keycloak.org/server/configuration-production).
+The standalone repository's README documents how another application connects
+through its own realm/client and why it must not reuse the OpenTech-specific Go
+session service unchanged. See also the official Keycloak documentation for
+[container deployment](https://www.keycloak.org/server/containers), [realm import](https://www.keycloak.org/server/importExport), and [production configuration](https://www.keycloak.org/server/configuration-production).

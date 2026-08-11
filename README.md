@@ -20,8 +20,8 @@
 ### Backend
 
 ```bash
-git clone https://github.com/THD-Spatial-AI/OpenTech-DB.git
-cd opentech-db
+git clone --recurse-submodules https://github.com/THD-Spatial-AI/OpenTech-DB.git
+cd OpenTech-DB
 make install     # dependencies + Supabase data services + Keycloak/auth stack
 make backend
 ```
@@ -50,6 +50,12 @@ Keycloak realm. React never receives Keycloak tokens and does not use
 `keycloak-js`. Signed-in users can create revocable, hashed personal API tokens
 from their profile for scripts and integrations; see
 [Authentication](docs/authentication.md).
+
+The authentication stack is pinned as the `keycloak/` Git submodule from
+[THD-Spatial-AI/keycloak-auth](https://github.com/THD-Spatial-AI/keycloak-auth).
+`make install` and `make auth` initialize it automatically, so a clone made
+without `--recurse-submodules` also works. Use `make auth-init` to fetch only
+the revision recorded by this application.
 
 ---
 

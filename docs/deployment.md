@@ -33,14 +33,17 @@ Each application has its own realm. OpenTech DB uses only `opentechdb`; users in
 other realms on the same Keycloak installation are not OpenTech users.
 
 ```bash
+git submodule update --init --recursive
 cp keycloak/.env.example keycloak/.env
 # Set unique production secrets, DNS names, frontend URL, and callback URL.
-docker compose --env-file keycloak/.env -f keycloak/compose.yml up -d --build
+make -C keycloak prod
 ```
 
 The stack runs Keycloak 26.7, its PostgreSQL database, Redis, the Go auth
 service, and Caddy. Configure optional GitHub and ORCID identity providers in
 the `opentechdb` realm. Their client secrets do not belong in React or FastAPI.
+The `keycloak/` directory is a pinned submodule of the standalone
+[`keycloak-auth`](https://github.com/THD-Spatial-AI/keycloak-auth) repository.
 
 ## Supabase data server
 
@@ -110,8 +113,9 @@ curl 'https://otdb.th-deg.de/api/v1/technologies?limit=1'
 
 ```bash
 git pull
+git submodule update --init --recursive
 docker compose -f docker-compose.prod.yml up -d --build
-docker compose --env-file keycloak/.env -f keycloak/compose.yml up -d --build
+make -C keycloak prod
 bash deploy/supabase/apply-migrations.sh
 ```
 

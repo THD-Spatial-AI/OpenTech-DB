@@ -23,7 +23,7 @@ opentech-db
 |   +-- timeseries.py    Time-series catalogue endpoints: timeseries_router
 |                        (list, data) and admin_ts_router (submissions).
 |
-+-- keycloak/            Isolated realm, Go auth service, Redis/Keycloak Compose stacks.
++-- keycloak/            Pinned submodule: realm, Go auth, Redis/Keycloak Compose stacks.
 |
 +-- adapters/
 |   +-- pypsa_adapter.py     Translates Technology -> PyPSA component dict.

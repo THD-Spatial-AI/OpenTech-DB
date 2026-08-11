@@ -131,7 +131,7 @@ opentech-db/
 ├── db/
 │   └── migrations/                # SQL migrations for Supabase schema
 │
-├── keycloak/                      # Realm, Go auth service, and Compose stacks
+├── keycloak/                      # Pinned keycloak-auth Git submodule
 │
 ├── frontend/                      # React 19 SPA (TypeScript + Vite 8 + TailwindCSS)
 │   └── src/

@@ -9,7 +9,7 @@
 #
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: help install configure supabase auth auth-down auth-logs backend frontend stop reset lint build dev \
+.PHONY: help install configure supabase auth-init auth auth-down auth-logs backend frontend stop reset lint build dev \
         docker-build docker-up docker-down docker-logs
 
 # ── Platform ─────────────────────────────────────────────────────────────────
@@ -34,8 +34,9 @@ help:
 	@echo ""
 	@echo "  opentech-db — make targets"
 	@echo ""
-	@echo "  make install     one-time setup: venv · npm · data services · Keycloak/auth · .env"
+	@echo "  make install     one-time setup: dependencies · data services · pinned Keycloak/auth · .env"
 	@echo "  make configure   generate matching backend/auth-service secrets"
+	@echo "  make auth-init   fetch the Keycloak/auth submodule at its pinned revision"
 	@echo "  make auth        start local Keycloak, Go auth, Postgres, and Redis"
 	@echo "  make auth-down   stop the local authentication stack"
 	@echo "  make auth-logs   follow Keycloak and Go auth logs"
@@ -55,7 +56,7 @@ help:
 
 # ── One-time setup ───────────────────────────────────────────────────────────
 
-install: _check-docker .venv frontend/node_modules .env frontend/.env.local _install-supabase-cli
+install: _check-docker auth-init .venv frontend/node_modules .env frontend/.env.local _install-supabase-cli
 	@$(MAKE) --no-print-directory supabase
 	@$(MAKE) --no-print-directory auth
 	@echo ""
@@ -68,7 +69,7 @@ install: _check-docker .venv frontend/node_modules .env frontend/.env.local _ins
 	@echo ""
 
 # Generates independent local secrets and synchronizes AUTH_INTERNAL_SECRET.
-configure: .venv
+configure: .venv auth-init
 	@$(PY) tools/configure_env.py
 
 _check-docker:
@@ -114,13 +115,19 @@ reset: _check-docker
 
 # ── Authentication stack ─────────────────────────────────────────────────────
 
-auth: _check-docker configure
+auth-init:
+	@git submodule sync --quiet -- keycloak
+	@git submodule update --init --recursive -- keycloak
+	@test -f keycloak/compose.local.yml \
+	  || (echo "ERROR: the keycloak-auth submodule could not be initialized." && exit 1)
+
+auth: _check-docker auth-init configure
 	docker compose --env-file keycloak/.env.local -f keycloak/compose.local.yml up -d --build
 
-auth-down:
+auth-down: auth-init
 	docker compose --env-file keycloak/.env.local -f keycloak/compose.local.yml down
 
-auth-logs:
+auth-logs: auth-init
 	docker compose --env-file keycloak/.env.local -f keycloak/compose.local.yml logs -f keycloak auth-service
 
 # ── Dev servers ──────────────────────────────────────────────────────────────

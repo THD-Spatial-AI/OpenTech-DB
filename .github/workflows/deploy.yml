@@ -54,7 +54,10 @@ jobs:
 
       - name: Deploy containers
         run: |
-          docker compose -f docker-compose.prod.yml up -d --build
+          docker compose \
+            --env-file /opt/opentech-db/.env \
+            -f docker-compose.prod.yml \
+            up -d --build
           echo " Deployed"
 
       - name: Sync technology catalogue to Supabase

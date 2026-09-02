@@ -57,11 +57,13 @@ function CategoryContent({
   category,
   searchQuery,
   filters,
+  onFiltersChange,
   onOpenTech,
 }: {
   category: TechnologyCategory;
   searchQuery: string;
   filters: FilterState;
+  onFiltersChange: (next: FilterState) => void;
   onOpenTech: (tech: TechnologySummary) => void;
 }) {
   const { technologies } = use(fetchCategoryTechnologies(category));
@@ -72,6 +74,7 @@ function CategoryContent({
         category={category}
         searchQuery={searchQuery}
         filters={filters}
+        onFiltersChange={onFiltersChange}
         onOpenTech={onOpenTech}
       />
       <MetadataTable technologies={technologies} />
@@ -84,6 +87,9 @@ function CategoryContent({
 const DEFAULT_FILTERS: FilterState = {
   oeoCoverage:   new Set(),
   instanceScale: new Set(),
+  carrierIn:     "",
+  carrierOut:    "",
+  renewableOnly: false,
 };
 
 export default function App() {
@@ -96,9 +102,8 @@ export default function App() {
   const [showAuth, setShowAuth]             = useState(false);
   const [showConsent, setShowConsent]       = useState(() => getStoredConsent() === null);
 
-  // Filters are always empty — the filter UI was removed from the sidebar.
-  // Kept as a stable constant so TechGrid's prop type is satisfied.
-  const filters = DEFAULT_FILTERS;
+  // Carrier / renewable filters, driven by the filter bar inside TechGrid.
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
   const { user, authError } = useAuth();
   const authVisible = !user && (showAuth || Boolean(authError));
@@ -226,6 +231,7 @@ export default function App() {
                     category={activeCategory}
                     searchQuery={deferredSearch}
                     filters={filters}
+                    onFiltersChange={setFilters}
                     onOpenTech={setSelectedTech}
                   />
                 </Suspense>

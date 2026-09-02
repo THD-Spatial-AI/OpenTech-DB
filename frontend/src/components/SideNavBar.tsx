@@ -22,10 +22,14 @@ import { LegalDialog } from "./LegalDialogs";
 
 // ── Exported types ────────────────────────────────────────────────────────────
 
-/** Kept for TechGrid compatibility — always passed as empty sets from App.tsx. */
 export interface FilterState {
   oeoCoverage:   Set<string>;
   instanceScale: Set<string>;
+  /** Carrier-in / carrier-out filters (empty string = no filter). */
+  carrierIn:  string;
+  carrierOut: string;
+  /** Show only renewable technologies when true. */
+  renewableOnly: boolean;
 }
 
 export type ActiveView = "catalogue" | "contributor" | "profile" | "admin" | "timeseries" | "worldmap";

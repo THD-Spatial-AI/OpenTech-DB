@@ -166,6 +166,63 @@ def test_calliope_export_keys_match_across_versions():
 
 
 # ---------------------------------------------------------------------------
+# Carrier / renewable filters + carriers endpoint
+# ---------------------------------------------------------------------------
+
+def test_carriers_endpoint_shape():
+    resp = client.get(f"{API}/technologies/carriers")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert isinstance(body["carriers"], list)
+    assert isinstance(body["unmapped_raw_carriers"], list)
+    # electricity is ubiquitous in the catalogue
+    by_name = {c["carrier"]: c for c in body["carriers"]}
+    assert "electricity" in by_name
+    assert by_name["electricity"]["as_output"] > 0
+    # the shipped catalogue uses only mappable carrier vocabulary
+    assert body["unmapped_raw_carriers"] == []
+
+
+def test_output_carrier_filter_matches_only_producers():
+    resp = client.get(f"{API}/technologies", params={"output_carrier": "hydrogen", "limit": 100})
+    assert resp.status_code == 200
+    techs = resp.json()["technologies"]
+    assert techs, "expected at least one hydrogen-producing technology"
+    assert all("hydrogen" in t["output_carriers"] for t in techs)
+
+
+def test_input_carrier_filter_matches_only_consumers():
+    resp = client.get(f"{API}/technologies", params={"input_carrier": "electricity", "limit": 100})
+    assert resp.status_code == 200
+    techs = resp.json()["technologies"]
+    assert techs
+    assert all("electricity" in t["input_carriers"] for t in techs)
+
+
+def test_carrier_filter_rejects_unknown_carrier():
+    resp = client.get(f"{API}/technologies", params={"output_carrier": "not_a_carrier"})
+    assert resp.status_code == 422
+
+
+def test_renewable_filter_and_summary_flag():
+    ren = client.get(f"{API}/technologies", params={"renewable": "true", "limit": 100}).json()["technologies"]
+    non = client.get(f"{API}/technologies", params={"renewable": "false", "limit": 100}).json()["technologies"]
+    assert ren, "expected some renewable technologies in the catalogue"
+    assert all(t["is_renewable"] is True for t in ren)
+    assert all(t["is_renewable"] is False for t in non)
+    ren_ids = {t["id"] for t in ren}
+    non_ids = {t["id"] for t in non}
+    assert ren_ids.isdisjoint(non_ids)
+
+
+def test_category_endpoint_supports_new_filters():
+    resp = client.get(f"{API}/technologies/category/generation", params={"renewable": "true", "limit": 100})
+    assert resp.status_code == 200
+    techs = resp.json()["technologies"]
+    assert all(t["is_renewable"] is True and t["category"] == "generation" for t in techs)
+
+
+# ---------------------------------------------------------------------------
 # Auth on destructive endpoints
 # ---------------------------------------------------------------------------
 

@@ -335,6 +335,47 @@ def _extract_carriers(
 
 
 # ---------------------------------------------------------------------------
+# Raw-carrier data-quality scan
+# ---------------------------------------------------------------------------
+
+def _scan_raw_carriers() -> set[str]:
+    """Scan the source catalogue JSON files for raw carrier strings that are
+    NOT recognised by ``_CARRIER_MAP`` (and therefore silently fall back to
+    ``electricity`` at load time).
+
+    Returns the set of unmapped raw values, letting the /carriers endpoint
+    surface naming inconsistencies (e.g. ``heated_water`` vs ``heat``) that are
+    otherwise invisible once the catalogue is normalised.
+    """
+    unmapped: set[str] = set()
+    if not DATA_DIR.exists():
+        return unmapped
+
+    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries", "scraped"}
+    for json_file in DATA_DIR.rglob("*.json"):
+        if any(part in _EXCLUDED_DIRS for part in json_file.parts):
+            continue
+        try:
+            raw = _load_json_file(json_file)
+        except Exception:  # noqa: BLE001 — malformed files are ignored here
+            continue
+        if not _is_catalogue(raw):
+            continue
+        for tech_raw in raw.get("technologies", []):
+            values: list[Any] = []
+            for key in ("carrier", "input_carrier", "output_carrier"):
+                values.append(tech_raw.get(key))
+            for key in ("input_carriers", "output_carriers"):
+                arr = tech_raw.get(key)
+                if isinstance(arr, list):
+                    values.extend(arr)
+            for val in values:
+                if isinstance(val, str) and val and val.lower() not in _CARRIER_MAP:
+                    unmapped.add(val)
+    return unmapped
+
+
+# ---------------------------------------------------------------------------
 # Catalogue-format file loader
 # ---------------------------------------------------------------------------
 
@@ -409,6 +450,20 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 for inst in tech_raw.get("instances", [])
             ]
 
+            # Renewable classification: an explicit JSON flag wins for any
+            # category; otherwise generation derives it from its primary carrier
+            # and all other categories default to False.
+            explicit_renewable = tech_raw.get("is_renewable")
+            carrier_is_renewable = (raw_carrier or "").lower() in {
+                "solar", "wind", "hydro", "marine", "geothermal", "biomass", "biogas"
+            }
+            if explicit_renewable is not None:
+                is_renewable = bool(explicit_renewable)
+            elif cat == TechnologyCategory.GENERATION:
+                is_renewable = carrier_is_renewable
+            else:
+                is_renewable = False
+
             tech_dict: dict = {
                 "id":              str(uuid.uuid5(_UUID_NS, tech_id_str)),
                 "name":            tech_name,
@@ -419,6 +474,7 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 "oeo_uri":         oeo_uri_full,
                 "input_carriers":  in_carriers,
                 "output_carriers": out_carriers,
+                "is_renewable":    is_renewable,
                 "instances":       instances,
             }
 
@@ -426,9 +482,6 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 tech_dict["technology_type"] = tech_id_str
                 tech_dict["primary_fuel"]    = in_carrier_val
                 tech_dict["is_dispatchable"] = not is_vre
-                tech_dict["is_renewable"]    = (raw_carrier or "").lower() in {
-                    "solar", "wind", "hydro", "marine", "geothermal", "biomass", "biogas"
-                }
                 tech_dict["generation_profile"] = _load_generation_profile(
                     tech_raw.get("generation_profile"), path.parent, tech_name,
                 )

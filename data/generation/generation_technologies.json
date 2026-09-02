@@ -1526,7 +1526,7 @@
           "water_withdrawal_m3_per_mwh": 2.7
         },
         {
-          "instance_id": "csp_parabolic_trough_100mw",
+          "instance_id": "csp_parabolic_trough_100mw_es",
           "instance_name": "CSP – 100 MW Parabolic Trough with TES (Spain, 2024)",
           "scale": "pt_100mw",
           "typical_capacity_mw": 100.0,

@@ -123,6 +123,7 @@ export interface TechnologySummary {
   n_instances: number;
   input_carriers: EnergyCarrier[];
   output_carriers: EnergyCarrier[];
+  is_renewable: boolean;
 }
 
 // ── API list/catalogue response ───────────────────────────────────────────────

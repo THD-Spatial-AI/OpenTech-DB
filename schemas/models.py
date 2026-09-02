@@ -220,6 +220,10 @@ class Technology(BaseModel):
     input_carriers:  list[EnergyCarrier] = Field(default_factory=list)
     output_carriers: list[EnergyCarrier] = Field(default_factory=list)
 
+    # Renewable classification (default False; generation techs derive it from
+    # their primary carrier, other categories may set it explicitly via data).
+    is_renewable: bool = Field(False, description="True if the technology is renewable.")
+
     # Multiple equipment instances (manufacturers, years, scenarios …)
     instances: list[EquipmentInstance] = Field(
         default_factory=list,
@@ -385,6 +389,7 @@ class TechnologySummary(BaseModel):
     n_instances: int = Field(0, description="Number of equipment instances available.")
     input_carriers:  list[EnergyCarrier] = Field(default_factory=list)
     output_carriers: list[EnergyCarrier] = Field(default_factory=list)
+    is_renewable: bool = Field(False, description="True if the technology is renewable.")
 
     model_config = {"from_attributes": True}
 

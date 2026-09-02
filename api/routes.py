@@ -106,6 +106,7 @@ from api._loader import (
     _load_all_technologies,
     _get_all,
     _build_ontology_schema,
+    _scan_raw_carriers,
 )
 from api._auth_helpers import (
     _get_sb,
@@ -652,6 +653,48 @@ def _etag_precheck(request: Request, response: Response, etag: str) -> Response 
 
 
 # ---------------------------------------------------------------------------
+# Shared summary + filter helpers
+# ---------------------------------------------------------------------------
+
+def _to_summary(t: Technology) -> TechnologySummary:
+    """Build the lightweight list-view summary for a technology."""
+    return TechnologySummary(
+        id=t.id,
+        slug=(
+            getattr(t, "technology_type", None)
+            or getattr(t, "storage_type", None)
+            or getattr(t, "conversion_type", None)
+            or getattr(t, "transmission_type", None)
+        ),
+        name=t.name,
+        category=t.category,
+        oeo_class=t.oeo_class,
+        oeo_uri=t.oeo_uri,
+        n_instances=len(t.instances),
+        input_carriers=t.input_carriers,
+        output_carriers=t.output_carriers,
+        is_renewable=getattr(t, "is_renewable", False),
+    )
+
+
+def _filter_technologies(
+    techs: list[Technology],
+    *,
+    input_carrier: EnergyCarrier | None = None,
+    output_carrier: EnergyCarrier | None = None,
+    renewable: bool | None = None,
+) -> list[Technology]:
+    """Apply the carrier-in / carrier-out / renewable filters (all ANDed)."""
+    if input_carrier is not None:
+        techs = [t for t in techs if input_carrier in t.input_carriers]
+    if output_carrier is not None:
+        techs = [t for t in techs if output_carrier in t.output_carriers]
+    if renewable is not None:
+        techs = [t for t in techs if getattr(t, "is_renewable", False) == renewable]
+    return techs
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -671,6 +714,18 @@ def list_technologies(
         TechnologyCategory | None,
         Query(description="Filter by category (generation | storage | transmission | conversion)."),
     ] = None,
+    input_carrier: Annotated[
+        EnergyCarrier | None,
+        Query(description="Filter to technologies that consume this energy carrier."),
+    ] = None,
+    output_carrier: Annotated[
+        EnergyCarrier | None,
+        Query(description="Filter to technologies that produce this energy carrier."),
+    ] = None,
+    renewable: Annotated[
+        bool | None,
+        Query(description="Filter by renewable classification (true = renewable only, false = non-renewable only)."),
+    ] = None,
 ) -> TechnologyCatalogue | Response:
     if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
         return not_modified
@@ -680,29 +735,17 @@ def list_technologies(
         all_techs = [t for t in all_techs if tag.lower() in [x.lower() for x in t.tags]]
     if category:
         all_techs = [t for t in all_techs if t.category == category]
+    all_techs = _filter_technologies(
+        all_techs,
+        input_carrier=input_carrier,
+        output_carrier=output_carrier,
+        renewable=renewable,
+    )
 
     total = len(all_techs)
     page  = all_techs[skip : skip + limit]
 
-    summaries = [
-        TechnologySummary(
-            id=t.id,
-            slug=(
-                getattr(t, "technology_type", None)
-                or getattr(t, "storage_type", None)
-                or getattr(t, "conversion_type", None)
-                or getattr(t, "transmission_type", None)
-            ),
-            name=t.name,
-            category=t.category,
-            oeo_class=t.oeo_class,
-            oeo_uri=t.oeo_uri,
-            n_instances=len(t.instances),
-            input_carriers=t.input_carriers,
-            output_carriers=t.output_carriers,
-        )
-        for t in page
-    ]
+    summaries = [_to_summary(t) for t in page]
     return TechnologyCatalogue(total=total, technologies=summaries, has_more=skip + limit < total)
 
 
@@ -716,30 +759,91 @@ def list_by_category(
     category: TechnologyCategory,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    input_carrier: Annotated[
+        EnergyCarrier | None,
+        Query(description="Filter to technologies that consume this energy carrier."),
+    ] = None,
+    output_carrier: Annotated[
+        EnergyCarrier | None,
+        Query(description="Filter to technologies that produce this energy carrier."),
+    ] = None,
+    renewable: Annotated[
+        bool | None,
+        Query(description="Filter by renewable classification (true = renewable only, false = non-renewable only)."),
+    ] = None,
 ) -> TechnologyCatalogue:
     filtered = [t for t in _get_all().values() if t.category == category]
+    filtered = _filter_technologies(
+        filtered,
+        input_carrier=input_carrier,
+        output_carrier=output_carrier,
+        renewable=renewable,
+    )
     total    = len(filtered)
     page     = filtered[skip : skip + limit]
-    summaries = [
-        TechnologySummary(
-            id=t.id,
-            slug=(
-                getattr(t, "technology_type", None)
-                or getattr(t, "storage_type", None)
-                or getattr(t, "conversion_type", None)
-                or getattr(t, "transmission_type", None)
-            ),
-            name=t.name,
-            category=t.category,
-            oeo_class=t.oeo_class,
-            oeo_uri=t.oeo_uri,
-            n_instances=len(t.instances),
-            input_carriers=t.input_carriers,
-            output_carriers=t.output_carriers,
-        )
-        for t in page
-    ]
+    summaries = [_to_summary(t) for t in page]
     return TechnologyCatalogue(total=total, technologies=summaries, has_more=skip + limit < total)
+
+
+# ---------------------------------------------------------------------------
+# Carriers endpoint — available carriers + data-quality scan
+# ---------------------------------------------------------------------------
+
+class CarrierUsage(BaseModel):
+    carrier:   str = Field(..., description="Normalised EnergyCarrier value.")
+    as_input:  int = Field(0, description="Number of technologies consuming this carrier.")
+    as_output: int = Field(0, description="Number of technologies producing this carrier.")
+
+
+class CarriersResponse(BaseModel):
+    carriers: list[CarrierUsage] = Field(
+        default_factory=list,
+        description="Energy carriers actually in use across the loaded catalogue, with usage counts.",
+    )
+    unmapped_raw_carriers: list[str] = Field(
+        default_factory=list,
+        description="Raw carrier strings in the source JSON that are not recognised by the "
+                    "carrier map and silently fall back to 'electricity' — flags naming "
+                    "inconsistencies (e.g. 'heated_water' vs 'heat').",
+    )
+
+
+@router.get(
+    "/carriers",
+    response_model=CarriersResponse,
+    summary="List available energy carriers in the dataset",
+    response_description="In-use carriers with input/output usage counts, plus unmapped raw carrier strings.",
+)
+def list_carriers() -> CarriersResponse:
+    """
+    Report the energy carriers present in the loaded catalogue.
+
+    ``carriers`` counts how many technologies consume (``as_input``) or produce
+    (``as_output``) each normalised :class:`EnergyCarrier` value.
+    ``unmapped_raw_carriers`` re-scans the source ``data/`` JSON files for raw
+    carrier strings that the loader does not recognise (these are silently
+    coerced to ``electricity`` at load time), surfacing naming inconsistencies.
+    """
+    as_input:  dict[str, int] = {}
+    as_output: dict[str, int] = {}
+    for tech in _get_all().values():
+        for c in set(tech.input_carriers):
+            as_input[c.value] = as_input.get(c.value, 0) + 1
+        for c in set(tech.output_carriers):
+            as_output[c.value] = as_output.get(c.value, 0) + 1
+
+    carriers = [
+        CarrierUsage(
+            carrier=name,
+            as_input=as_input.get(name, 0),
+            as_output=as_output.get(name, 0),
+        )
+        for name in sorted(set(as_input) | set(as_output))
+    ]
+    return CarriersResponse(
+        carriers=carriers,
+        unmapped_raw_carriers=sorted(_scan_raw_carriers()),
+    )
 
 
 @router.get(

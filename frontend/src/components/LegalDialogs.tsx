@@ -557,20 +557,20 @@ function DisclaimerContent() {
 
 // ── Acknowledgements ──────────────────────────────────────────────────────────
 
-function AcknowledgementsContent() {
-  function AckGroup({ items }: { items: { name: string; desc: string }[] }) {
-    return (
-      <div className="space-y-2">
-        {items.map(({ name, desc }) => (
-          <div key={name} className="flex gap-2 text-sm items-start">
-            <span className="font-semibold text-on-surface w-36 flex-shrink-0">{name}</span>
-            <span className="text-on-surface-variant leading-relaxed">{desc}</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
+function AckGroup({ items }: { items: { name: string; desc: string }[] }) {
+  return (
+    <div className="space-y-2">
+      {items.map(({ name, desc }) => (
+        <div key={name} className="flex gap-2 text-sm items-start">
+          <span className="font-semibold text-on-surface w-36 flex-shrink-0">{name}</span>
+          <span className="text-on-surface-variant leading-relaxed">{desc}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
+function AcknowledgementsContent() {
   return (
     <>
       <p className="text-[11px] text-on-surface-variant/50 mb-4">Last updated: August 2026</p>

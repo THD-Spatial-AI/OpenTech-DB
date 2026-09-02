@@ -19,7 +19,8 @@ const AdminPanel           = lazy(() => import("./components/admin/AdminPanel"))
 const TimeSeriesCatalogue  = lazy(() => import("./components/timeseries/TimeSeriesCatalogue"));
 const WorldMapView         = lazy(() => import("./components/worldmap/WorldMapView"));
 import { useAuth } from "./context/AuthContext";
-import ConsentBanner, { getStoredConsent } from "./components/ConsentBanner";
+import ConsentBanner from "./components/ConsentBanner";
+import { getStoredConsent } from "./lib/consent";
 
 // ── Grid loading skeleton ─────────────────────────────────────────────────────
 

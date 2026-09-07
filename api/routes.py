@@ -14,12 +14,17 @@ Catalogue-merge and GitHub PR helpers live in api/_catalogue_ops.py.
 Endpoints
 ---------
 GET  /technologies                                 → list all technologies (summary; ETag)
+                                                     filters: ?category= ?tag= ?input_carrier=
+                                                     ?output_carrier= ?renewable=
+GET  /technologies/carriers                         → energy carriers in use (input/output counts)
+                                                     + unmapped raw carriers (data-quality scan)
 GET  /technologies/{tech_id}                       → full OEO technology detail (ETag;
                                                      ?include_profile_values=false strips
                                                      inline profile value arrays)
 GET  /technologies/{tech_id}/profiles              → embedded generation profiles +
                                                      linked /timeseries catalogue entries
 GET  /technologies/category/{cat}                  → technologies by category
+                                                     (also accepts input_carrier/output_carrier/renewable)
 GET  /technologies/{tech_id}/instances             → all equipment instances
 GET  /technologies/{tech_id}/instances/{iid}       → a specific instance
 

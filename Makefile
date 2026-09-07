@@ -133,14 +133,13 @@ reset: _check-docker
 auth-init:
 	@git submodule sync --quiet -- keycloak
 	@git submodule update --init --recursive -- keycloak
-	@test -f keycloak/compose.local.yml \
-	  || (echo "ERROR: the keycloak-auth submodule could not be initialized." && exit 1)
+	@$(PYTHON) -c "import pathlib, sys; sys.exit(0 if pathlib.Path('keycloak/compose.local.yml').exists() else 'ERROR: keycloak/compose.local.yml is missing - the keycloak content is not present in this checkout.')"
 
 auth: auth-check
 	$(AUTH_COMPOSE) up -d --build
 
 auth-check: _check-docker auth-init configure
-	@sh keycloak/scripts/check-persistent-credentials.sh \
+	@$(PY) tools/auth_precheck.py \
 	  "$(AUTH_ENV)" \
 	  "$(AUTH_COMPOSE_FILE)" \
 	  "make auth" \

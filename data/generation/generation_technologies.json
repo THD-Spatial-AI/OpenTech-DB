@@ -9861,6 +9861,78 @@
           "turbine_diameter_m": 15.0
         }
       ]
+    },
+    {
+      "technology_id": "solar_thermal_collector",
+      "technology_name": "Solar Thermal Collector",
+      "domain": "generation",
+      "carrier": "solar",
+      "output_carrier": "heat",
+      "description": "Flat-plate or evacuated-tube solar thermal collectors producing heat for domestic hot water and space heating. Renewable heat source (solar_irradiance → heat). NOTE: parameter values are DRAFT estimates aligned to Danish Energy Agency Technology Data and MUST be verified against the source catalogue before use.",
+      "instances": [
+        {
+          "instance_id": "solar_thermal_collector_residential_2024",
+          "instance_name": "Solar Thermal Collector – Residential (Current, 2024)",
+          "scale": "residential",
+          "typical_capacity_mw": 0.01,
+          "capex_usd_per_kw": 600,
+          "opex_fixed_usd_per_kw_yr": 12.0,
+          "efficiency_percent": 45.0,
+          "lifetime_years": 25,
+          "co2_emission_factor_operational_g_per_kwh": 0.0,
+          "reference_source": "Danish Energy Agency Technology Data 2024 (DRAFT – pending verification)",
+          "data_status": "draft_unverified",
+          "country_iso2": "DK"
+        }
+      ]
+    },
+    {
+      "technology_id": "solar_thermal_district_heating",
+      "technology_name": "Solar Thermal District Heating",
+      "domain": "generation",
+      "carrier": "solar",
+      "output_carrier": "heat",
+      "description": "Large-scale solar collector fields feeding district-heating networks, often with seasonal storage (common in Denmark). Renewable heat source (solar_irradiance → heat). NOTE: parameter values are DRAFT estimates aligned to Danish Energy Agency Technology Data and MUST be verified before use.",
+      "instances": [
+        {
+          "instance_id": "solar_district_heating_field_2024",
+          "instance_name": "Solar District Heating Field (Current, 2024)",
+          "scale": "district",
+          "typical_capacity_mw": 10.0,
+          "capex_usd_per_kw": 350,
+          "opex_fixed_usd_per_kw_yr": 6.0,
+          "efficiency_percent": 42.0,
+          "lifetime_years": 30,
+          "co2_emission_factor_operational_g_per_kwh": 0.0,
+          "reference_source": "Danish Energy Agency Technology Data for Generation of Electricity and District Heating 2024 (DRAFT – pending verification)",
+          "data_status": "draft_unverified",
+          "country_iso2": "DK"
+        }
+      ]
+    },
+    {
+      "technology_id": "geothermal_heat_plant",
+      "technology_name": "Geothermal Heat Plant",
+      "domain": "generation",
+      "carrier": "geothermal",
+      "output_carrier": "heat",
+      "description": "Deep geothermal heat extraction supplying district-heating networks directly (distinct from the heat distribution network, which only transports heat). Renewable heat source (geothermal_energy → heat). NOTE: parameter values are DRAFT estimates aligned to Danish Energy Agency Technology Data and MUST be verified before use.",
+      "instances": [
+        {
+          "instance_id": "geothermal_heat_plant_district_2024",
+          "instance_name": "Geothermal Heat Plant – District (Current, 2024)",
+          "scale": "district",
+          "typical_capacity_mw": 20.0,
+          "capex_usd_per_kw": 2500,
+          "opex_fixed_usd_per_kw_yr": 40.0,
+          "efficiency_percent": 95.0,
+          "lifetime_years": 30,
+          "co2_emission_factor_operational_g_per_kwh": 0.0,
+          "reference_source": "Danish Energy Agency Technology Data 2024 (DRAFT – pending verification)",
+          "data_status": "draft_unverified",
+          "country_iso2": "DK"
+        }
+      ]
     }
   ]
 }

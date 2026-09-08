@@ -74,7 +74,6 @@ _CARRIER_MAP: dict[str, str] = {
     "liquid_fuel":           "liquid_fuel",
     "nitrogen":              "nitrogen",
     "flue_gas":              "flue_gas",
-    "marine":                "electricity",
     "electricity":           "electricity",
     "hydrogen":              "hydrogen",
     "heat":                  "heat",
@@ -86,13 +85,28 @@ _CARRIER_MAP: dict[str, str] = {
     "ammonia":               "ammonia",
     "geothermal":            "geothermal_energy",
     "geothermal_energy":     "geothermal_energy",
+    "marine":                "marine",
+    "tidal":                 "marine",
+    "wave":                  "marine",
+    "ambient_heat":          "ambient_heat",
+    "aerothermal":           "ambient_heat",
+    "waste":                 "waste",
+    "municipal_solid_waste": "waste",
     # Legacy compound values — kept as fallback; proper JSON should use arrays instead
     "electricity_heat":      "electricity",
     "hydrogen_co2":          "hydrogen",
     "hydrogen_co":           "syngas",
     "hydrogen_nitrogen":     "hydrogen",
     "flue_gas_electricity":  "electricity",
-    "municipal_solid_waste": "biomass",
+}
+
+# Input carriers whose primary resource is renewable. A technology is renewable
+# when it GENERATES or CONVERTS energy from one of these (see _load_catalogue_file).
+# Deliberately excludes `electricity` and `hydrogen` (renewability depends on how
+# they were produced) and `waste` (municipal solid waste is only partly biogenic).
+_RENEWABLE_INPUT_CARRIERS = {
+    "solar_irradiance", "wind", "water", "biomass", "biogas",
+    "geothermal_energy", "marine", "ambient_heat",
 }
 
 _CATEGORY_MODEL_MAP: dict[TechnologyCategory, type[Technology]] = {
@@ -450,17 +464,18 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 for inst in tech_raw.get("instances", [])
             ]
 
-            # Renewable classification: an explicit JSON flag wins for any
-            # category; otherwise generation derives it from its primary carrier
-            # and all other categories default to False.
+            # Renewable classification: an explicit JSON flag always wins.
+            # Otherwise a generation/conversion technology is renewable when at
+            # least one of its (mapped) input carriers is a renewable resource.
+            # Transmission/storage are carrier-neutral infrastructure (a pipeline
+            # moving biogas is not a renewable source), and electricity/hydrogen/
+            # waste inputs are excluded because their renewability depends on how
+            # they were produced upstream.
             explicit_renewable = tech_raw.get("is_renewable")
-            carrier_is_renewable = (raw_carrier or "").lower() in {
-                "solar", "wind", "hydro", "marine", "geothermal", "biomass", "biogas"
-            }
             if explicit_renewable is not None:
                 is_renewable = bool(explicit_renewable)
-            elif cat == TechnologyCategory.GENERATION:
-                is_renewable = carrier_is_renewable
+            elif cat in (TechnologyCategory.GENERATION, TechnologyCategory.CONVERSION):
+                is_renewable = any(c in _RENEWABLE_INPUT_CARRIERS for c in in_carriers)
             else:
                 is_renewable = False
 

@@ -216,6 +216,57 @@ def test_is_renewable_explicit_flag_overrides_carrier():
     assert tech.is_renewable is False
 
 
+# --- feedstock rule: renewable input carrier across generation + conversion ---
+
+def test_is_renewable_conversion_biomass_feedstock():
+    # Biomass CHP / boiler: conversion tech consuming a renewable feedstock.
+    tech = _load_one("conversion", {
+        "technology_id": "biomass_boiler_x",
+        "input_carrier": "biomass",
+        "output_carrier": "heat",
+    })
+    assert tech.is_renewable is True
+
+
+def test_is_renewable_heat_pump_ambient_heat_is_renewable():
+    tech = _load_one("conversion", {
+        "technology_id": "ashp_x",
+        "input_carriers": ["electricity", "ambient_heat"],
+        "output_carrier": "heat",
+    })
+    assert [c.value for c in tech.input_carriers] == ["electricity", "ambient_heat"]
+    assert tech.is_renewable is True
+
+
+def test_is_renewable_electricity_input_conversion_not_renewable():
+    # Electric boiler / electrolyzer: electricity in -> renewability depends on grid.
+    tech = _load_one("conversion", {
+        "technology_id": "electric_boiler_x",
+        "input_carrier": "electricity",
+        "output_carrier": "heat",
+    })
+    assert tech.is_renewable is False
+
+
+def test_is_renewable_transmission_excluded_even_with_renewable_carrier():
+    # A pipeline moving biogas is infrastructure, not a renewable source.
+    tech = _load_one("transmission", {"technology_id": "biogas_pipe_x", "carrier": "biogas"})
+    assert tech.is_renewable is False
+
+
+def test_marine_carrier_maps_to_marine_and_is_renewable():
+    tech = _load_one("generation", {"technology_id": "marine_x", "carrier": "marine"})
+    assert [c.value for c in tech.input_carriers] == ["marine"]
+    assert tech.is_renewable is True
+
+
+def test_waste_carrier_not_renewable():
+    # Municipal solid waste now maps to its own `waste` carrier (partly fossil).
+    tech = _load_one("generation", {"technology_id": "wte_x", "carrier": "municipal_solid_waste"})
+    assert [c.value for c in tech.input_carriers] == ["waste"]
+    assert tech.is_renewable is False
+
+
 # ---------------------------------------------------------------------------
 # _scan_raw_carriers — data-quality scan of the real catalogue files
 # ---------------------------------------------------------------------------

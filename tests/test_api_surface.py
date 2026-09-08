@@ -222,6 +222,24 @@ def test_category_endpoint_supports_new_filters():
     assert all(t["is_renewable"] is True and t["category"] == "generation" for t in techs)
 
 
+def test_renewable_heat_sources_exist():
+    # After the feedstock reclassification there must be renewable techs that
+    # OUTPUT heat (previously there were none — all renewables output electricity).
+    techs = client.get(f"{API}/technologies", params={"renewable": "true", "limit": 100}).json()["technologies"]
+    heat_renewables = [t for t in techs if "heat" in t["output_carriers"]]
+    assert heat_renewables, "expected at least one renewable heat-output technology"
+    # a dedicated biomass heat boiler should be among them
+    assert any(t["name"] == "Biomass Heat Boiler" for t in techs)
+
+
+def test_new_resource_carriers_surface_in_carriers_endpoint():
+    body = client.get(f"{API}/technologies/carriers").json()
+    names = {c["carrier"] for c in body["carriers"]}
+    # marine (marine_energy), ambient_heat (air-source heat pump), waste (WtE)
+    assert {"marine", "ambient_heat", "waste"} <= names
+    assert body["unmapped_raw_carriers"] == []
+
+
 # ---------------------------------------------------------------------------
 # Auth on destructive endpoints
 # ---------------------------------------------------------------------------

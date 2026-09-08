@@ -64,6 +64,9 @@ class EnergyCarrier(str, Enum):
     SOLAR_IRRADIANCE  = "solar_irradiance"
     NUCLEAR_FUEL      = "nuclear_fuel"
     GEOTHERMAL_ENERGY = "geothermal_energy"
+    MARINE            = "marine"
+    AMBIENT_HEAT      = "ambient_heat"
+    WASTE             = "waste"
 
 
 class LifeCycleStage(str, Enum):

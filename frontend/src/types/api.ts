@@ -30,7 +30,11 @@ export type EnergyCarrier =
   | "ammonia"
   | "wind"
   | "solar_irradiance"
-  | "nuclear_fuel";
+  | "nuclear_fuel"
+  | "geothermal_energy"
+  | "marine"
+  | "ambient_heat"
+  | "waste";
 
 export type LifeCycleStage =
   | "commercial"

@@ -2289,7 +2289,7 @@
       "technology_id": "air_source_heat_pump",
       "technology_name": "Air-Source Heat Pump",
       "domain": "conversion",
-      "input_carrier": "electricity",
+      "input_carriers": ["electricity", "ambient_heat"],
       "output_carrier": "heat",
       "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000009",
       "description": "Heat pumps extracting thermal energy from outdoor air for space heating and domestic hot water. efficiency_percent = COP expressed as percentage (seasonal COP × 100). Covers residential air-to-air/air-to-water and large industrial air-to-water types. capex_usd_per_kw refers to thermal output capacity.",
@@ -2752,7 +2752,7 @@
       "technology_id": "ground_source_heat_pump",
       "technology_name": "Ground-Source Heat Pump",
       "domain": "conversion",
-      "input_carrier": "electricity",
+      "input_carriers": ["electricity", "geothermal_energy"],
       "output_carrier": "heat",
       "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000009",
       "description": "Geothermal heat pumps extracting heat from stable ground or groundwater temperatures (10–15 °C), enabling a higher COP than air-source alternatives. Includes horizontal ground loops, vertical borehole systems, and groundwater heat exchangers. efficiency_percent = COP as percentage.",
@@ -7864,6 +7864,31 @@
       ],
       "carrier": "electricity",
       "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000009"
+    },
+    {
+      "technology_id": "biomass_heat_boiler",
+      "technology_name": "Biomass Heat Boiler",
+      "domain": "conversion",
+      "input_carrier": "biomass",
+      "output_carrier": "heat",
+      "description": "Dedicated biomass boiler (wood chips or pellets) producing heat only for district heating or industrial process heat — distinct from biomass CHP. Renewable heat source (biomass → heat). NOTE: parameter values are DRAFT estimates aligned to Danish Energy Agency Technology Data and MUST be verified against the source catalogue before use.",
+      "instances": [
+        {
+          "instance_id": "biomass_heat_boiler_district_5mw_2024",
+          "instance_name": "Biomass Heat Boiler – 5 MW District (Current, 2024)",
+          "scale": "district",
+          "typical_capacity_mw": 5.0,
+          "capex_usd_per_kw": 700,
+          "opex_fixed_usd_per_kw_yr": 40.0,
+          "opex_var_usd_per_mwh": 3.0,
+          "efficiency_percent": 88.0,
+          "lifetime_years": 20,
+          "co2_emission_factor_operational_g_per_kwh": 0.0,
+          "reference_source": "Danish Energy Agency Technology Data for Generation of Electricity and District Heating 2024 (DRAFT – pending verification)",
+          "data_status": "draft_unverified",
+          "country_iso2": "DK"
+        }
+      ]
     }
   ]
 }

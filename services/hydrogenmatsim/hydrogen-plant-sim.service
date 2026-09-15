@@ -1,0 +1,62 @@
+[Unit]
+Description=Hydrogen Plant MATLAB Simulation Bridge
+Documentation=https://github.com/<your-org>/hydrogen-plant-sim
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+# ← Replace with the actual user that owns the repo on your VM
+User=<YOUR_USER>
+Group=<YOUR_GROUP>
+
+WorkingDirectory=/opt/hydrogen-plant-sim
+
+# Load environment from .env file if present
+EnvironmentFile=-/opt/hydrogen-plant-sim/.env
+
+ExecStart=/bin/bash /opt/hydrogen-plant-sim/start.sh
+# NOTE: start.sh automatically uses the 'matlab-bridge' conda env (Python 3.11)
+# if it exists.  To set up the env on first deploy:
+#   conda create -n matlab-bridge python=3.11
+#   conda run -n matlab-bridge pip install -r /opt/hydrogen-plant-sim/requirements.txt
+#   conda run -n matlab-bridge pip install <MATLAB_ROOT>/extern/engines/python
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+# Resource limits (tune to your VM)
+# LimitNOFILE=65536
+
+# Standard output/error goes to journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hydrogen-sim
+
+[Install]
+WantedBy=multi-user.target
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Installation instructions:
+#
+#   # 1. Copy the service file
+#   sudo cp hydrogen-plant-sim.service /etc/systemd/system/
+#
+#   # 2. Reload systemd
+#   sudo systemctl daemon-reload
+#
+#   # 3. Enable auto-start on boot
+#   sudo systemctl enable hydrogen-plant-sim
+#
+#   # 4. Start the service now
+#   sudo systemctl start hydrogen-plant-sim
+#
+#   # 5. Check status
+#   sudo systemctl status hydrogen-plant-sim
+#
+#   # 6. Follow logs
+#   sudo journalctl -u hydrogen-plant-sim -f
+# ─────────────────────────────────────────────────────────────────────────────

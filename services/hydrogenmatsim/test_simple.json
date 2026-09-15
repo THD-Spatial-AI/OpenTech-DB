@@ -1,0 +1,56 @@
+{
+  "schema_version": "2.0",
+  "simulation": {
+    "t_end_s": 3600,
+    "dt_s": 60
+  },
+  "source": {
+    "tech_type": "solar",
+    "name": "Test Solar Array",
+    "capacity_kw": 1000,
+    "efficiency_pct": 20,
+    "profile": [
+      {"time_s": 0, "power_kw": 0},
+      {"time_s": 900, "power_kw": 500},
+      {"time_s": 1800, "power_kw": 800},
+      {"time_s": 2700, "power_kw": 600},
+      {"time_s": 3600, "power_kw": 100}
+    ]
+  },
+  "electrolyzer": {
+    "tech_type": "pem",
+    "name": "PEM Electrolyzer",
+    "capacity_kw": 500,
+    "nominal_efficiency_pct_hhv": 65,
+    "min_load_pct": 20,
+    "max_load_pct": 100,
+    "operating_temperature_c": 80,
+    "water_flow_rate_lpm": 10,
+    "h2_hhv_kwh_per_kg": 39.4
+  },
+  "compressor": {
+    "tech_type": "reciprocating",
+    "name": "Multi-stage Compressor",
+    "isentropic_efficiency_frac": 0.75,
+    "inlet_pressure_bar": 1.5,
+    "target_pressure_bar": 350
+  },
+  "storage": {
+    "tech_type": "compressed_h2",
+    "name": "High-pressure Tank",
+    "max_pressure_bar": 350,
+    "min_pressure_bar": 10,
+    "initial_soc_pct": 50,
+    "round_trip_efficiency_pct": 95
+  },
+  "fuel_cell": {
+    "tech_type": "pem",
+    "name": "PEM Fuel Cell",
+    "rated_power_kw": 250,
+    "nominal_efficiency_pct": 50,
+    "min_load_pct": 10,
+    "h2_flow_rate_nm3h": 50,
+    "operating_pressure_bar": 2.5,
+    "cooling_capacity_kw": 150
+  }
+}

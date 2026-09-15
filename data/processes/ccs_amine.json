@@ -1,0 +1,101 @@
+{
+  "slug": "ccs_amine",
+  "name": "Post-combustion CCS (Amine)",
+  "description": "Amine-based post-combustion carbon capture chain: flue gas from a power plant is scrubbed in an absorber, the rich solvent is regenerated in a stripper, and the recovered CO2 is compressed for geological storage. Seed example of a multi-equipment Process (ADR-0004).",
+  "domain": "ccs",
+  "oeo_class": null,
+  "oeo_uri": null,
+  "status": "approved",
+  "author": null,
+  "source": "OpenTech-DB seed",
+  "year": 2026,
+  "tags": ["ccs", "carbon-capture", "amine", "post-combustion"],
+  "units": [
+    {
+      "id": "flue_source",
+      "name": "Flue Gas Source",
+      "equipment_type": "flue_gas_source",
+      "technology_ref": "ccgt",
+      "operating_conditions": {
+        "capacity_kw": { "value": 400000, "unit": "kW", "source": "OpenTech-DB seed" },
+        "co2_concentration_pct": { "value": 12, "unit": "percent", "source": "OpenTech-DB seed" },
+        "flue_gas_temp_c": { "value": 120, "unit": "degC", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "flue_out", "carrier": "flue_gas", "direction": "out", "label": "Flue gas" }
+      ],
+      "position": { "x": 40, "y": 60 }
+    },
+    {
+      "id": "absorber",
+      "name": "CO2 Absorber",
+      "equipment_type": "co2_absorber_amine",
+      "technology_ref": "carbon_capture_systems",
+      "operating_conditions": {
+        "capture_rate_pct": { "value": 90, "unit": "percent", "source": "OpenTech-DB seed" },
+        "energy_requirement_gj_tco2": { "value": 3.7, "unit": "GJ/tCO2", "source": "OpenTech-DB seed" },
+        "absorption_temp_c": { "value": 40, "unit": "degC", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "flue_in", "carrier": "flue_gas", "direction": "in", "label": "Flue gas" },
+        { "id": "co2_rich_out", "carrier": "co2", "direction": "out", "label": "Rich solvent (CO2)" }
+      ],
+      "position": { "x": 340, "y": 250 }
+    },
+    {
+      "id": "stripper",
+      "name": "Stripper / Regenerator",
+      "equipment_type": "solvent_stripper",
+      "technology_ref": null,
+      "operating_conditions": {
+        "reboiler_temp_c": { "value": 120, "unit": "degC", "source": "OpenTech-DB seed" },
+        "thermal_efficiency_pct": { "value": 82, "unit": "percent", "source": "OpenTech-DB seed" },
+        "steam_pressure_bar": { "value": 3.5, "unit": "bar", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "co2_rich_in", "carrier": "co2", "direction": "in", "label": "Rich solvent (CO2)" },
+        { "id": "heat_in", "carrier": "steam", "direction": "in", "label": "Reboiler steam" },
+        { "id": "co2_pure_out", "carrier": "co2", "direction": "out", "label": "Pure CO2" }
+      ],
+      "position": { "x": 640, "y": 250 }
+    },
+    {
+      "id": "compressor",
+      "name": "CO2 Compressor",
+      "equipment_type": "co2_compressor",
+      "technology_ref": null,
+      "operating_conditions": {
+        "target_pressure_bar": { "value": 110, "unit": "bar", "source": "OpenTech-DB seed" },
+        "number_stages": { "value": 4, "unit": "count", "source": "OpenTech-DB seed" },
+        "isentropic_efficiency": { "value": 0.82, "unit": "fraction", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "co2_in", "carrier": "co2", "direction": "in", "label": "Pure CO2" },
+        { "id": "power_in", "carrier": "electricity", "direction": "in", "label": "Drive power" },
+        { "id": "co2_out", "carrier": "co2", "direction": "out", "label": "Compressed CO2" }
+      ],
+      "position": { "x": 940, "y": 250 }
+    },
+    {
+      "id": "storage",
+      "name": "Geological Storage",
+      "equipment_type": "co2_geological_storage",
+      "technology_ref": null,
+      "operating_conditions": {
+        "injection_rate_mtco2_yr": { "value": 5, "unit": "MtCO2/yr", "source": "OpenTech-DB seed" },
+        "reservoir_depth_m": { "value": 1500, "unit": "m", "source": "OpenTech-DB seed" },
+        "reservoir_pressure_bar": { "value": 150, "unit": "bar", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "co2_in", "carrier": "co2", "direction": "in", "label": "Injected CO2" }
+      ],
+      "position": { "x": 1240, "y": 250 }
+    }
+  ],
+  "streams": [
+    { "id": "s_flue_abs",  "source": { "unit_id": "flue_source", "port_id": "flue_out" },      "target": { "unit_id": "absorber", "port_id": "flue_in" },      "carrier": "flue_gas" },
+    { "id": "s_abs_strip", "source": { "unit_id": "absorber", "port_id": "co2_rich_out" },     "target": { "unit_id": "stripper", "port_id": "co2_rich_in" },  "carrier": "co2" },
+    { "id": "s_strip_comp","source": { "unit_id": "stripper", "port_id": "co2_pure_out" },     "target": { "unit_id": "compressor", "port_id": "co2_in" },    "carrier": "co2" },
+    { "id": "s_comp_sto",  "source": { "unit_id": "compressor", "port_id": "co2_out" },        "target": { "unit_id": "storage", "port_id": "co2_in" },       "carrier": "co2" }
+  ]
+}

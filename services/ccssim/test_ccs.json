@@ -1,0 +1,58 @@
+{
+  "schema_version": "2.0",
+  "simulation": {
+    "t_end_s": 3600,
+    "dt_s": 60
+  },
+  "source": {
+    "tech_type": "coal_plant",
+    "name": "Coal Power Plant Flue Gas",
+    "co2_concentration_pct": 15.0,
+    "flue_gas_flow_nm3h": 500000,
+    "temperature_c": 120,
+    "pressure_bar": 1.2,
+    "profile": [
+      {"time_s": 0, "co2_tph": 100},
+      {"time_s": 1800, "co2_tph": 120},
+      {"time_s": 3600, "co2_tph": 100}
+    ]
+  },
+  "absorber": {
+    "tech_type": "mea",
+    "name": "MEA Chemical Absorber",
+    "capture_efficiency_pct": 90.0,
+    "solvent_flow_rate_m3h": 200,
+    "packing_height_m": 15,
+    "column_diameter_m": 10,
+    "operating_temperature_c": 40,
+    "operating_pressure_bar": 1.1
+  },
+  "stripper": {
+    "tech_type": "thermal",
+    "name": "Thermal Regeneration Stripper",
+    "regeneration_energy_kwh_tco2": 3.5,
+    "steam_pressure_bar": 3.5,
+    "operating_temperature_c": 120,
+    "co2_purity_pct": 99.5
+  },
+  "compressor": {
+    "tech_type": "multistage",
+    "name": "5-Stage Compressor",
+    "num_stages": 5,
+    "isentropic_efficiency_frac": 0.85,
+    "inlet_pressure_bar": 1.5,
+    "target_pressure_bar": 110,
+    "intercooler_efficiency_pct": 80
+  },
+  "storage": {
+    "tech_type": "saline_aquifer",
+    "name": "Offshore Saline Aquifer",
+    "max_pressure_bar": 150,
+    "min_pressure_bar": 50,
+    "initial_fill_pct": 0,
+    "capacity_tonnes": 1000000,
+    "injection_rate_tph": 100,
+    "permeability_md": 100,
+    "porosity_pct": 20
+  }
+}

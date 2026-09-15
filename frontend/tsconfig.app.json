@@ -16,6 +16,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Allow the dropped-in JSX simulator (src/components/simulator) to bundle
+       without type-checking. Refactor to TS incrementally. */
+    "allowJs": true,
+    "checkJs": false,
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

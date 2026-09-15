@@ -56,6 +56,34 @@ A module that translates a Technology and its Instances from the catalogue forma
 
 ---
 
+## Processes (multi-equipment simulation)
+
+**Process** *(code: `Process`)*
+A named, connected graph of Units and Streams representing a multi-equipment energy transformation system (OEO: energy transformation chain) — e.g., a hydrogen power plant or an amine CCS chain. A Process **composes** Catalogue Technologies rather than redefining equipment, and is contributed and versioned like a Technology. Seed Processes live in `data/processes/<slug>.json`. See ADR-0004.
+
+*Avoid:* "flowsheet", "plant", "scenario" as the artifact name — say Process.
+
+**Unit** *(code: `Unit`)*
+One piece of equipment in a Process (a node in its graph). References a Catalogue Technology via `technology_ref` (and optionally one Instance) for its base Parameters and provenance, and adds `operating_conditions` (setpoints) plus typed Ports. `equipment_type` names the equipment kind and selects its Modelica Component model.
+
+*Avoid:* "block", "box", "node" — say Unit.
+
+**Stream** *(code: `Stream`)*
+A directed connection carrying one EnergyCarrier from an OUT Port of one Unit to an IN Port of another, with an optional thermodynamic state (temperature, pressure, mass flow, composition).
+
+*Avoid:* "edge", "link", "pipe" — say Stream.
+
+**Port** *(code: `Port`)*
+A typed connection point on a Unit, tagged with an EnergyCarrier and a direction (in/out). A Stream may only connect Ports that share its carrier.
+
+**Component model**
+A parameterized Modelica model for an equipment type, mapped to a Unit by `equipment_type`. The library of Component models is the simulation engine's counterpart to the Adapters. *(Arrives in a later ADR-0004 phase.)*
+
+**Flowsheet compiler**
+The server step that walks a Process graph, binds each Unit's Parameters and operating conditions into its Component model, connects Streams to Ports, and emits a system Modelica model for OpenModelica. *(Later phase.)*
+
+---
+
 ## Terms to avoid
 
 | Avoid | Use instead |
@@ -66,3 +94,6 @@ A module that translates a Technology and its Instances from the catalogue forma
 | "variant" / "configuration" | "Instance" |
 | "field" / "value" / "data point" | "Parameter" |
 | "contribution" (as a noun for the artifact) | "Submission" |
+| "flowsheet" / "plant" / "scenario" (as the artifact) | "Process" |
+| "block" / "box" / "node" | "Unit" |
+| "edge" / "link" / "pipe" | "Stream" |

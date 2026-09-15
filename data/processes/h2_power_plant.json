@@ -1,0 +1,122 @@
+{
+  "slug": "h2_power_plant",
+  "name": "Hydrogen Power Plant",
+  "description": "Power-to-power hydrogen system: a renewable source drives an electrolyzer, hydrogen is compressed and stored, then reconverted to electricity in a fuel cell. Seed example of a multi-equipment Process (ADR-0004).",
+  "domain": "hydrogen",
+  "oeo_class": null,
+  "oeo_uri": null,
+  "status": "approved",
+  "author": null,
+  "source": "OpenTech-DB seed",
+  "year": 2026,
+  "tags": ["hydrogen", "power-to-power", "electrolysis", "fuel-cell"],
+  "units": [
+    {
+      "id": "power_source",
+      "name": "Power Source",
+      "equipment_type": "power_source",
+      "technology_ref": "onshore_wind",
+      "operating_conditions": {
+        "capacity_kw": { "value": 10000, "unit": "kW", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "power_out", "carrier": "electricity", "direction": "out", "label": "AC power" }
+      ],
+      "position": { "x": 40, "y": 240 }
+    },
+    {
+      "id": "water_supply",
+      "name": "Water Supply",
+      "equipment_type": "water_source",
+      "technology_ref": null,
+      "operating_conditions": {},
+      "ports": [
+        { "id": "water_out", "carrier": "water", "direction": "out", "label": "Deionised water" }
+      ],
+      "position": { "x": 40, "y": 420 }
+    },
+    {
+      "id": "electrolyzer",
+      "name": "Electrolyzer",
+      "equipment_type": "electrolyzer_pem",
+      "technology_ref": "pem_electrolyzer",
+      "operating_conditions": {
+        "operating_temperature_c": { "value": 70, "unit": "degC", "source": "OpenTech-DB seed" },
+        "nominal_efficiency_pct_hhv": { "value": 70, "unit": "percent", "source": "OpenTech-DB seed" },
+        "min_load_pct": { "value": 10, "unit": "percent", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "power_in", "carrier": "electricity", "direction": "in", "label": "AC power" },
+        { "id": "water_in", "carrier": "water", "direction": "in", "label": "Feed water" },
+        { "id": "h2_out", "carrier": "hydrogen", "direction": "out", "label": "H2 gas" }
+      ],
+      "position": { "x": 320, "y": 300 }
+    },
+    {
+      "id": "compressor",
+      "name": "H2 Compressor",
+      "equipment_type": "compressor",
+      "technology_ref": null,
+      "operating_conditions": {
+        "target_pressure_bar": { "value": 350, "unit": "bar", "source": "OpenTech-DB seed" },
+        "isentropic_efficiency": { "value": 0.78, "unit": "fraction", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "h2_in", "carrier": "hydrogen", "direction": "in", "label": "Low-pressure H2" },
+        { "id": "power_in", "carrier": "electricity", "direction": "in", "label": "Drive power" },
+        { "id": "h2_out", "carrier": "hydrogen", "direction": "out", "label": "Compressed H2" }
+      ],
+      "position": { "x": 600, "y": 300 }
+    },
+    {
+      "id": "storage",
+      "name": "H2 Storage Tank",
+      "equipment_type": "h2_tank",
+      "technology_ref": "hydrogen_storage_tanks",
+      "operating_conditions": {
+        "max_pressure_bar": { "value": 350, "unit": "bar", "source": "OpenTech-DB seed" },
+        "round_trip_efficiency_pct": { "value": 99, "unit": "percent", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "h2_in", "carrier": "hydrogen", "direction": "in", "label": "Charge" },
+        { "id": "h2_out", "carrier": "hydrogen", "direction": "out", "label": "Discharge" }
+      ],
+      "position": { "x": 860, "y": 300 }
+    },
+    {
+      "id": "fuel_cell",
+      "name": "Fuel Cell",
+      "equipment_type": "fuel_cell_pem",
+      "technology_ref": "pem_fuel_cell",
+      "operating_conditions": {
+        "operating_pressure_bar": { "value": 2.5, "unit": "bar", "source": "OpenTech-DB seed" },
+        "nominal_efficiency_pct": { "value": 58, "unit": "percent", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "h2_in", "carrier": "hydrogen", "direction": "in", "label": "H2 fuel" },
+        { "id": "power_out", "carrier": "electricity", "direction": "out", "label": "AC power" }
+      ],
+      "position": { "x": 1120, "y": 300 }
+    },
+    {
+      "id": "ac_output",
+      "name": "AC Output",
+      "equipment_type": "grid_sink",
+      "technology_ref": null,
+      "operating_conditions": {},
+      "ports": [
+        { "id": "power_in", "carrier": "electricity", "direction": "in", "label": "To grid" }
+      ],
+      "position": { "x": 1380, "y": 300 }
+    }
+  ],
+  "streams": [
+    { "id": "s_src_elz",   "source": { "unit_id": "power_source", "port_id": "power_out" }, "target": { "unit_id": "electrolyzer", "port_id": "power_in" }, "carrier": "electricity" },
+    { "id": "s_water_elz", "source": { "unit_id": "water_supply", "port_id": "water_out" }, "target": { "unit_id": "electrolyzer", "port_id": "water_in" }, "carrier": "water" },
+    { "id": "s_elz_comp",  "source": { "unit_id": "electrolyzer", "port_id": "h2_out" },    "target": { "unit_id": "compressor", "port_id": "h2_in" },      "carrier": "hydrogen" },
+    { "id": "s_src_comp",  "source": { "unit_id": "power_source", "port_id": "power_out" }, "target": { "unit_id": "compressor", "port_id": "power_in" },   "carrier": "electricity" },
+    { "id": "s_comp_sto",  "source": { "unit_id": "compressor", "port_id": "h2_out" },      "target": { "unit_id": "storage", "port_id": "h2_in" },        "carrier": "hydrogen" },
+    { "id": "s_sto_fc",    "source": { "unit_id": "storage", "port_id": "h2_out" },         "target": { "unit_id": "fuel_cell", "port_id": "h2_in" },      "carrier": "hydrogen" },
+    { "id": "s_fc_out",    "source": { "unit_id": "fuel_cell", "port_id": "power_out" },    "target": { "unit_id": "ac_output", "port_id": "power_in" },   "carrier": "electricity" }
+  ]
+}

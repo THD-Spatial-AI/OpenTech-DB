@@ -1,0 +1,21 @@
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.7
+python-dotenv>=1.0.0
+numpy>=1.26.0
+
+# ──────────────────────────────────────────────────────────────────────────────
+# OpenModelica Python Interface
+# ──────────────────────────────────────────────────────────────────────────────
+# OMPython provides Python bindings to OpenModelica Compiler (OMC)
+# Requires OpenModelica to be installed on the system
+#
+# Installation:
+#   1. Install OpenModelica: https://openmodelica.org/download/
+#   2. pip install OMPython
+#
+# If OMPython cannot be installed, the service falls back to the
+# built-in mock engine automatically with a log warning.
+# ──────────────────────────────────────────────────────────────────────────────
+OMPython>=3.4.0
+

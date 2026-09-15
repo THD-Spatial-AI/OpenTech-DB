@@ -18,6 +18,7 @@ const ContributorWorkspace = lazy(() => import("./components/contributor/Contrib
 const AdminPanel           = lazy(() => import("./components/admin/AdminPanel"));
 const TimeSeriesCatalogue  = lazy(() => import("./components/timeseries/TimeSeriesCatalogue"));
 const WorldMapView         = lazy(() => import("./components/worldmap/WorldMapView"));
+const SimulatorView        = lazy(() => import("./components/studio/ProcessStudio"));
 import { useAuth } from "./context/AuthContext";
 import ConsentBanner from "./components/ConsentBanner";
 import { getStoredConsent } from "./lib/consent";
@@ -134,6 +135,8 @@ export default function App() {
           ? "OpenTech DB | Time Series & Profiles"
           : activeView === "worldmap"
           ? "OpenTech DB | Technology World Map"
+          : activeView === "simulator"
+          ? "OpenTech DB | Process Studio"
           : "OpenTech DB | Technology Catalogue"}
       </title>
       <meta
@@ -185,6 +188,8 @@ export default function App() {
             <TimeSeriesCatalogue />
           ) : activeView === "worldmap" ? (
             <WorldMapView />
+          ) : activeView === "simulator" ? (
+            <SimulatorView />
           ) : (
             <main className="max-w-[1440px] mx-auto px-8 py-12 w-full flex-1">
 

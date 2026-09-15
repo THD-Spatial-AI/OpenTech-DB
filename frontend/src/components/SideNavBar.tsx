@@ -32,7 +32,7 @@ export interface FilterState {
   renewableOnly: boolean;
 }
 
-export type ActiveView = "catalogue" | "contributor" | "profile" | "admin" | "timeseries" | "worldmap";
+export type ActiveView = "catalogue" | "contributor" | "profile" | "admin" | "timeseries" | "worldmap" | "simulator";
 
 interface SideNavBarProps {
   activeCategory: TechnologyCategory;
@@ -146,6 +146,19 @@ export default function SideNavBar({
             ].join(" ")}
           >
             <span className="material-symbols-outlined text-lg">show_chart</span>
+          </button>
+          {/* Simulator shortcut */}
+          <button
+            title="Process Studio"
+            onClick={() => onViewChange("simulator")}
+            className={[
+              "w-8 h-8 flex items-center justify-center rounded-full transition-colors mt-2",
+              activeView === "simulator"
+                ? "bg-primary/15 text-primary"
+                : "hover:bg-surface-container text-on-surface-variant/50 hover:text-on-surface-variant",
+            ].join(" ")}
+          >
+            <span className="material-symbols-outlined text-lg">science</span>
           </button>
           {/* Contribute shortcut */}
           <button
@@ -274,6 +287,29 @@ export default function SideNavBar({
             </span>
             Browse Profiles
             {activeView === "timeseries" && (
+              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+            )}
+          </button>
+        </div>
+
+        {/* ── Tools ─────────────────────────────────────────────────────── */}
+        <div className="border-t border-outline-variant/10 pt-4">
+          <SectionHeading icon="science" label="Tools" />
+          <button
+            onClick={() => onViewChange("simulator")}
+            aria-current={activeView === "simulator" ? "page" : undefined}
+            className={[
+              "w-full flex items-center gap-3 px-2 py-2 rounded text-sm font-medium transition-all text-left",
+              activeView === "simulator"
+                ? "bg-primary/10 text-primary font-bold border-l-2 border-primary pl-[6px]"
+                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface hover:translate-x-0.5",
+            ].join(" ")}
+          >
+            <span className={["material-symbols-outlined text-lg", activeView === "simulator" ? "text-primary" : ""].join(" ")}>
+              science
+            </span>
+            Process Studio
+            {activeView === "simulator" && (
               <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
             )}
           </button>

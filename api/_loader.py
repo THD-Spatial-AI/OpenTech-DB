@@ -365,7 +365,7 @@ def _scan_raw_carriers() -> set[str]:
     if not DATA_DIR.exists():
         return unmapped
 
-    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries", "scraped"}
+    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries", "scraped", "processes"}
     for json_file in DATA_DIR.rglob("*.json"):
         if any(part in _EXCLUDED_DIRS for part in json_file.parts):
             continue
@@ -577,7 +577,7 @@ def _load_from_json() -> dict[str, Technology]:
     """Load all technologies from the local JSON catalogue files (fallback path)."""
     logger.info("DATA_DIR resolved to: %s (exists=%s)", DATA_DIR, DATA_DIR.exists())
     techs: dict[str, Technology] = {}
-    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries", "scraped"}
+    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries", "scraped", "processes"}
     json_files = [
         p for p in DATA_DIR.rglob("*.json")
         if not any(part in _EXCLUDED_DIRS for part in p.parts)

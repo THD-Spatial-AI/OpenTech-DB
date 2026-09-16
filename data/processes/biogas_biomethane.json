@@ -1,0 +1,87 @@
+{
+  "slug": "biogas_biomethane",
+  "name": "Biogas to Biomethane",
+  "description": "Anaerobic digestion of biomass feedstock produces raw biogas, which is upgraded to grid-quality biomethane; the separated CO₂ is sent to geological storage. Template Process (ADR-0004).",
+  "domain": "bioenergy",
+  "oeo_class": null,
+  "oeo_uri": null,
+  "status": "approved",
+  "author": null,
+  "source": "OpenTech-DB seed",
+  "year": 2026,
+  "tags": ["biogas", "biomethane", "anaerobic-digestion", "gas-grid"],
+  "units": [
+    {
+      "id": "feedstock",
+      "name": "Feedstock Supply",
+      "equipment_type": "biomass_source",
+      "technology_ref": null,
+      "operating_conditions": {
+        "fuel_input_kw": { "value": 8000, "unit": "kW", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "biomass_out", "carrier": "biomass", "direction": "out", "label": "Organic feedstock" }
+      ],
+      "position": { "x": 40, "y": 300 }
+    },
+    {
+      "id": "digester",
+      "name": "Anaerobic Digester",
+      "equipment_type": "anaerobic_digester",
+      "technology_ref": null,
+      "operating_conditions": {
+        "biogas_yield_pct": { "value": 60, "unit": "percent", "source": "OpenTech-DB seed" },
+        "methane_content_pct": { "value": 60, "unit": "percent", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "biomass_in", "carrier": "biomass", "direction": "in", "label": "Feedstock" },
+        { "id": "biogas_out", "carrier": "biogas", "direction": "out", "label": "Raw biogas" }
+      ],
+      "position": { "x": 340, "y": 300 }
+    },
+    {
+      "id": "upgrader",
+      "name": "Biogas Upgrader",
+      "equipment_type": "biogas_upgrader",
+      "technology_ref": null,
+      "operating_conditions": {
+        "methane_recovery_pct": { "value": 98, "unit": "percent", "source": "OpenTech-DB seed" },
+        "delivery_pressure_bar": { "value": 8, "unit": "bar", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "biogas_in", "carrier": "biogas", "direction": "in", "label": "Raw biogas" },
+        { "id": "gas_out", "carrier": "methane", "direction": "out", "label": "Biomethane" },
+        { "id": "co2_out", "carrier": "co2", "direction": "out", "label": "Separated CO₂" }
+      ],
+      "position": { "x": 660, "y": 300 }
+    },
+    {
+      "id": "gas_grid",
+      "name": "Gas Grid",
+      "equipment_type": "gas_grid_sink",
+      "technology_ref": null,
+      "operating_conditions": {},
+      "ports": [
+        { "id": "gas_in", "carrier": "methane", "direction": "in", "label": "To gas grid" }
+      ],
+      "position": { "x": 980, "y": 220 }
+    },
+    {
+      "id": "co2_store",
+      "name": "CO₂ Storage",
+      "equipment_type": "co2_geological_storage",
+      "technology_ref": null,
+      "operating_conditions": {},
+      "ports": [
+        { "id": "co2_in", "carrier": "co2", "direction": "in", "label": "Injection" }
+      ],
+      "position": { "x": 980, "y": 400 }
+    }
+  ],
+  "streams": [
+    { "id": "s_feed_dig",  "source": { "unit_id": "feedstock", "port_id": "biomass_out" }, "target": { "unit_id": "digester", "port_id": "biomass_in" }, "carrier": "biomass" },
+    { "id": "s_dig_upg",   "source": { "unit_id": "digester", "port_id": "biogas_out" },   "target": { "unit_id": "upgrader", "port_id": "biogas_in" }, "carrier": "biogas" },
+    { "id": "s_upg_grid",  "source": { "unit_id": "upgrader", "port_id": "gas_out" },      "target": { "unit_id": "gas_grid", "port_id": "gas_in" },   "carrier": "methane" },
+    { "id": "s_upg_co2",   "source": { "unit_id": "upgrader", "port_id": "co2_out" },      "target": { "unit_id": "co2_store", "port_id": "co2_in" },  "carrier": "co2" }
+  ]
+}

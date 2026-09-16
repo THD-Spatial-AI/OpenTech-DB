@@ -1,0 +1,101 @@
+{
+  "slug": "power_to_gas",
+  "name": "Power-to-Gas (Methanation)",
+  "description": "Renewable electricity splits water into hydrogen in an electrolyzer; the hydrogen reacts with a captured-CO₂ stream in a Sabatier methanation reactor to produce synthetic methane for the gas grid. Template Process (ADR-0004).",
+  "domain": "power-to-gas",
+  "oeo_class": null,
+  "oeo_uri": null,
+  "status": "approved",
+  "author": null,
+  "source": "OpenTech-DB seed",
+  "year": 2026,
+  "tags": ["power-to-gas", "methanation", "sabatier", "e-methane", "electrolysis"],
+  "units": [
+    {
+      "id": "power_source",
+      "name": "Renewable Power",
+      "equipment_type": "power_source",
+      "technology_ref": "onshore_wind",
+      "operating_conditions": {
+        "capacity_kw": { "value": 10000, "unit": "kW", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "power_out", "carrier": "electricity", "direction": "out", "label": "AC power" }
+      ],
+      "position": { "x": 40, "y": 200 }
+    },
+    {
+      "id": "water_supply",
+      "name": "Water Supply",
+      "equipment_type": "water_source",
+      "technology_ref": null,
+      "operating_conditions": {},
+      "ports": [
+        { "id": "water_out", "carrier": "water", "direction": "out", "label": "Deionised water" }
+      ],
+      "position": { "x": 40, "y": 380 }
+    },
+    {
+      "id": "electrolyzer",
+      "name": "Electrolyzer",
+      "equipment_type": "electrolyzer_pem",
+      "technology_ref": "pem_electrolyzer",
+      "operating_conditions": {
+        "nominal_efficiency_pct_hhv": { "value": 70, "unit": "percent", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "power_in", "carrier": "electricity", "direction": "in", "label": "AC power" },
+        { "id": "water_in", "carrier": "water", "direction": "in", "label": "Feed water" },
+        { "id": "h2_out", "carrier": "hydrogen", "direction": "out", "label": "H2 gas" }
+      ],
+      "position": { "x": 360, "y": 280 }
+    },
+    {
+      "id": "co2_supply",
+      "name": "Captured CO₂",
+      "equipment_type": "co2_source",
+      "technology_ref": null,
+      "operating_conditions": {
+        "co2_supply_kg_h": { "value": 2000, "unit": "kg/h", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "co2_out", "carrier": "co2", "direction": "out", "label": "CO2 feed" }
+      ],
+      "position": { "x": 360, "y": 460 }
+    },
+    {
+      "id": "methanation",
+      "name": "Methanation Reactor",
+      "equipment_type": "methanation_reactor",
+      "technology_ref": null,
+      "operating_conditions": {
+        "conversion_efficiency_pct": { "value": 80, "unit": "percent", "source": "OpenTech-DB seed" },
+        "delivery_pressure_bar": { "value": 8, "unit": "bar", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "h2_in", "carrier": "hydrogen", "direction": "in", "label": "H2" },
+        { "id": "co2_in", "carrier": "co2", "direction": "in", "label": "CO2" },
+        { "id": "gas_out", "carrier": "methane", "direction": "out", "label": "Synthetic CH4" }
+      ],
+      "position": { "x": 680, "y": 380 }
+    },
+    {
+      "id": "gas_grid",
+      "name": "Gas Grid",
+      "equipment_type": "gas_grid_sink",
+      "technology_ref": null,
+      "operating_conditions": {},
+      "ports": [
+        { "id": "gas_in", "carrier": "methane", "direction": "in", "label": "To gas grid" }
+      ],
+      "position": { "x": 1000, "y": 380 }
+    }
+  ],
+  "streams": [
+    { "id": "s_src_elz",   "source": { "unit_id": "power_source", "port_id": "power_out" }, "target": { "unit_id": "electrolyzer", "port_id": "power_in" }, "carrier": "electricity" },
+    { "id": "s_water_elz", "source": { "unit_id": "water_supply", "port_id": "water_out" }, "target": { "unit_id": "electrolyzer", "port_id": "water_in" }, "carrier": "water" },
+    { "id": "s_elz_meth",  "source": { "unit_id": "electrolyzer", "port_id": "h2_out" },    "target": { "unit_id": "methanation", "port_id": "h2_in" },     "carrier": "hydrogen" },
+    { "id": "s_co2_meth",  "source": { "unit_id": "co2_supply", "port_id": "co2_out" },     "target": { "unit_id": "methanation", "port_id": "co2_in" },    "carrier": "co2" },
+    { "id": "s_meth_grid", "source": { "unit_id": "methanation", "port_id": "gas_out" },    "target": { "unit_id": "gas_grid", "port_id": "gas_in" },       "carrier": "methane" }
+  ]
+}

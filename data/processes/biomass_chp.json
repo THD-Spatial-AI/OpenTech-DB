@@ -1,0 +1,71 @@
+{
+  "slug": "biomass_chp",
+  "name": "Biomass CHP Plant",
+  "description": "Combined heat and power from solid biomass: a biomass supply feeds a CHP genset that co-produces electricity to the grid and useful heat to a district-heating demand. Template Process (ADR-0004).",
+  "domain": "bioenergy",
+  "oeo_class": null,
+  "oeo_uri": null,
+  "status": "approved",
+  "author": null,
+  "source": "OpenTech-DB seed",
+  "year": 2026,
+  "tags": ["biomass", "chp", "cogeneration", "district-heating"],
+  "units": [
+    {
+      "id": "biomass_supply",
+      "name": "Biomass Supply",
+      "equipment_type": "biomass_source",
+      "technology_ref": "biomass_power_plant",
+      "operating_conditions": {
+        "fuel_input_kw": { "value": 20000, "unit": "kW", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "biomass_out", "carrier": "biomass", "direction": "out", "label": "Wood chips" }
+      ],
+      "position": { "x": 40, "y": 300 }
+    },
+    {
+      "id": "chp",
+      "name": "Biomass CHP Unit",
+      "equipment_type": "biomass_chp",
+      "technology_ref": "biomass_power_plant",
+      "operating_conditions": {
+        "electrical_efficiency_pct": { "value": 30, "unit": "percent", "source": "OpenTech-DB seed" },
+        "thermal_efficiency_pct": { "value": 55, "unit": "percent", "source": "OpenTech-DB seed" }
+      },
+      "ports": [
+        { "id": "biomass_in", "carrier": "biomass", "direction": "in", "label": "Fuel" },
+        { "id": "power_out", "carrier": "electricity", "direction": "out", "label": "AC power" },
+        { "id": "heat_out", "carrier": "heat", "direction": "out", "label": "Hot water" }
+      ],
+      "position": { "x": 360, "y": 300 }
+    },
+    {
+      "id": "grid",
+      "name": "Electricity Grid",
+      "equipment_type": "grid_sink",
+      "technology_ref": null,
+      "operating_conditions": {},
+      "ports": [
+        { "id": "power_in", "carrier": "electricity", "direction": "in", "label": "To grid" }
+      ],
+      "position": { "x": 700, "y": 200 }
+    },
+    {
+      "id": "heat_demand",
+      "name": "District Heat",
+      "equipment_type": "heat_sink",
+      "technology_ref": null,
+      "operating_conditions": {},
+      "ports": [
+        { "id": "heat_in", "carrier": "heat", "direction": "in", "label": "Heat load" }
+      ],
+      "position": { "x": 700, "y": 400 }
+    }
+  ],
+  "streams": [
+    { "id": "s_bio_chp",  "source": { "unit_id": "biomass_supply", "port_id": "biomass_out" }, "target": { "unit_id": "chp", "port_id": "biomass_in" }, "carrier": "biomass" },
+    { "id": "s_chp_grid", "source": { "unit_id": "chp", "port_id": "power_out" },              "target": { "unit_id": "grid", "port_id": "power_in" }, "carrier": "electricity" },
+    { "id": "s_chp_heat", "source": { "unit_id": "chp", "port_id": "heat_out" },               "target": { "unit_id": "heat_demand", "port_id": "heat_in" }, "carrier": "heat" }
+  ]
+}

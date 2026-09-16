@@ -36,6 +36,7 @@ from pydantic import BaseModel, Field
 from api._loader import DATA_DIR, _UUID_NS, _load_json_file, _PENDING_DIR
 from api._auth_helpers import _require_admin, _require_contributor, _request_identity
 from schemas.process import Process, ProcessCatalogue, ProcessStatus, ProcessSummary
+from schemas.process_ontology import EQUIPMENT_ONTOLOGY, validate_process
 
 logger = logging.getLogger(__name__)
 
@@ -447,6 +448,24 @@ def cancel_simulation(request: Request, job_id: str):
         return r.json()
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Simulation service unreachable: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Validation (ADR-0006): OEO-aligned equipment ontology + process validator.
+# ---------------------------------------------------------------------------
+
+@router.get("/ontology", summary="Equipment interface ontology (connection rules)")
+def get_ontology() -> dict:
+    """The source of truth for each equipment type's ports (carrier, direction,
+    required). The builder uses it for required-input hints and validation."""
+    return {"equipment": EQUIPMENT_ONTOLOGY}
+
+
+@router.post("/validate", summary="Validate a Process graph")
+def validate(graph: dict[str, Any]) -> dict:
+    """Run the layered validity rules against a graph. Returns
+    ``{ valid, errors, warnings }``; errors block Run/Publish, warnings inform."""
+    return validate_process(graph)
 
 
 # ---------------------------------------------------------------------------

@@ -107,9 +107,13 @@ def _kpi(units: dict[str, dict], results: dict[str, dict]) -> dict:
     is_type = lambda t: (lambda u: u.get("equipment_type") == t)
 
     power_in  = _sum(is_type("power_source"), "power_kw")
-    power_out = _sum(is_type("grid_sink"), "power_kw") or _sum(is_type("fuel_cell_pem"), "power_kw")
+    power_out = (_sum(is_type("grid_sink"), "power_kw")
+                 or _sum(is_type("fuel_cell_pem"), "power_kw")
+                 or _sum(is_type("biomass_chp"), "power_kw"))
     h2        = _sum(is_type("electrolyzer_pem"), "h2_kg_h")
     co2_cap   = _sum(is_type("co2_absorber_amine"), "co2_captured_kg_h")
+    heat_out  = _sum(is_type("heat_sink"), "heat_kw") or _sum(is_type("biomass_chp"), "heat_kw")
+    methane   = _sum(is_type("gas_grid_sink"), "methane_kw")
     parasitic = round(sum(results[uid].get("power_kw", 0) or 0
                           for uid, u in units.items()
                           if u.get("equipment_type") in ("compressor", "co2_compressor")), 1)
@@ -128,4 +132,8 @@ def _kpi(units: dict[str, dict], results: dict[str, dict]) -> dict:
         kpi["co2_captured_mtco2_yr"] = round(co2_cap * 8760 / 1e9, 4)
     if parasitic:
         kpi["parasitic_load_kw"] = parasitic
+    if heat_out:
+        kpi["heat_output_kw"] = heat_out
+    if methane:
+        kpi["methane_output_kw"] = methane
     return kpi

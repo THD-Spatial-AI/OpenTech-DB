@@ -73,3 +73,13 @@ export async function listSubmissions(status) {
 export async function reviewSubmission(id, action, reason) {
   return post(`/processes/submissions/${encodeURIComponent(id)}/review`, { action, reason });
 }
+
+/** Validate a Process graph (ADR-0006). @returns {Promise<{valid, errors, warnings}>} */
+export async function validateProcess(graph) {
+  return post('/processes/validate', graph);
+}
+
+/** The equipment interface ontology (connection rules). */
+export async function getOntology() {
+  return apiFetch('/processes/ontology');
+}

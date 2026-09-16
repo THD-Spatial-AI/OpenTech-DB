@@ -21,6 +21,7 @@ import {
 } from 'react-icons/fi';
 import {
   listProcesses, getProcess, submitProcess, listSubmissions, reviewSubmission,
+  validateProcess,
 } from './services/processApi';
 import { runProcessSimulation } from './services/processSimApi';
 import { PALETTE_GROUPS } from './equipmentLibrary';
@@ -442,6 +443,43 @@ function ResultsBar({ sim, onClose }) {
           <ReactECharts option={buildTraceOption(ts)} style={{ height: 170 }} notMerge lazyUpdate />
         </div>
       )}
+    </div>
+  );
+}
+
+function ValidationBadge({ validation, open, onToggle }) {
+  if (!validation) return null;
+  const nErr = validation.errors?.length ?? 0;
+  const nWarn = validation.warnings?.length ?? 0;
+  const state = nErr > 0 ? 'error' : nWarn > 0 ? 'warn' : 'ok';
+  const cfg = {
+    error: { cls: 'bg-red-50 text-red-700 border-red-200', Icon: FiAlertCircle, label: `${nErr} error${nErr > 1 ? 's' : ''}` },
+    warn:  { cls: 'bg-amber-50 text-amber-700 border-amber-200', Icon: FiAlertTriangle, label: `${nWarn} warning${nWarn > 1 ? 's' : ''}` },
+    ok:    { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', Icon: FiCheckCircle, label: 'Valid' },
+  }[state];
+  const { Icon } = cfg;
+  return (
+    <div className="relative">
+      <button onClick={onToggle}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${cfg.cls}`}>
+        <Icon size={13} /> {cfg.label}
+      </button>
+      {open && (nErr > 0 || nWarn > 0) && (
+        <div className="absolute right-0 top-full mt-1 w-80 max-h-72 overflow-y-auto rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xl z-[60] p-3 space-y-1.5">
+          {validation.errors.map((e, i) => <IssueRow key={`e${i}`} err issue={e} />)}
+          {validation.warnings.map((w, i) => <IssueRow key={`w${i}`} issue={w} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IssueRow({ err, issue }) {
+  return (
+    <div className={`flex gap-2 rounded-lg px-2.5 py-1.5 ${err ? 'bg-red-50' : 'bg-amber-50'}`}>
+      {err ? <FiAlertCircle className="text-red-500 shrink-0 mt-0.5" size={13} />
+           : <FiAlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={13} />}
+      <p className={`text-[11px] leading-relaxed ${err ? 'text-red-700' : 'text-amber-700'}`}>{issue.message}</p>
     </div>
   );
 }

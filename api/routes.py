@@ -626,6 +626,40 @@ def _export_key(tech: Technology) -> str:
     return slug or re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
 
 
+def _resolve_tech(tech_id: str) -> Technology | None:
+    """
+    Resolve a technology by UUID, slug, or display name (case-insensitive).
+
+    Resolution order:
+    1. Direct UUID string match (fastest path).
+    2. Slug match — the catalogue technology_id stored in technology_type /
+       storage_type / conversion_type / transmission_type.
+    3. Case-insensitive display name match.
+    """
+    all_techs = _get_all()
+
+    # 1. UUID
+    if tech := all_techs.get(tech_id):
+        return tech
+
+    # 2. Slug / 3. Name — single pass
+    tech_lower = tech_id.lower()
+    name_match: Technology | None = None
+    for t in all_techs.values():
+        slug = (
+            getattr(t, "technology_type", None)
+            or getattr(t, "storage_type", None)
+            or getattr(t, "conversion_type", None)
+            or getattr(t, "transmission_type", None)
+        )
+        if slug and slug.lower() == tech_lower:
+            return t  # slug match is unambiguous — return immediately
+        if name_match is None and t.name.lower() == tech_lower:
+            name_match = t
+
+    return name_match
+
+
 # ETag for the technology catalogue: cached against the identity of the
 # loaded dict, so any cache_clear()+reload (debug/reload, admin edits,
 # scraper approvals) automatically yields a fresh tag.
@@ -929,7 +963,7 @@ def get_all_calliope(
     summary="Single technology in Calliope format",
 )
 def get_calliope(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     instance_index: Annotated[
         int,
         Query(ge=0, description="Which equipment instance to use (0-based)."),
@@ -943,7 +977,7 @@ def get_calliope(
         Query(description="Target Calliope version: 0.6 (nested essentials/constraints/costs) or 0.7 (flat, base_tech, flow_* keys)."),
     ] = "0.6",
 ) -> dict[str, Any]:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
@@ -958,7 +992,7 @@ def get_calliope(
     summary="Single technology in Calliope format with constraint overrides",
 )
 def post_calliope_with_overrides(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     overrides: CalliopeOverrides = Body(...),
 ) -> dict[str, Any]:
     """
@@ -990,7 +1024,7 @@ def post_calliope_with_overrides(
     All ``constraints`` keys are merged with ``dict.update()``; cost keys are
     nested by cost-class name before merging.
     """
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
@@ -1076,7 +1110,7 @@ def get_all_pypsa(
     summary="Single technology in PyPSA format",
 )
 def get_pypsa(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     instance_index: Annotated[
         int,
         Query(ge=0, description="Which equipment instance to use (0-based)."),
@@ -1086,7 +1120,7 @@ def get_pypsa(
         Query(ge=0.0, le=1.0, description="Annual discount rate used for CAPEX annualization."),
     ] = 0.07,
 ) -> dict[str, Any]:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
@@ -1167,13 +1201,13 @@ def get_all_osemosys(
     summary="Single technology in OSeMOSYS format",
 )
 def get_osemosys(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     instance_index: Annotated[
         int,
         Query(ge=0, description="Which equipment instance to use (0-based)."),
     ] = 0,
 ) -> dict[str, Any]:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
@@ -1254,13 +1288,13 @@ def get_all_adoptnet0(
     summary="Single technology in AdOpT-NET0 format",
 )
 def get_adoptnet0(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     instance_index: Annotated[
         int,
         Query(ge=0, description="Which equipment instance to use (0-based)."),
     ] = 0,
 ) -> dict[str, Any]:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
@@ -1282,14 +1316,14 @@ def get_adoptnet0(
 def get_technology(
     request: Request,
     response: Response,
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     include_profile_values: Annotated[
         bool,
         Query(description="Include inline generation-profile value arrays (can be ~8760 floats). "
                           "Set false for a lightweight metadata-only response."),
     ] = True,
 ) -> Technology | Response:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
@@ -1312,7 +1346,7 @@ def get_technology(
     response_description="Embedded generation-profile metadata plus matching /timeseries catalogue entries.",
 )
 def get_technology_profiles(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
 ) -> dict[str, Any]:
     """
     Return every profile associated with a technology, joined across the two
@@ -1327,7 +1361,7 @@ def get_technology_profiles(
       references (``generation_profile.profile_id`` / VRE ``profile_key``).
       Fetch the data via ``GET /timeseries/{profile_id}/data``.
     """
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
 
@@ -1385,13 +1419,13 @@ def get_technology_profiles(
     summary="List all equipment instances for a technology",
 )
 def list_instances(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     lifecycle: Annotated[
         str | None,
         Query(description="Filter by life-cycle stage (e.g. 'commercial', 'projection')."),
     ] = None,
 ) -> list[EquipmentInstance]:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
 
@@ -1407,10 +1441,10 @@ def list_instances(
     summary="Get a specific equipment instance",
 )
 def get_instance(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     instance_id: Annotated[str, FPath(description="UUID of the instance.")],
 ) -> EquipmentInstance:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
 

@@ -29,6 +29,10 @@ from typing import Any, Callable
 H2_HHV_KWH_PER_KG = 39.4          # higher heating value of hydrogen
 WATER_KG_PER_KG_H2 = 9.0          # stoichiometric electrolysis water demand
 CO2_EMISSION_KG_PER_KWH = 0.35    # default flue-gas CO₂ intensity (gas-like)
+BIOMASS_LHV_KWH_PER_KG = 4.9      # wood chips ~18 MJ/kg (as-received)
+CH4_LHV_KWH_PER_KG = 13.9         # methane lower heating value (~50 MJ/kg)
+# Sabatier (CO₂ + 4 H₂ → CH₄ + 2 H₂O), molar masses in kg/mol
+_M_H2, _M_CO2, _M_CH4 = 0.002016, 0.04401, 0.016043
 
 State = dict[str, Any]
 
@@ -136,6 +140,91 @@ def co2_compressor(unit, inlets, oc, tech):
     )
 
 
+# ── Bioenergy + power-to-gas ─────────────────────────────────────────────────
+
+def biomass_source(unit, inlets, oc, tech):
+    fuel = _num(oc, "fuel_input_kw", tech.get("capacity_kw") or 20000.0)   # LHV thermal
+    return (
+        {"biomass_out": _st("biomass", fuel_kw=fuel, biomass_kg_h=fuel / BIOMASS_LHV_KWH_PER_KG)},
+        {"fuel_input_kw": round(fuel, 1), "biomass_kg_h": round(fuel / BIOMASS_LHV_KWH_PER_KG, 1)},
+    )
+
+
+def co2_source(unit, inlets, oc, tech):
+    co2 = _num(oc, "co2_supply_kg_h", 1000.0)
+    return {"co2_out": _st("co2", co2_kg_h=co2, pressure_bar=_num(oc, "pressure_bar", 1.5))}, \
+           {"co2_kg_h": round(co2, 1)}
+
+
+def biomass_chp(unit, inlets, oc, tech):
+    fuel = (inlets.get("biomass_in") or {}).get("fuel_kw", 0.0)
+    eta_el = _num(oc, "electrical_efficiency_pct", tech.get("efficiency_pct") or 30.0) / 100.0
+    eta_th = _num(oc, "thermal_efficiency_pct", 55.0) / 100.0
+    power, heat = fuel * eta_el, fuel * eta_th
+    return (
+        {"power_out": _st("electricity", power_kw=power),
+         "heat_out": _st("heat", heat_kw=heat)},
+        {"power_kw": round(power, 1), "heat_kw": round(heat, 1),
+         "electrical_efficiency_pct": round(eta_el * 100, 1),
+         "total_efficiency_pct": round((eta_el + eta_th) * 100, 1)},
+    )
+
+
+def anaerobic_digester(unit, inlets, oc, tech):
+    fuel = (inlets.get("biomass_in") or {}).get("fuel_kw", 0.0)
+    yield_pct = _num(oc, "biogas_yield_pct", 60.0) / 100.0     # energy → biogas
+    ch4_frac = _num(oc, "methane_content_pct", 60.0) / 100.0   # raw biogas CH₄ share
+    biogas = fuel * yield_pct
+    return (
+        {"biogas_out": _st("biogas", biogas_kw=biogas, methane_frac=ch4_frac)},
+        {"biogas_kw": round(biogas, 1), "methane_content_pct": round(ch4_frac * 100, 1)},
+    )
+
+
+def biogas_upgrader(unit, inlets, oc, tech):
+    biogas = (inlets.get("biogas_in") or {}).get("biogas_kw", 0.0)
+    recovery = _num(oc, "methane_recovery_pct", 98.0) / 100.0
+    ch4 = biogas * recovery                                    # biomethane energy out
+    # CO₂ removed: crude mass estimate from the non-CH₄ balance of raw biogas
+    co2 = biogas * 0.20 / CH4_LHV_KWH_PER_KG * (_M_CO2 / _M_CH4) * 10
+    return (
+        {"gas_out": _st("methane", ch4_kw=ch4, pressure_bar=_num(oc, "delivery_pressure_bar", 8.0)),
+         "co2_out": _st("co2", co2_kg_h=co2)},
+        {"biomethane_kw": round(ch4, 1), "co2_removed_kg_h": round(co2, 1),
+         "methane_recovery_pct": round(recovery * 100, 1)},
+    )
+
+
+def methanation_reactor(unit, inlets, oc, tech):
+    h2 = (inlets.get("h2_in") or {}).get("h2_kg_h", 0.0)
+    co2 = (inlets.get("co2_in") or {}).get("co2_kg_h", 0.0)
+    conv = _num(oc, "conversion_efficiency_pct", 80.0) / 100.0
+    # limiting reactant for CH₄: 4 mol H₂ or 1 mol CO₂ per mol CH₄
+    ch4_from_h2 = (h2 / _M_H2) / 4.0
+    ch4_from_co2 = co2 / _M_CO2
+    ch4_mol = min(ch4_from_h2, ch4_from_co2) * conv
+    ch4_kg = ch4_mol * _M_CH4
+    ch4_kw = ch4_kg * CH4_LHV_KWH_PER_KG
+    return (
+        {"gas_out": _st("methane", ch4_kw=ch4_kw, ch4_kg_h=ch4_kg,
+                        pressure_bar=_num(oc, "delivery_pressure_bar", 8.0))},
+        {"ch4_kg_h": round(ch4_kg, 2), "ch4_kw": round(ch4_kw, 1),
+         "conversion_pct": round(conv * 100, 1),
+         "limiting_reactant": "H2" if ch4_from_h2 < ch4_from_co2 else "CO2"},
+    )
+
+
+def heat_sink(unit, inlets, oc, tech):
+    heat = (inlets.get("heat_in") or {}).get("heat_kw", 0.0)
+    return {}, {"heat_kw": round(heat, 1)}
+
+
+def gas_grid_sink(unit, inlets, oc, tech):
+    st = inlets.get("gas_in") or {}
+    ch4 = st.get("ch4_kw", 0.0)
+    return {}, {"methane_kw": round(ch4, 1), "ch4_kg_h": round(st.get("ch4_kg_h", 0.0) or 0.0, 2)}
+
+
 # ── Storage / sinks ──────────────────────────────────────────────────────────
 
 def h2_tank(unit, inlets, oc, tech):
@@ -182,4 +271,12 @@ COMPONENTS: dict[str, Callable] = {
     "h2_tank":                 h2_tank,
     "co2_geological_storage":  co2_geological_storage,
     "grid_sink":               grid_sink,
+    "biomass_source":          biomass_source,
+    "co2_source":              co2_source,
+    "biomass_chp":             biomass_chp,
+    "anaerobic_digester":      anaerobic_digester,
+    "biogas_upgrader":         biogas_upgrader,
+    "methanation_reactor":     methanation_reactor,
+    "heat_sink":               heat_sink,
+    "gas_grid_sink":           gas_grid_sink,
 }

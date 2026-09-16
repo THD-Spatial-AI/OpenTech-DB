@@ -17,7 +17,7 @@
 
 import {
   FiZap, FiCpu, FiBox, FiDroplet, FiWind, FiDatabase,
-  FiActivity, FiArrowRightCircle, FiArrowLeftCircle, FiThermometer,
+  FiActivity, FiArrowRightCircle, FiThermometer, FiFeather, FiLayers, FiCloud,
 } from 'react-icons/fi';
 
 // ── Carrier → colour (aligned with the app palette) ──────────────────────────
@@ -29,6 +29,9 @@ export const CARRIER_COLORS = {
   flue_gas:    '#943700', // tertiary
   steam:       '#b45309',
   heat:        '#c2410c',
+  biomass:     '#4d7c0f', // forest green
+  biogas:      '#65a30d', // lime
+  methane:     '#a16207', // amber (natural-gas-like)
   natural_gas: '#a16207',
   oxygen:      '#0ea5e9',
   default:     '#737686', // outline
@@ -87,6 +90,38 @@ export const EQUIPMENT_TYPES = {
   grid_sink: {
     label: 'Grid / Load', icon: FiArrowRightCircle, category: null, group: 'Sinks',
     ports: [p('power_in', 'electricity', 'in')],
+  },
+  biomass_source: {
+    label: 'Biomass Supply', icon: FiFeather, category: 'generation', group: 'Sources',
+    ports: [p('biomass_out', 'biomass', 'out')],
+  },
+  co2_source: {
+    label: 'CO₂ Supply', icon: FiCloud, category: null, group: 'Sources',
+    ports: [p('co2_out', 'co2', 'out')],
+  },
+  biomass_chp: {
+    label: 'Biomass CHP', icon: FiActivity, category: 'generation', group: 'Conversion',
+    ports: [p('biomass_in', 'biomass', 'in'), p('power_out', 'electricity', 'out'), p('heat_out', 'heat', 'out')],
+  },
+  anaerobic_digester: {
+    label: 'Anaerobic Digester', icon: FiLayers, category: 'conversion', group: 'Conversion',
+    ports: [p('biomass_in', 'biomass', 'in'), p('biogas_out', 'biogas', 'out')],
+  },
+  biogas_upgrader: {
+    label: 'Biogas Upgrader', icon: FiDatabase, category: 'conversion', group: 'Conversion',
+    ports: [p('biogas_in', 'biogas', 'in'), p('gas_out', 'methane', 'out'), p('co2_out', 'co2', 'out')],
+  },
+  methanation_reactor: {
+    label: 'Methanation Reactor', icon: FiCpu, category: 'conversion', group: 'Conversion',
+    ports: [p('h2_in', 'hydrogen', 'in'), p('co2_in', 'co2', 'in'), p('gas_out', 'methane', 'out')],
+  },
+  heat_sink: {
+    label: 'Heat Demand', icon: FiThermometer, category: null, group: 'Sinks',
+    ports: [p('heat_in', 'heat', 'in')],
+  },
+  gas_grid_sink: {
+    label: 'Gas Grid / Load', icon: FiArrowRightCircle, category: null, group: 'Sinks',
+    ports: [p('gas_in', 'methane', 'in')],
   },
 };
 

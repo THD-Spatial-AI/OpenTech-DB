@@ -62,13 +62,30 @@ export default function ProcessStudio() {
   const [toast, setToast] = useState(null);
   const [sim, setSim] = useState({ status: 'idle', result: null, error: null }); // idle|running|done|error
   const [tourOpen, setTourOpen] = useState(false);
+  const [showRunHint, setShowRunHint] = useState(false);
+  const runHintSeen = useRef(false);
   const canvasRef = useRef(null);
+
+  // Nudge to Run once the user has wired a runnable chain (source + ≥1 stream),
+  // shown once per session and cleared when a simulation starts.
+  const SOURCE_TYPES = ['power_source', 'flue_gas_source', 'water_source'];
+  const handleDirty = useCallback(() => {
+    setDirty(true);
+    if (runHintSeen.current || sim.status !== 'idle') return;
+    const g = canvasRef.current?.getProcess();
+    if (g && g.units.length >= 2 && g.streams.length >= 1
+        && g.units.some((u) => SOURCE_TYPES.includes(u.equipment_type))) {
+      runHintSeen.current = true;
+      setShowRunHint(true);
+    }
+  }, [sim.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flash = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
   const runSim = useCallback(async () => {
     const graph = canvasRef.current?.getProcess();
     if (!graph || graph.units.length === 0) { flash('Add at least one unit first'); return; }
+    setShowRunHint(false);
     setSim({ status: 'running', result: null, error: null, phase: 'queued', position: null });
     try {
       const result = await runProcessSimulation(graph, {
@@ -189,8 +206,21 @@ export default function ProcessStudio() {
       {mode === 'browse'
         ? <BrowseView onOpen={openProcess} />
         : <BuildView meta={meta} setMeta={setMeta} initialProcess={initialProcess}
-                     canvasKey={canvasKey} canvasRef={canvasRef} onDirty={() => setDirty(true)}
+                     canvasKey={canvasKey} canvasRef={canvasRef} onDirty={handleDirty}
                      sim={sim} onCloseResults={() => setSim({ status: 'idle', result: null, error: null })} />}
+
+      {showRunHint && mode === 'build' && sim.status === 'idle' && (
+        <div className="fixed z-[90] top-[104px] right-6 w-64 rounded-xl technical-gradient text-on-primary shadow-2xl p-3 animate-slideInRight">
+          <div className="flex items-start gap-2">
+            <FiPlay className="mt-0.5 shrink-0" size={15} />
+            <p className="text-xs leading-relaxed flex-1">
+              Your process is wired — click <b>Run Simulation</b> for KPIs and dynamic traces.
+            </p>
+            <button onClick={() => setShowRunHint(false)} className="opacity-80 hover:opacity-100 shrink-0"><FiX size={13} /></button>
+          </div>
+          <div className="absolute -top-1.5 right-7 w-3 h-3 technical-gradient rotate-45" />
+        </div>
+      )}
 
       {tourOpen && mode === 'build' && (
         <StudioTour steps={STUDIO_STEPS} onClose={() => setTourOpen(false)} />

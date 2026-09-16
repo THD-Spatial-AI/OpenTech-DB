@@ -16,18 +16,23 @@ import CCSAbsorberPanel from '../simulator/components/CCSAbsorberPanel';
 import CCSCompressorPanel from '../simulator/components/CCSCompressorPanel';
 import CCSStripperPanel from '../simulator/components/CCSStripperPanel';
 import FuelCellAnalysis from './FuelCellAnalysis';
+import CompressorAnalysis from './CompressorAnalysis';
+import StorageAnalysis from './StorageAnalysis';
 import { equipmentDef } from './equipmentLibrary';
 
 // equipment_type → analysis kind. Sources/electrolyzer need a composed tech;
-// CCS units + fuel cell can analyse from operating conditions alone.
+// the rest can analyse from operating conditions alone.
 const ANALYSIS_KIND = {
-  power_source:      'generator',
-  flue_gas_source:   'generator',
-  electrolyzer_pem:  'electrolyzer',
-  fuel_cell_pem:     'fuelcell',
-  co2_absorber_amine:'absorber',
-  co2_compressor:    'ccs_compressor',
-  solvent_stripper:  'stripper',
+  power_source:           'generator',
+  flue_gas_source:        'generator',
+  electrolyzer_pem:       'electrolyzer',
+  fuel_cell_pem:          'fuelcell',
+  compressor:             'compressor',
+  co2_compressor:         'ccs_compressor',
+  co2_absorber_amine:     'absorber',
+  solvent_stripper:       'stripper',
+  h2_tank:                'storage',
+  co2_geological_storage: 'storage',
 };
 const NEEDS_TECH = new Set(['generator', 'electrolyzer']);
 
@@ -66,6 +71,10 @@ export default function UnitAnalysisModal({ open, unit, techModel, genCapacityKw
         return <H2GeneratorPanel selectedModel={model} simState="idle" />;
       case 'fuelcell':
         return <FuelCellAnalysis model={model} />;
+      case 'compressor':
+        return <CompressorAnalysis model={model} />;
+      case 'storage':
+        return <StorageAnalysis model={model} />;
       case 'absorber':
         return <CCSAbsorberPanel selectedModel={model} savedParams={oc} onParamsChange={() => {}} />;
       case 'ccs_compressor':

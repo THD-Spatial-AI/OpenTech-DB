@@ -9,15 +9,42 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { FiTrash2, FiPlus, FiLayers } from 'react-icons/fi';
+import { FiTrash2, FiPlus, FiLayers, FiBarChart2, FiInfo, FiX } from 'react-icons/fi';
 import { equipmentDef } from './equipmentLibrary';
 import { fetchCategoryPickerModels } from '../simulator/services/techDatabaseApi';
+import UnitAnalysisModal, { hasAnalysis } from './UnitAnalysisModal';
+
+// One-line, equipment-specific guidance shown the first time you select each
+// kind of unit (once per session). Generic across H₂, CCUS, and future units.
+const EQUIPMENT_TIPS = {
+  power_source:       'Set plant capacity and capacity factor. Open the analysis for its 24 h generation profile.',
+  water_source:       'A supply node — no parameters; it feeds water to the electrolyzer.',
+  flue_gas_source:    'Set capacity and CO₂ intensity — this sets how much CO₂ enters the capture chain.',
+  electrolyzer_pem:   'Pick a Catalogue electrolyzer, then tune operating temperature and nominal efficiency. Analysis shows the partial-load efficiency curve.',
+  fuel_cell_pem:      'Set nominal efficiency and operating pressure. Analysis shows part-load efficiency and power.',
+  compressor:         'Set target pressure and isentropic efficiency — these drive the parasitic power draw.',
+  co2_absorber_amine: 'Set capture rate and reboiler energy — the core CCS energy/capture trade-off.',
+  solvent_stripper:   'Set reboiler temperature and thermal efficiency — the solvent regeneration duty.',
+  co2_compressor:     'Set the pipeline target pressure and stages for CO₂ transport/injection.',
+  h2_tank:            'Set max pressure and round-trip efficiency — buffers H₂ between production and use.',
+  co2_geological_storage: 'Set injection rate and reservoir conditions for permanent CO₂ storage.',
+  grid_sink:          'A terminal load — it consumes the delivered electricity.',
+};
+const _seenTips = new Set();   // per-session: show each equipment tip once
 
 export default function UnitInspector({ unit, onChange, onDelete }) {
   const def = unit ? equipmentDef(unit.equipment_type) : null;
   const [techs, setTechs] = useState([]);
   const [loadingTechs, setLoadingTechs] = useState(false);
   const [newCond, setNewCond] = useState({ key: '', value: '', unit: '' });
+  const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [showTip, setShowTip] = useState(false);
+
+  // Show the equipment-specific coachmark once per type per session on selection.
+  useEffect(() => {
+    setShowTip(!!unit && !_seenTips.has(unit.equipment_type) && !!EQUIPMENT_TIPS[unit.equipment_type]);
+  }, [unit?.id, unit?.equipment_type]);
+  const dismissTip = () => { if (unit) _seenTips.add(unit.equipment_type); setShowTip(false); };
 
   // Load catalogue Technologies for this equipment's category
   useEffect(() => {
@@ -33,7 +60,7 @@ export default function UnitInspector({ unit, onChange, onDelete }) {
 
   if (!unit) {
     return (
-      <aside className="w-72 shrink-0 border-l border-outline-variant/20 bg-surface-container-lowest p-5">
+      <aside data-tour="inspector" className="w-72 shrink-0 border-l border-outline-variant/20 bg-surface-container-lowest p-5">
         <p className="text-sm text-on-surface-variant">Select a unit to edit its technology and operating conditions.</p>
       </aside>
     );
@@ -67,7 +94,7 @@ export default function UnitInspector({ unit, onChange, onDelete }) {
   };
 
   return (
-    <aside className="w-72 shrink-0 border-l border-outline-variant/20 bg-surface-container-lowest flex flex-col overflow-hidden">
+    <aside data-tour="inspector" className="w-72 shrink-0 border-l border-outline-variant/20 bg-surface-container-lowest flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
         <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Unit</span>
         <button onClick={onDelete} title="Delete unit"
@@ -77,6 +104,20 @@ export default function UnitInspector({ unit, onChange, onDelete }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {/* Equipment-specific coachmark (shown once per type per session) */}
+        {showTip && (
+          <div className="flex gap-2 rounded-lg bg-primary/5 border border-primary/20 p-3">
+            <FiInfo className="text-primary shrink-0 mt-0.5" size={14} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold text-primary mb-0.5">{def.label}</p>
+              <p className="text-[11px] text-on-surface-variant leading-relaxed">{EQUIPMENT_TIPS[unit.equipment_type]}</p>
+            </div>
+            <button onClick={dismissTip} title="Dismiss" className="text-on-surface-variant/60 hover:text-on-surface shrink-0">
+              <FiX size={13} />
+            </button>
+          </div>
+        )}
+
         {/* Name */}
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Name</label>
@@ -128,6 +169,17 @@ export default function UnitInspector({ unit, onChange, onDelete }) {
           )}
         </div>
 
+        {/* Analysis charts — reuses the detailed simulator panels */}
+        {hasAnalysis(unit.equipment_type) && (
+          <button
+            data-tour="analyze"
+            onClick={() => setAnalysisOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold
+                       technical-gradient text-on-primary shadow-sm hover:shadow transition-all">
+            <FiBarChart2 size={13} /> View analysis charts
+          </button>
+        )}
+
         {/* Operating conditions */}
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1.5">Operating Conditions</label>
@@ -176,6 +228,13 @@ export default function UnitInspector({ unit, onChange, onDelete }) {
           </div>
         </div>
       </div>
+      <UnitAnalysisModal
+        open={analysisOpen}
+        unit={unit}
+        techModel={chosen}
+        genCapacityKw={chosen?.capacity_kw}
+        onClose={() => setAnalysisOpen(false)}
+      />
     </aside>
   );
 }

@@ -210,7 +210,7 @@ const ProcessCanvas = forwardRef(function ProcessCanvas({ initialProcess, onDirt
   }), [nodes, edges, setNodes, markDirty]);
 
   return (
-    <div className="flex-1 flex min-w-0">
+    <div className="flex-1 flex min-w-0" data-tour="canvas">
       <div className="flex-1 relative min-w-0">
         {error && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-lg

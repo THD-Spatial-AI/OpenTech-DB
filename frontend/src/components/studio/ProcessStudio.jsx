@@ -17,7 +17,7 @@ import ReactECharts from 'echarts-for-react';
 import {
   FiEdit3, FiPlus, FiSave, FiArrowLeft, FiCheckCircle, FiBox, FiLayers,
   FiPlay, FiLoader, FiX, FiAlertCircle, FiUploadCloud, FiGitBranch, FiCheck,
-  FiActivity,
+  FiActivity, FiHelpCircle,
 } from 'react-icons/fi';
 import {
   listProcesses, getProcess, submitProcess, listSubmissions, reviewSubmission,
@@ -25,6 +25,21 @@ import {
 import { runProcessSimulation } from './services/processSimApi';
 import { PALETTE_GROUPS } from './equipmentLibrary';
 import ProcessCanvas from './ProcessCanvas';
+import StudioTour from './StudioTour';
+
+const TOUR_SEEN_KEY = 'otdb_studio_tour_v1';
+const STUDIO_STEPS = [
+  { selector: '[data-tour="palette"]', title: 'Add equipment',
+    body: 'Build your process by adding units — sources, conversion, storage, sinks. Click an item to drop it on the canvas.' },
+  { selector: '[data-tour="canvas"]', title: 'Wire the flow',
+    body: 'Drag from a unit’s coloured OUT port to another’s IN port — only matching carriers connect. Click a unit to select it.' },
+  { selector: '[data-tour="inspector"]', title: 'Edit a unit',
+    body: 'With a unit selected, choose its Catalogue technology, set operating conditions (temperature, pressure, load…), and open its analysis charts.' },
+  { selector: '[data-tour="run"]', title: 'Simulate',
+    body: 'Run the process — it’s queued and simulated; KPIs and dynamic traces appear below.' },
+  { selector: '[data-tour="publish"]', title: 'Save & contribute',
+    body: 'Save a private draft, or Publish your process for review to add it to the shared catalogue.' },
+];
 
 const DRAFTS_KEY = 'otdb_process_drafts';
 const slugify = (s) => (s || 'untitled').toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'untitled';
@@ -46,6 +61,7 @@ export default function ProcessStudio() {
   const [dirty, setDirty] = useState(false);
   const [toast, setToast] = useState(null);
   const [sim, setSim] = useState({ status: 'idle', result: null, error: null }); // idle|running|done|error
+  const [tourOpen, setTourOpen] = useState(false);
   const canvasRef = useRef(null);
 
   const flash = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
@@ -76,6 +92,12 @@ export default function ProcessStudio() {
     setDirty(false);
     setSim({ status: 'idle', result: null, error: null });
     setMode('build');
+    // First time in the builder → show the guided tour (once). A short delay
+    // lets the Build layout mount so the tour can measure its targets.
+    if (!localStorage.getItem(TOUR_SEEN_KEY)) {
+      localStorage.setItem(TOUR_SEEN_KEY, '1');
+      setTimeout(() => setTourOpen(true), 500);
+    }
   }, []);
 
   const newProcess = useCallback(() => {
@@ -129,6 +151,10 @@ export default function ProcessStudio() {
         ) : (
           <div className="ml-auto flex items-center gap-2">
             {dirty && <span className="text-[11px] text-tertiary font-medium">● unsaved</span>}
+            <button onClick={() => setTourOpen(true)} title="Guided tour"
+              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors">
+              <FiHelpCircle size={16} />
+            </button>
             <button onClick={() => setMode('browse')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors">
               <FiArrowLeft size={14} /> Browse
@@ -137,11 +163,11 @@ export default function ProcessStudio() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-on-surface border border-outline-variant/40 hover:bg-surface-container transition-colors">
               <FiSave size={14} /> Save Draft
             </button>
-            <button onClick={publish} disabled={publishing}
+            <button data-tour="publish" onClick={publish} disabled={publishing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-on-surface border border-outline-variant/40 hover:bg-surface-container transition-colors disabled:opacity-60">
               {publishing ? <FiLoader size={14} className="animate-spin" /> : <FiUploadCloud size={14} />} Publish
             </button>
-            <button onClick={runSim} disabled={sim.status === 'running'}
+            <button data-tour="run" onClick={runSim} disabled={sim.status === 'running'}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold technical-gradient text-on-primary shadow-sm hover:shadow-md transition-all disabled:opacity-60">
               {sim.status === 'running' ? <FiLoader size={14} className="animate-spin" /> : <FiPlay size={14} />}
               {sim.status === 'running'
@@ -165,6 +191,10 @@ export default function ProcessStudio() {
         : <BuildView meta={meta} setMeta={setMeta} initialProcess={initialProcess}
                      canvasKey={canvasKey} canvasRef={canvasRef} onDirty={() => setDirty(true)}
                      sim={sim} onCloseResults={() => setSim({ status: 'idle', result: null, error: null })} />}
+
+      {tourOpen && mode === 'build' && (
+        <StudioTour steps={STUDIO_STEPS} onClose={() => setTourOpen(false)} />
+      )}
     </div>
   );
 }
@@ -333,7 +363,7 @@ function BuildView({ meta, setMeta, initialProcess, canvasKey, canvasRef, onDirt
     <div className="flex-1 flex flex-col min-h-0">
     <div className="flex-1 flex min-h-0">
       {/* Palette */}
-      <aside className="w-52 shrink-0 border-r border-outline-variant/20 bg-surface-container-lowest overflow-y-auto p-3">
+      <aside data-tour="palette" className="w-52 shrink-0 border-r border-outline-variant/20 bg-surface-container-lowest overflow-y-auto p-3">
         <div className="mb-4">
           <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Process name</label>
           <input

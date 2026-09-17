@@ -11,6 +11,12 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 # ─── Runtime stage ────────────────────────────────────────────────────────────
 FROM python:3.11-slim
 
+# Apply OS security patches before anything else.
+# Specifically resolves CVE-2026-13221, CVE-2026-42496, CVE-2026-8376 in perl-base.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 # Non-root user for security
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 

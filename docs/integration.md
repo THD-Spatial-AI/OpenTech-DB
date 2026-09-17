@@ -81,7 +81,7 @@ curl "http://localhost:8000/api/v1/technologies?category=generation&renewable=tr
 }
 ```
 
-The `id` (UUID) is what you use for all follow-up calls. The `slug` is the stable key used in framework exports.
+The `id` (UUID) and `slug` are both usable for all follow-up calls. The slug is also accepted directly as the path segment.
 
 ---
 
@@ -91,11 +91,20 @@ The `id` (UUID) is what you use for all follow-up calls. The `slug` is the stabl
 GET /api/v1/technologies/{id}
 ```
 
-Add `?include_profile_values=false` to skip large hourly arrays (up to 8760 floats) when you only need metadata.
+`{id}` accepts a **UUID**, a **slug** (catalogue `technology_id`), or a **display name** (case-insensitive). All three are equivalent:
 
 ```bash
+# By slug (most readable)
+curl "http://localhost:8000/api/v1/technologies/ccgt"
+
+# By display name
+curl "http://localhost:8000/api/v1/technologies/Combined%20Cycle%20Gas%20Turbine"
+
+# By UUID (stable across renames)
 curl "http://localhost:8000/api/v1/technologies/3f4a...?include_profile_values=false"
 ```
+
+Add `?include_profile_values=false` to skip large hourly arrays (up to 8760 floats) when you only need metadata.
 
 ---
 
@@ -104,6 +113,8 @@ curl "http://localhost:8000/api/v1/technologies/3f4a...?include_profile_values=f
 ```http
 GET /api/v1/technologies/{id}/instances
 ```
+
+`{id}` here accepts the same slug / display name / UUID as in Step 2.
 
 Optional filter: `?lifecycle=commercial` (also: `demonstration`, `projection`, `retired`).
 
@@ -160,10 +171,12 @@ for name, params in resp.json()["technologies"].items():
     network.add(ct, name, **{k: v for k, v in params.items() if not k.startswith("_")})
 ```
 
-Single technology:
+Single technology (slug, name, or UUID all work):
 
 ```http
-GET /api/v1/technologies/{id}/pypsa?discount_rate=0.05
+GET /api/v1/technologies/ccgt/pypsa?discount_rate=0.05
+GET /api/v1/technologies/onshore_wind/pypsa
+GET /api/v1/technologies/Lithium-Ion%20Battery/pypsa
 ```
 
 ### Calliope
@@ -198,10 +211,10 @@ import:
   - "locations.yaml"
 ```
 
-You can also POST constraint overrides without modifying the database:
+You can also POST constraint overrides without modifying the database (slug/name/UUID accepted):
 
 ```http
-POST /api/v1/technologies/{id}/calliope
+POST /api/v1/technologies/ccgt/calliope
 ```
 
 ```json
@@ -349,9 +362,18 @@ class OpenTechClient:
 
 ```
 GET /technologies?input_carrier=solar_irradiance&renewable=true
-→ collect UUIDs
-GET /technologies/{id}/instances?lifecycle=commercial
+→ read slug from each result
+GET /technologies/pv_utility/instances?lifecycle=commercial
 → read capex_per_kw.value, capacity_factor.value
+```
+
+**"Fetch a specific technology by name or slug"**
+
+```
+GET /technologies/ccgt
+GET /technologies/onshore_wind
+GET /technologies/Lithium-Ion%20Battery
+→ all resolve without needing to look up the UUID first
 ```
 
 **"Populate a PyPSA model with all storage techs"**
@@ -359,6 +381,13 @@ GET /technologies/{id}/instances?lifecycle=commercial
 ```
 GET /technologies/pypsa?category=storage&discount_rate=0.05
 → one call, ready to add to network
+```
+
+**"Get Calliope config for a single technology you know by name"**
+
+```
+GET /technologies/li_ion_bess/calliope?version=0.7
+GET /technologies/offshore_wind/calliope
 ```
 
 **"Check which technologies have the most data coverage"**

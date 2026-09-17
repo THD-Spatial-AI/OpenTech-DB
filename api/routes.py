@@ -28,6 +28,18 @@ GET  /technologies/category/{cat}                  → technologies by category
 GET  /technologies/{tech_id}/instances             → all equipment instances
 GET  /technologies/{tech_id}/instances/{iid}       → a specific instance
 
+{tech_id} resolution order (all single-technology endpoints)
+------------------------------------------------------------
+1. UUID string   — e.g. "3f4a9c12-..."
+2. Slug          — the catalogue technology_id (e.g. "ccgt", "onshore_wind",
+                   "li_ion_bess", "hvdc_line") stored in technology_type /
+                   storage_type / conversion_type / transmission_type
+3. Display name  — case-insensitive match on the technology name field
+                   (e.g. "Combined Cycle Gas Turbine", "Onshore Wind")
+
+All three forms are interchangeable. UUIDs are the stable long-term key; slugs
+are the most human-readable.  Name lookup is provided for ad-hoc querying.
+
 Bulk framework exports are keyed by the stable catalogue ``technology_id``
 slug (falling back to a sanitised display name) and support ETag /
 If-None-Match conditional requests.

@@ -17,7 +17,8 @@
       "equipment_type": "power_source",
       "technology_ref": "onshore_wind",
       "operating_conditions": {
-        "capacity_kw": { "value": 10000, "unit": "kW", "source": "OpenTech-DB seed" }
+        "capacity_kw": { "value": 10000, "unit": "kW", "source": "OpenTech-DB seed" },
+        "capacity_factor": { "value": 0.40, "unit": "fraction", "source": "Typical onshore wind CF (~40%)" }
       },
       "ports": [
         { "id": "power_out", "carrier": "electricity", "direction": "out", "label": "AC power" }

@@ -13,11 +13,10 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import ReactECharts from 'echarts-for-react';
 import {
   FiEdit3, FiPlus, FiSave, FiArrowLeft, FiCheckCircle, FiBox, FiLayers,
-  FiPlay, FiLoader, FiX, FiAlertCircle, FiUploadCloud, FiGitBranch, FiCheck,
-  FiActivity, FiHelpCircle,
+  FiPlay, FiLoader, FiX, FiAlertCircle, FiAlertTriangle, FiUploadCloud, FiGitBranch, FiCheck,
+  FiHelpCircle, FiBarChart2,
 } from 'react-icons/fi';
 import {
   listProcesses, getProcess, submitProcess, listSubmissions, reviewSubmission,
@@ -26,6 +25,7 @@ import {
 import { runProcessSimulation } from './services/processSimApi';
 import { PALETTE_GROUPS } from './equipmentLibrary';
 import ProcessCanvas from './ProcessCanvas';
+import ResultsModal from './ResultsModal';
 import StudioTour from './StudioTour';
 
 const TOUR_SEEN_KEY = 'otdb_studio_tour_v1';
@@ -62,16 +62,32 @@ export default function ProcessStudio() {
   const [dirty, setDirty] = useState(false);
   const [toast, setToast] = useState(null);
   const [sim, setSim] = useState({ status: 'idle', result: null, error: null }); // idle|running|done|error
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [showRunHint, setShowRunHint] = useState(false);
   const runHintSeen = useRef(false);
   const canvasRef = useRef(null);
+
+  // Live validation (ADR-0006). Re-checked after edits + when a process loads.
+  const [validation, setValidation] = useState(null);   // {valid, errors, warnings} | null
+  const [validationOpen, setValidationOpen] = useState(false);
+  const validateTimer = useRef(null);
+  const runValidation = useCallback(() => {
+    const g = canvasRef.current?.getProcess();
+    if (!g || g.units.length === 0) { setValidation(null); return; }
+    validateProcess(g).then(setValidation).catch(() => setValidation(null));
+  }, []);
+  const scheduleValidation = useCallback(() => {
+    clearTimeout(validateTimer.current);
+    validateTimer.current = setTimeout(runValidation, 500);
+  }, [runValidation]);
 
   // Nudge to Run once the user has wired a runnable chain (source + ≥1 stream),
   // shown once per session and cleared when a simulation starts.
   const SOURCE_TYPES = ['power_source', 'flue_gas_source', 'water_source'];
   const handleDirty = useCallback(() => {
     setDirty(true);
+    scheduleValidation();
     if (runHintSeen.current || sim.status !== 'idle') return;
     const g = canvasRef.current?.getProcess();
     if (g && g.units.length >= 2 && g.streams.length >= 1
@@ -79,7 +95,15 @@ export default function ProcessStudio() {
       runHintSeen.current = true;
       setShowRunHint(true);
     }
-  }, [sim.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sim.status, scheduleValidation]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Validate whenever a process is (re)loaded into the builder.
+  useEffect(() => {
+    if (mode !== 'build') { setValidation(null); return undefined; }
+    setValidation(null);
+    const t = setTimeout(runValidation, 700);
+    return () => clearTimeout(t);
+  }, [canvasKey, mode, runValidation]);
 
   const flash = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
@@ -93,11 +117,25 @@ export default function ProcessStudio() {
         onStatus: (job) => setSim((s) => (s.status === 'running'
           ? { ...s, phase: job.status, position: job.position } : s)),
       });
-      setSim({ status: 'done', result, error: null });
+      setSim({ status: 'done', result, graph, error: null });
+      setResultsOpen(true);
     } catch (e) {
       setSim({ status: 'error', result: null, error: e.message });
+      flash(`Simulation failed: ${e.message}`);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveResults = useCallback((result) => {
+    try {
+      const graph = canvasRef.current?.getProcess();
+      const key = 'otdb_saved_results';
+      const list = JSON.parse(localStorage.getItem(key) ?? '[]');
+      const entry = { slug: meta.slug || slugify(meta.name), name: meta.name, savedAt: Date.now(), result };
+      localStorage.setItem(key, JSON.stringify([entry, ...list.filter((e) => e.slug !== entry.slug)].slice(0, 20)));
+      if (graph) { /* snapshot is result-only; graph stays in the draft */ }
+      flash('Results saved');
+    } catch { flash('Could not save results'); }
+  }, [meta]);
 
   const openProcess = useCallback((proc) => {
     setMeta({
@@ -169,6 +207,8 @@ export default function ProcessStudio() {
         ) : (
           <div className="ml-auto flex items-center gap-2">
             {dirty && <span className="text-[11px] text-tertiary font-medium">● unsaved</span>}
+            <ValidationBadge validation={validation} open={validationOpen}
+              onToggle={() => setValidationOpen((o) => !o)} />
             <button onClick={() => setTourOpen(true)} title="Guided tour"
               className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors">
               <FiHelpCircle size={16} />
@@ -181,12 +221,22 @@ export default function ProcessStudio() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-on-surface border border-outline-variant/40 hover:bg-surface-container transition-colors">
               <FiSave size={14} /> Save Draft
             </button>
-            <button data-tour="publish" onClick={publish} disabled={publishing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-on-surface border border-outline-variant/40 hover:bg-surface-container transition-colors disabled:opacity-60">
+            {sim.status === 'done' && (
+              <button onClick={() => setResultsOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-primary border border-primary/40 hover:bg-primary/5 transition-colors">
+                <FiBarChart2 size={14} /> Results
+              </button>
+            )}
+            <button data-tour="publish" onClick={publish}
+              disabled={publishing || (validation && !validation.valid)}
+              title={validation && !validation.valid ? 'Fix the validation errors before publishing.' : undefined}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-on-surface border border-outline-variant/40 hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {publishing ? <FiLoader size={14} className="animate-spin" /> : <FiUploadCloud size={14} />} Publish
             </button>
-            <button data-tour="run" onClick={runSim} disabled={sim.status === 'running'}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold technical-gradient text-on-primary shadow-sm hover:shadow-md transition-all disabled:opacity-60">
+            <button data-tour="run" onClick={runSim}
+              disabled={sim.status === 'running' || (validation && !validation.valid)}
+              title={validation && !validation.valid ? 'Fix the validation errors before running.' : undefined}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold technical-gradient text-on-primary shadow-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed">
               {sim.status === 'running' ? <FiLoader size={14} className="animate-spin" /> : <FiPlay size={14} />}
               {sim.status === 'running'
                 ? (sim.phase === 'queued'
@@ -207,8 +257,7 @@ export default function ProcessStudio() {
       {mode === 'browse'
         ? <BrowseView onOpen={openProcess} />
         : <BuildView meta={meta} setMeta={setMeta} initialProcess={initialProcess}
-                     canvasKey={canvasKey} canvasRef={canvasRef} onDirty={handleDirty}
-                     sim={sim} onCloseResults={() => setSim({ status: 'idle', result: null, error: null })} />}
+                     canvasKey={canvasKey} canvasRef={canvasRef} onDirty={handleDirty} sim={sim} />}
 
       {showRunHint && mode === 'build' && sim.status === 'idle' && (
         <div className="fixed z-[90] top-[104px] right-6 w-64 rounded-xl technical-gradient text-on-primary shadow-2xl p-3 animate-slideInRight">
@@ -226,6 +275,9 @@ export default function ProcessStudio() {
       {tourOpen && mode === 'build' && (
         <StudioTour steps={STUDIO_STEPS} onClose={() => setTourOpen(false)} />
       )}
+
+      <ResultsModal sim={sim} open={resultsOpen && sim.status === 'done'}
+        onClose={() => setResultsOpen(false)} onSave={saveResults} />
     </div>
   );
 }
@@ -388,7 +440,7 @@ function ProcessCard({ p, isDraft, onOpen, onDelete, onFork }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Build
 // ─────────────────────────────────────────────────────────────────────────────
-function BuildView({ meta, setMeta, initialProcess, canvasKey, canvasRef, onDirty, sim, onCloseResults }) {
+function BuildView({ meta, setMeta, initialProcess, canvasKey, canvasRef, onDirty, sim }) {
   const addUnit = (type) => canvasRef.current?.addUnit(type);
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -432,77 +484,9 @@ function BuildView({ meta, setMeta, initialProcess, canvasKey, canvasRef, onDirt
       </aside>
 
       {/* Canvas (+ inspector) — keyed so a fresh Process reseeds the graph */}
-      <ProcessCanvas key={canvasKey} ref={canvasRef} initialProcess={initialProcess} onDirty={onDirty} />
+      <ProcessCanvas key={canvasKey} ref={canvasRef} initialProcess={initialProcess} onDirty={onDirty}
+        results={sim.status === 'done' ? sim.result : null} />
     </div>
-
-    {(sim.status === 'done' || sim.status === 'error') && (
-      <ResultsBar sim={sim} onClose={onCloseResults} />
-    )}
-    </div>
-  );
-}
-
-// KPI-friendly labels/units for the steady-state engine output.
-const KPI_META = {
-  source_power_kw:          { label: 'Source Power', fmt: (v) => fmtPower(v) },
-  output_power_kw:          { label: 'Output Power', fmt: (v) => fmtPower(v) },
-  round_trip_efficiency_pct:{ label: 'Round-trip η', fmt: (v) => `${v} %` },
-  h2_production_kg_h:       { label: 'H₂ Production', fmt: (v) => `${v} kg/h` },
-  co2_captured_kg_h:        { label: 'CO₂ Captured', fmt: (v) => `${v} kg/h` },
-  co2_captured_mtco2_yr:    { label: 'CO₂ Captured', fmt: (v) => `${v} Mt/yr` },
-  parasitic_load_kw:        { label: 'Parasitic Load', fmt: (v) => fmtPower(v) },
-};
-function fmtPower(v) { return v >= 1000 ? `${(v / 1000).toFixed(2)} MW` : `${v} kW`; }
-
-function ResultsBar({ sim, onClose }) {
-  if (sim.status === 'error') {
-    return (
-      <div className="shrink-0 border-t border-outline-variant/20 bg-surface-container-lowest px-6 py-3 flex items-center gap-2">
-        <FiAlertCircle className="text-tertiary shrink-0" size={16} />
-        <span className="text-sm text-on-surface">Simulation failed: {sim.error}</span>
-        <button onClick={onClose} className="ml-auto text-on-surface-variant hover:text-on-surface"><FiX size={15} /></button>
-      </div>
-    );
-  }
-  const kpi = sim.result?.kpi ?? {};
-  const entries = Object.entries(kpi).filter(([k]) => KPI_META[k]);
-  const ts = sim.result?.time_series;
-  const hasTraces = ts && Array.isArray(ts.series) && ts.series.length > 0;
-  return (
-    <div className="shrink-0 border-t border-outline-variant/20 bg-surface-container-lowest px-6 py-3 max-h-[42%] overflow-y-auto">
-      <div className="flex items-center gap-2 mb-2">
-        <FiCheckCircle className="text-primary" size={15} />
-        <span className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Simulation Results</span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant">
-          engine: {sim.result?.engine ?? '—'}
-        </span>
-        <button onClick={onClose} className="ml-auto text-on-surface-variant hover:text-on-surface"><FiX size={15} /></button>
-      </div>
-      {entries.length === 0 ? (
-        <p className="text-xs text-on-surface-variant">No KPIs — add sources and connect the chain, then run again.</p>
-      ) : (
-        <div className="flex flex-wrap gap-3">
-          {entries.map(([k, v]) => {
-            const meta = KPI_META[k];
-            return (
-              <div key={k} className="rounded-lg border border-outline-variant/30 bg-surface-container px-3 py-2 min-w-[110px]">
-                <p className="text-[9px] uppercase tracking-wide text-on-surface-variant">{meta.label}</p>
-                <p className="font-headline text-base font-bold text-on-surface">{meta.fmt(v)}</p>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {hasTraces && (
-        <div className="mt-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <FiActivity size={12} className="text-primary" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Dynamic Traces</span>
-          </div>
-          <ReactECharts option={buildTraceOption(ts)} style={{ height: 170 }} notMerge lazyUpdate />
-        </div>
-      )}
     </div>
   );
 }
@@ -544,19 +528,3 @@ function IssueRow({ err, issue }) {
   );
 }
 
-function buildTraceOption(ts) {
-  const fmtT = (t) => (t >= 3600 ? `${(t / 3600).toFixed(1)}h` : `${Math.round(t / 60)}m`);
-  return {
-    animation: false,
-    color: ['#4d4b9e', '#943700', '#5b5d72', '#6f7dd6'],
-    grid: { top: 22, bottom: 34, left: 52, right: 16 },
-    tooltip: { trigger: 'axis' },
-    legend: { data: ts.series.map((s) => s.name), bottom: 0, textStyle: { fontSize: 10 } },
-    xAxis: { type: 'category', data: (ts.time_s ?? []).map(fmtT), axisLabel: { fontSize: 10 } },
-    yAxis: { type: 'value', axisLabel: { fontSize: 10 }, name: ts.series[0]?.unit, nameTextStyle: { fontSize: 10 } },
-    series: ts.series.map((s) => ({
-      name: s.name, type: 'line', smooth: true, symbol: 'none',
-      data: s.data, areaStyle: { opacity: 0.08 },
-    })),
-  };
-}

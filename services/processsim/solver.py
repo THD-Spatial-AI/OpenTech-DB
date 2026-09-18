@@ -16,12 +16,42 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any
 
-from components import COMPONENTS, passthrough
+from components import COMPONENTS, passthrough, H2_HHV_KWH_PER_KG
 from catalogue import resolve_tech_params
 
 
 class GraphError(ValueError):
     """Raised when the Process graph cannot be solved (e.g. it contains a cycle)."""
+
+
+# Ordered canonical energy fields written by the component models. Electricity and
+# hydrogen streams already carry `power_kw`; pure-mass carriers (water, CO₂) have
+# none and resolve to 0 — they appear in the stream table but not the energy Sankey.
+_ENERGY_FIELDS = ("power_kw", "ch4_kw", "biogas_kw", "fuel_kw", "heat_kw", "flue_kw")
+
+
+def _stream_energy_kw(state: dict) -> float:
+    """Canonical energy content [kW] of a stream state, comparable across carriers."""
+    for k in _ENERGY_FIELDS:
+        v = state.get(k)
+        if v is not None:
+            return float(v)
+    h2 = state.get("h2_kg_h")
+    return float(h2) * H2_HHV_KWH_PER_KG if h2 is not None else 0.0
+
+
+def _delivered_energy_kw(stream: dict, state: dict, unit_result: dict) -> float:
+    """Energy actually transferred on a stream. Electricity is a shared utility: a
+    source broadcasts its capacity onto every branch, so the real delivered power is
+    the *consumer's* draw (avoids double-counting a fanned-out source)."""
+    if state.get("carrier") == "electricity":
+        tr = unit_result.get(stream["target"]["unit_id"], {})
+        draw = tr.get("power_in_kw")
+        if draw is None:
+            draw = tr.get("power_kw")   # compressor drive / grid delivery
+        if draw is not None:
+            return float(draw)
+    return _stream_energy_kw(state)
 
 
 def _unwrap_oc(oc: dict | None) -> dict[str, Any]:
@@ -89,17 +119,61 @@ def simulate(graph: dict) -> dict:
         for s in out_streams[uid]:
             pid = s["source"]["port_id"]
             if pid in outlets:
-                stream_state[s["id"]] = outlets[pid]
+                # copy so fanned-out branches (same port → many targets) stay independent
+                stream_state[s["id"]] = dict(outlets[pid])
+
+    # ── Energy layer: canonical energy_kw per stream + per-unit balance ────────
+    for s in streams:
+        st = stream_state.get(s["id"])
+        if st is not None:
+            st["energy_kw"] = round(_delivered_energy_kw(s, st, unit_result), 1)
+
+    for uid in units:
+        in_kw = sum(stream_state[s["id"]].get("energy_kw", 0.0)
+                    for s in in_streams[uid] if s["id"] in stream_state)
+        out_kw = sum(stream_state[s["id"]].get("energy_kw", 0.0)
+                     for s in out_streams[uid] if s["id"] in stream_state)
+        # loss is only meaningful for a conversion node (energy both in and out)
+        loss = in_kw - out_kw if (in_kw > 0 and out_kw > 0) else 0.0
+        unit_result.setdefault(uid, {})["balance"] = {
+            "in_kw": round(in_kw, 1), "out_kw": round(out_kw, 1),
+            "loss_kw": round(max(loss, 0.0), 1),
+        }
+
+    flows = _flows(units, streams, stream_state)
 
     return {
         "units": unit_result,
         "streams": stream_state,
-        "kpi": _kpi(units, unit_result),
+        "flows": flows,
+        "kpi": _kpi(units, streams, unit_result, stream_state),
         "engine": "steady_state",
     }
 
 
-def _kpi(units: dict[str, dict], results: dict[str, dict]) -> dict:
+def _flows(units: dict[str, dict], streams: list[dict], stream_state: dict[str, dict]) -> list[dict]:
+    """Pre-joined edge list for the Sankey + stream table (graph × computed state)."""
+    def _label(uid: str) -> str:
+        return units.get(uid, {}).get("name") or uid
+
+    out: list[dict] = []
+    for s in streams:
+        st = stream_state.get(s["id"], {})
+        quantity = {k: v for k, v in st.items()
+                    if k not in ("carrier", "energy_kw") and v is not None}
+        out.append({
+            "stream_id": s["id"],
+            "from_unit": s["source"]["unit_id"], "from_label": _label(s["source"]["unit_id"]),
+            "to_unit": s["target"]["unit_id"], "to_label": _label(s["target"]["unit_id"]),
+            "carrier": s.get("carrier") or st.get("carrier"),
+            "energy_kw": st.get("energy_kw", 0.0),
+            "quantity": quantity,
+        })
+    return out
+
+
+def _kpi(units: dict[str, dict], streams: list[dict],
+         results: dict[str, dict], stream_state: dict[str, dict]) -> dict:
     def _sum(pred, key):
         return round(sum(results[uid].get(key, 0) or 0
                          for uid, u in units.items() if pred(u)), 1)
@@ -136,4 +210,20 @@ def _kpi(units: dict[str, dict], results: dict[str, dict]) -> dict:
         kpi["heat_output_kw"] = heat_out
     if methane:
         kpi["methane_output_kw"] = methane
+
+    # ── System energy balance (graph-derived source/sink energy) ──────────────
+    has_in = {s["target"]["unit_id"] for s in streams}
+    has_out = {s["source"]["unit_id"] for s in streams}
+    src_kw = round(sum(stream_state[s["id"]].get("energy_kw", 0.0)
+                       for s in streams if s["source"]["unit_id"] not in has_in
+                       and s["id"] in stream_state), 1)
+    sink_kw = round(sum(stream_state[s["id"]].get("energy_kw", 0.0)
+                        for s in streams if s["target"]["unit_id"] not in has_out
+                        and s["id"] in stream_state), 1)
+    total_loss = round(sum((results[uid].get("balance") or {}).get("loss_kw", 0.0)
+                           for uid in units), 1)
+    if src_kw and sink_kw:
+        kpi["overall_efficiency_pct"] = round(sink_kw / src_kw * 100, 1)
+    if total_loss:
+        kpi["total_loss_kw"] = total_loss
     return kpi

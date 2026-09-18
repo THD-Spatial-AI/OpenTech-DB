@@ -42,6 +42,9 @@ def _flatten(detail: dict) -> dict:
         "capacity_kw": _pv(rep, "capacity_kw"),
         "capex_usd_per_kw": _pv(rep, "capex_per_kw"),
         "lifetime_yr": _pv(rep, "economic_lifetime_yr"),
+        "opex_fixed_per_kw_yr": _pv(rep, "opex_fixed_per_kw_yr"),
+        "opex_variable_per_mwh": _pv(rep, "opex_variable_per_mwh"),
+        "discount_rate": _pv(rep, "discount_rate"),
     }
 
 
@@ -72,7 +75,8 @@ def _load_all() -> dict[str, dict]:
 
 
 def resolve_tech_params(technology_ref: str | None) -> dict:
-    """Return {efficiency_pct, capacity_kw, capex_usd_per_kw, lifetime_yr} for a
+    """Return the flattened params ({efficiency_pct, capacity_kw, capex_usd_per_kw,
+    lifetime_yr, opex_fixed_per_kw_yr, opex_variable_per_mwh, discount_rate}) for a
     Technology slug, or {} when there is no reference / it cannot be resolved."""
     if not technology_ref:
         return {}

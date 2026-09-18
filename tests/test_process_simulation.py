@@ -38,12 +38,13 @@ def _isolate_catalogue(monkeypatch):
 # ── Seed processes reproduce through the general engine ──────────────────────
 
 def test_h2_seed_kpis():
+    # Onshore wind runs at ~40% capacity factor → 10 MW nameplate delivers ~4 MW average.
     r = simulate(_seed("h2_power_plant"))
     k = r["kpi"]
     assert r["engine"] == "steady_state"
-    assert k["source_power_kw"] == pytest.approx(10000, rel=0.01)
-    assert k["h2_production_kg_h"] == pytest.approx(177.7, rel=0.02)
-    assert 35 < k["round_trip_efficiency_pct"] < 45
+    assert k["source_power_kw"] == pytest.approx(4000, rel=0.01)
+    assert k["h2_production_kg_h"] == pytest.approx(71.1, rel=0.02)
+    assert 35 < k["round_trip_efficiency_pct"] < 45   # ratio preserved under the CF scaling
     assert k["parasitic_load_kw"] > 0
 
 
@@ -59,6 +60,45 @@ def test_every_unit_has_a_result():
         seed = _seed(slug)
         r = simulate(seed)
         assert set(r["units"]) == {u["id"] for u in seed["units"]}
+
+
+# ── Energy layer (canonical energy_kw / balance / flows / efficiency) ─────────
+
+def test_energy_layer_annotates_streams_and_balance():
+    r = simulate(_seed("power_to_gas"))
+    # every stream carries a canonical energy_kw
+    for st in r["streams"].values():
+        assert "energy_kw" in st
+    # every unit carries an energy balance
+    for res in r["units"].values():
+        bal = res["balance"]
+        assert {"in_kw", "out_kw", "loss_kw"} <= set(bal)
+        assert bal["loss_kw"] >= 0
+
+
+def test_flows_are_prejoined():
+    seed = _seed("power_to_gas")
+    r = simulate(seed)
+    assert len(r["flows"]) == len(seed["streams"])
+    f = r["flows"][0]
+    assert {"from_label", "to_label", "carrier", "energy_kw", "quantity"} <= set(f)
+
+
+def test_overall_efficiency_is_sensible():
+    assert simulate(_seed("biomass_chp"))["kpi"]["overall_efficiency_pct"] == pytest.approx(85.0, abs=1.0)
+    assert simulate(_seed("power_to_gas"))["kpi"]["overall_efficiency_pct"] == pytest.approx(39.3, abs=1.0)
+
+
+def test_fanned_out_electricity_is_not_double_counted():
+    # h2 seed: the power source feeds BOTH the electrolyzer (10 MW) and the
+    # compressor drive (<1 MW). Each branch must reflect the consumer's real draw.
+    r = simulate(_seed("h2_power_plant"))
+    elec = {(f["from_unit"], f["to_unit"]): f["energy_kw"]
+            for f in r["flows"] if f["carrier"] == "electricity"}
+    to_elz = elec[("power_source", "electrolyzer")]
+    to_comp = elec[("power_source", "compressor")]
+    assert to_elz == pytest.approx(4000, rel=0.01)   # electrolyzer draw at 40% CF
+    assert to_comp < 1000
 
 
 # ── Graph validation ─────────────────────────────────────────────────────────

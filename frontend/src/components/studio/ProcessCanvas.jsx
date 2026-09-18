@@ -18,10 +18,25 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { equipmentDef, carrierColor } from './equipmentLibrary';
+import { fmtPower } from './resultsInsights';
 import UnitInspector from './UnitInspector';
 
 let _uidCounter = 0;
 const uid = (prefix) => `${prefix}_${Date.now().toString(36)}${(_uidCounter++).toString(36)}`;
+
+// Headline metric shown as a node badge when simulation results are overlaid.
+const _fmtFlow = (v) => `${(+v).toFixed(+v < 10 ? 1 : 0)} kg/h`;
+const NODE_METRICS = [
+  ['power_kw', fmtPower], ['ch4_kw', fmtPower], ['heat_kw', fmtPower],
+  ['biogas_kw', fmtPower], ['fuel_input_kw', fmtPower],
+  ['h2_kg_h', _fmtFlow], ['co2_captured_kg_h', _fmtFlow], ['co2_kg_h', _fmtFlow],
+];
+function nodeBadge(res) {
+  if (!res) return null;
+  for (const [k, fmt] of NODE_METRICS) if (res[k] != null) return fmt(res[k]);
+  const out = res.balance?.out_kw;
+  return out ? fmtPower(out) : null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Custom node: a Unit with typed Port handles
@@ -36,9 +51,14 @@ const UnitNode = memo(function UnitNode({ data, selected }) {
 
   return (
     <div
-      className={`rounded-xl bg-surface-container-lowest border shadow-sm w-48 transition-all
+      className={`relative rounded-xl bg-surface-container-lowest border shadow-sm w-48 transition-all
         ${selected ? 'border-primary ring-2 ring-primary/30' : 'border-outline-variant/40'}`}
     >
+      {data.badge && (
+        <span className="absolute -top-2.5 -right-2 z-10 px-1.5 py-0.5 rounded-full bg-primary text-on-primary text-[9px] font-bold shadow-md whitespace-nowrap">
+          {data.badge}
+        </span>
+      )}
       {ins.map((port, i) => (
         <Handle
           key={port.id} type="target" position={Position.Left} id={port.id}
@@ -112,7 +132,7 @@ function streamToEdge(s) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Canvas
 // ─────────────────────────────────────────────────────────────────────────────
-const ProcessCanvas = forwardRef(function ProcessCanvas({ initialProcess, onDirty }, ref) {
+const ProcessCanvas = forwardRef(function ProcessCanvas({ initialProcess, onDirty, results }, ref) {
   const [nodes, setNodes, onNodesChange] = useNodesState(
     (initialProcess?.units ?? []).map(unitToNode)
   );
@@ -121,7 +141,36 @@ const ProcessCanvas = forwardRef(function ProcessCanvas({ initialProcess, onDirt
   );
   const [selectedId, setSelectedId] = useState(null);
   const [error, setError] = useState(null);
+  const [showOverlay, setShowOverlay] = useState(true);
   const errTimer = useRef(null);
+
+  // ── Simulation-result overlay (edge flow labels/width + node badges) ────────
+  const overlayOn = showOverlay && !!results;
+  const energyByStream = useMemo(() => {
+    const m = {};
+    (results?.flows ?? []).forEach((f) => { m[f.stream_id] = f.energy_kw || 0; });
+    return m;
+  }, [results]);
+  const maxEnergy = useMemo(() => Math.max(1, ...Object.values(energyByStream)), [energyByStream]);
+
+  const displayNodes = useMemo(() => (
+    overlayOn ? nodes.map((n) => ({ ...n, data: { ...n.data, badge: nodeBadge(results.units?.[n.id]) } })) : nodes
+  ), [nodes, overlayOn, results]);
+
+  const displayEdges = useMemo(() => {
+    if (!overlayOn) return edges;
+    return edges.map((e) => {
+      const en = energyByStream[e.id] || 0;
+      return {
+        ...e, animated: false,
+        style: { ...e.style, strokeWidth: en > 0 ? 1.5 + (en / maxEnergy) * 6 : 1.5 },
+        label: en > 0 ? fmtPower(en) : undefined,
+        labelStyle: { fontSize: 10, fontWeight: 600, fill: '#1b1b1f' },
+        labelBgStyle: { fill: '#ffffff', fillOpacity: 0.85 },
+        labelBgPadding: [3, 2], labelBgBorderRadius: 3,
+      };
+    });
+  }, [edges, overlayOn, energyByStream, maxEnergy]);
 
   const flash = useCallback((msg) => {
     setError(msg);
@@ -218,8 +267,14 @@ const ProcessCanvas = forwardRef(function ProcessCanvas({ initialProcess, onDirt
             {error}
           </div>
         )}
+        {results && (
+          <button onClick={() => setShowOverlay((v) => !v)}
+            className="absolute top-3 left-3 z-20 px-2.5 py-1.5 rounded-lg bg-surface-container-lowest border border-outline-variant/40 text-xs font-semibold text-on-surface shadow-sm hover:bg-surface-container transition-colors">
+            {showOverlay ? 'Hide results' : 'Show results'}
+          </button>
+        )}
         <ReactFlow
-          nodes={nodes} edges={edges}
+          nodes={displayNodes} edges={displayEdges}
           onNodesChange={(c) => { onNodesChange(c); if (c.some((x) => x.type === 'position' && x.dragging === false)) markDirty(); }}
           onEdgesChange={(c) => { onEdgesChange(c); if (c.some((x) => x.type === 'remove')) markDirty(); }}
           onConnect={onConnect}

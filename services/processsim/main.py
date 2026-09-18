@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 
 from solver import GraphError, simulate
 from catalogue import resolve_tech_params
+from economics import compute_economics
 from jobqueue import JobQueue, QuotaError
 import modelica_compiler
 
@@ -99,12 +100,17 @@ def _free_mb() -> float:
         return float("inf")
 
 
+def _with_economics(result: dict, graph: dict) -> dict:
+    result["economics"] = compute_economics(graph, result.get("units", {}), resolve_tech_params)
+    return result
+
+
 if _MODELICA_ENABLED:
     _engine = modelica_compiler.ModelicaEngine()
-    _run_fn = lambda g: _engine.simulate(g, resolve_tech_params)   # noqa: E731
+    _run_fn = lambda g: _with_economics(_engine.simulate(g, resolve_tech_params), g)  # noqa: E731
     _kill_fn = _engine.kill
 else:
-    _run_fn = lambda g: simulate(g)                                # noqa: E731 — steady-state
+    _run_fn = lambda g: _with_economics(simulate(g), g)            # noqa: E731 — steady-state
     _kill_fn = None
 
 JOBS = JobQueue(_run_fn, _kill_fn, timeout_s=_JOB_TIMEOUT_S,
@@ -181,6 +187,7 @@ async def simulate_process(graph: ProcessGraph):
         try:
             result = modelica_compiler.simulate(payload, resolve_tech_params)
             log.info("OpenModelica simulate: %d units", len(payload["units"]))
+            result["economics"] = compute_economics(payload, result.get("units", {}), resolve_tech_params)
             return result
         except Exception as exc:  # noqa: BLE001
             log.warning("OpenModelica engine failed (%s) — falling back to steady-state", exc)
@@ -192,6 +199,7 @@ async def simulate_process(graph: ProcessGraph):
     except Exception as exc:  # noqa: BLE001
         log.exception("simulation failed")
         raise HTTPException(status_code=500, detail=f"Simulation failed: {exc}")
+    result["economics"] = compute_economics(payload, result.get("units", {}), resolve_tech_params)
     log.info("Steady-state simulate: %d units, %d streams", len(payload["units"]), len(payload["streams"]))
     return result
 

@@ -323,8 +323,8 @@ function EconomicsTab({ econ }) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-on-surface-variant">
-        Assumptions: discount {Math.round((a.discount_rate ?? 0.07) * 100)}% · {a.hours ?? 8760} full-load h/yr
-        <span className="opacity-70"> (per-instance discount rate overrides where present)</span>
+        Assumptions: discount {Math.round((a.discount_rate ?? 0.07) * 100)}% · {a.hours ?? 8760} operating h/yr
+        <span className="opacity-70"> (capacity factor is baked into each source's average power)</span>
       </p>
       {!t ? (
         <Empty text="No priced units — compose catalogue technologies that carry CAPEX/OPEX to see costs." />

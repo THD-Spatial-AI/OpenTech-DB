@@ -49,10 +49,11 @@ def test_h2_seed_kpis():
 
 
 def test_ccs_seed_kpis():
+    # Host CCGT at 85% capacity factor → average capture below nameplate.
     r = simulate(_seed("ccs_amine"))
     k = r["kpi"]
-    assert k["co2_captured_kg_h"] == pytest.approx(126000, rel=0.01)
-    assert k["co2_captured_mtco2_yr"] > 1.0
+    assert k["co2_captured_kg_h"] == pytest.approx(107100, rel=0.01)
+    assert k["co2_captured_mtco2_yr"] == pytest.approx(0.938, rel=0.02)
 
 
 def test_every_unit_has_a_result():

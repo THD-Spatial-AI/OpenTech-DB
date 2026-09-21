@@ -66,8 +66,8 @@ def test_assumptions_surfaced():
     g = _seed("power_to_gas")
     e = compute_economics(g, simulate(g)["units"], _resolve)
     assert e["assumptions"]["discount_rate"] == 0.07
-    # full-load hours derive from the wind source's 40% capacity factor
-    assert e["assumptions"]["hours"] == pytest.approx(3504)
+    # capacity factor is baked into average power, so the year is annualized over 8760 h
+    assert e["assumptions"]["hours"] == pytest.approx(8760)
 
 
 def test_total_none_when_nothing_resolves():

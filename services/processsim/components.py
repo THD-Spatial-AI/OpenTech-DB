@@ -65,11 +65,14 @@ def water_source(unit, inlets, oc, tech):
 
 def flue_gas_source(unit, inlets, oc, tech):
     cap = _num(oc, "capacity_kw", 400000.0)
+    cf  = _num(oc, "capacity_factor", 1.0)     # host-plant availability → annual average
+    gen = cap * cf
     ef  = _num(oc, "co2_emission_kg_kwh", CO2_EMISSION_KG_PER_KWH)
-    co2 = cap * ef
+    co2 = gen * ef
     return (
-        {"flue_out": _st("flue_gas", co2_kg_h=co2, flue_kw=cap)},
-        {"co2_generated_kg_h": round(co2, 1), "capacity_kw": round(cap, 1)},
+        {"flue_out": _st("flue_gas", co2_kg_h=co2, flue_kw=gen)},
+        {"co2_generated_kg_h": round(co2, 1), "capacity_kw": round(cap, 1),
+         "capacity_factor": round(cf, 2)},
     )
 
 
@@ -143,10 +146,13 @@ def co2_compressor(unit, inlets, oc, tech):
 # ── Bioenergy + power-to-gas ─────────────────────────────────────────────────
 
 def biomass_source(unit, inlets, oc, tech):
-    fuel = _num(oc, "fuel_input_kw", tech.get("capacity_kw") or 20000.0)   # LHV thermal
+    rated = _num(oc, "fuel_input_kw", tech.get("capacity_kw") or 20000.0)   # LHV thermal
+    cf    = _num(oc, "capacity_factor", 1.0)     # plant availability → annual average
+    fuel  = rated * cf
     return (
         {"biomass_out": _st("biomass", fuel_kw=fuel, biomass_kg_h=fuel / BIOMASS_LHV_KWH_PER_KG)},
-        {"fuel_input_kw": round(fuel, 1), "biomass_kg_h": round(fuel / BIOMASS_LHV_KWH_PER_KG, 1)},
+        {"fuel_input_kw": round(fuel, 1), "biomass_kg_h": round(fuel / BIOMASS_LHV_KWH_PER_KG, 1),
+         "capacity_factor": round(cf, 2)},
     )
 
 

@@ -18,7 +18,8 @@
       "technology_ref": "ccgt",
       "operating_conditions": {
         "capacity_kw": { "value": 400000, "unit": "kW", "source": "OpenTech-DB seed" },
-        "co2_concentration_pct": { "value": 12, "unit": "percent", "source": "OpenTech-DB seed" },
+        "capacity_factor": { "value": 0.85, "unit": "fraction", "source": "CCS-equipped CCGT, high utilisation (~85%)" },
+        "co2_concentration_pct": { "value": 4, "unit": "percent", "source": "Typical CCGT flue gas (~4 vol%)" },
         "flue_gas_temp_c": { "value": 120, "unit": "degC", "source": "OpenTech-DB seed" }
       },
       "ports": [

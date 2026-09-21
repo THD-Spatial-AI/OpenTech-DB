@@ -17,7 +17,8 @@
       "equipment_type": "biomass_source",
       "technology_ref": "biomass_power_plant",
       "operating_conditions": {
-        "fuel_input_kw": { "value": 20000, "unit": "kW", "source": "OpenTech-DB seed" }
+        "fuel_input_kw": { "value": 20000, "unit": "kW", "source": "OpenTech-DB seed" },
+        "capacity_factor": { "value": 0.75, "unit": "fraction", "source": "Typical biomass CHP availability (~75%)" }
       },
       "ports": [
         { "id": "biomass_out", "carrier": "biomass", "direction": "out", "label": "Wood chips" }

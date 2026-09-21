@@ -12,7 +12,8 @@ annual cost is:
 
 CRF is the Capital Recovery Factor (same formula as the PyPSA adapter). Assumptions
 are fixed and surfaced to the UI: 7 % discount (per-instance discount_rate overrides)
-and full-load hours = a source's capacity_factor × 8760 (else 8760). Units without a
+and 8760 operating hours a year — the capacity factor is already baked into each
+source's average power, so annual energy = average power × 8760. Units without a
 resolvable technology_ref are returned as ``resolved: False`` (rendered 'n/a').
 """
 
@@ -43,13 +44,10 @@ def compute_economics(graph: dict, unit_result: dict,
     """Annualized system + per-unit cost. See module docstring for the model."""
     units = graph.get("units", []) or []
 
-    # Full-load hours from any source's capacity factor.
+    # Sources emit their annual-average power (rated × capacity factor), so annual
+    # energy = average power × the full calendar year. Applying the capacity factor
+    # again here would double-count intermittency.
     hours = DEFAULT_HOURS
-    for u in units:
-        cf = _oc(u).get("capacity_factor")
-        if cf:
-            hours = float(cf) * DEFAULT_HOURS
-            break
 
     total = {"annualized_eur": 0.0, "capex_eur": 0.0, "fixed_om_eur": 0.0, "var_om_eur": 0.0}
     per_unit: list[dict] = []

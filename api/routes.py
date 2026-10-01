@@ -1312,6 +1312,8 @@ def get_adoptnet0(
     try:
         idx = min(instance_index, len(tech.instances) - 1) if tech.instances else None
         return to_adoptnet0(tech, instance_index=idx)
+    except ValueError as exc:  # instance lacks data this export needs
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

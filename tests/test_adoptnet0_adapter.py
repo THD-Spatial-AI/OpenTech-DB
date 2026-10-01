@@ -18,6 +18,8 @@ from schemas.models import (
     EnergyStorage,
     TransmissionLine,
     ConversionTechnology,
+    EnergyCarrier,
+    TechnologyCategory,
 )
 
 
@@ -252,6 +254,36 @@ def test_network_loss_per_km(transmission_tech):
     assert perf["loss"] == pytest.approx(0.01 / 100)   # %/km → fraction/km
 
 
+def _co2_pipeline(extra):
+    return TransmissionLine.model_validate({
+        "name": "CO2 Pipelines",
+        "category": "transmission",
+        "output_carriers": ["co2"],
+        "instances": [{
+            "label": "CO2 Pipeline – 2 MtCO2/yr, 100 km",
+            "capex_per_kw": _pv(120, "USD/kW"),
+            "opex_variable_per_mwh": _pv(0.5, "USD/MWh"),
+            "economic_lifetime_yr": _pv(40, "years"),
+            "extra": {"corridor_length_km": 100, **extra},
+        }],
+    })
+
+
+def test_co2_network_is_per_tonne():
+    # 2.4 M USD/km × 100 km / 120 USD/(t/yr) = 2 Mt/yr = 228.3 t/h
+    out = to_adoptnet0(_co2_pipeline(
+        {"capex_note_usd_per_km": 2_400_000, "capex_note_usd_per_mt_co2_yr": 120}))
+    assert out["Performance"]["carrier"] == "CO2captured"
+    assert out["Units"]["size"] == "t/h"
+    assert out["Economics"]["gamma4"] == pytest.approx(2_400_000 / (2e6 / 8760), rel=1e-6)
+    assert out["Economics"]["OPEX_variable"] == 0     # per MWh has no per-tCO2 meaning
+
+
+def test_co2_network_without_mass_data_raises():
+    with pytest.raises(ValueError, match="mass-based capex"):
+        to_adoptnet0(_co2_pipeline({}))
+
+
 # ---------------------------------------------------------------------------
 # Instance resolution + serialisability
 # ---------------------------------------------------------------------------
@@ -273,12 +305,19 @@ def test_output_is_json_serialisable(vre_tech, dispatchable_tech, storage_tech,
 
 
 def test_full_catalogue_exports_without_errors():
-    """Every technology in the shipped JSON catalogue must export cleanly."""
+    """Every technology in the shipped JSON catalogue must export cleanly,
+    except CO2 conversion techs, which lack per-tonne data."""
     from api._loader import _load_from_json
 
     techs = _load_from_json()
     assert techs, "catalogue should not be empty"
     for tech in techs.values():
+        co2_conv = (tech.category == TechnologyCategory.CONVERSION and EnergyCarrier.CO2 in
+                    [*tech.input_carriers, *tech.output_carriers])
+        if co2_conv:
+            with pytest.raises(ValueError, match="per tCO2"):
+                to_adoptnet0(tech, instance_index=0 if tech.instances else None)
+            continue
         out = to_adoptnet0(tech, instance_index=0 if tech.instances else None)
         json.dumps(out)
         assert ("tec_type" in out) or ("network_type" in out)

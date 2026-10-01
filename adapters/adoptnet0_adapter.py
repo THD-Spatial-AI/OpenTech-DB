@@ -290,6 +290,14 @@ def _conv_block(tech: Technology, inst: EquipmentInstance | None) -> dict[str, A
     """Dispatchable generation or conversion → tec_type CONV2, linear fit."""
     defaults: list[str] = []
 
+    # AdOpT-NET0 models CO2 in tonnes; the catalogue gives these techs per kW
+    # with an energy efficiency, which would be read as tCO2 per MWh.
+    if EnergyCarrier.CO2 in [*tech.input_carriers, *tech.output_carriers]:
+        raise ValueError(
+            f"{tech.name}: CO2 conversion data is per kW, not per tCO2; "
+            "AdOpT-NET0 export needs per-tonne parameters"
+        )
+
     capex_kw = _val(inst.capex_per_kw) if inst else None
     in_cars  = _carriers(tech.input_carriers)
     out_cars = _carriers(tech.output_carriers) or ["electricity"]
@@ -326,7 +334,7 @@ def _conv_block(tech: Technology, inst: EquipmentInstance | None) -> dict[str, A
         "Economics": _economics(
             inst, defaults,
             unit_capex=capex_kw * 1000 if capex_kw is not None else None,
-            capex_comment="CAPEX in USD/MW, OPEX_variable in USD/MWh total output, OPEX_fixed in % of up-front CAPEX",
+            capex_comment="CAPEX in USD/MW, OPEX_variable in USD/MWh (catalogue: per MWh output; AdOpT-NET0 applies it per MWh of main input), OPEX_fixed in % of up-front CAPEX",
         ),
         "Performance": {
             "comment": "contains fitting data on unit of input, technology types and input/output carriers",
@@ -515,6 +523,24 @@ def _network_block(tech: TransmissionLine, inst: EquipmentInstance | None) -> di
     else:
         defaults.append("gamma2=gamma4=0 (no capex data)")
 
+    # CO2 is modelled in tonnes in AdOpT-NET0: size in t/h, gamma4 in USD/(t/h)/km,
+    # derived from the mass-based capex notes instead of the per-kW figures.
+    co2 = carrier == "CO2captured"
+    if co2:
+        usd_per_km = _extra_num(inst, "capex_note_usd_per_km")
+        usd_per_t_yr = _extra_num(inst, "capex_note_usd_per_mt_co2_yr")
+        if not (usd_per_km and usd_per_t_yr and length_km):
+            raise ValueError(
+                f"{tech.name}: instance has no mass-based capex "
+                "(capex_note_usd_per_km, capex_note_usd_per_mt_co2_yr, corridor_length_km); "
+                "cannot export a CO2 network per tCO2"
+            )
+        capacity_t_h = usd_per_km * length_km / usd_per_t_yr / 8760
+        gamma2, gamma4 = 0.0, round(usd_per_km / capacity_t_h, 4)
+        if opex_v:
+            defaults.append("OPEX_variable=0 (given per MWh, no per-tCO2 value)")
+        opex_v = None
+
     # loss: fraction of transported energy per km
     loss_per_km = (
         _val(tech.loss_per_km)
@@ -544,7 +570,11 @@ def _network_block(tech: TransmissionLine, inst: EquipmentInstance | None) -> di
         "size_is_int": 0,
         "decommission": "impossible",
         "Economics": {
-            "comment": "CAPEX coefficients are in USD, USD/MW or USD/MW/km, OPEX_variable in USD/MWh total output, OPEX_fixed in % of up-front CAPEX",
+            "comment": (
+                "CAPEX coefficients are in USD, USD/(t/h) or USD/(t/h)/km, OPEX_variable in USD/t, OPEX_fixed in % of up-front CAPEX"
+                if co2 else
+                "CAPEX coefficients are in USD, USD/MW or USD/MW/km, OPEX_variable in USD/MWh total output, OPEX_fixed in % of up-front CAPEX"
+            ),
             "gamma1": 0,
             "gamma2": gamma2,
             "gamma3": 0,
@@ -565,8 +595,8 @@ def _network_block(tech: TransmissionLine, inst: EquipmentInstance | None) -> di
             "energyconsumption": [],
         },
         "Units": {
-            "size": "MW",
-            "transport_carrier": {carrier: "MW"},
+            "size": "t/h" if co2 else "MW",
+            "transport_carrier": {carrier: "t/h" if co2 else "MW"},
         },
         "OpenTechDB": _meta_block(
             tech, inst, defaults,

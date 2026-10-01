@@ -658,3 +658,82 @@ def to_adoptnet0(
         return _conv_block(tech, inst)
 
     raise ValueError(f"Unsupported technology category: {tech.category!r}")
+
+
+def capture_from_process(
+    process: dict[str, Any],
+    result: dict[str, Any],
+    tech: Technology | None = None,
+) -> dict[str, Any]:
+    """
+    Simulated CCS Process → AdOpT-NET0 capture technology (tec_type CONV3), in tonnes.
+
+    Per tonne of CO2 captured, the simulation gives the reboiler heat and the
+    compression power. CONV3 fixes the input ratios (CONV1/CONV2 let inputs
+    substitute each other): heat is the main input and sets the size (MW heat),
+    electricity follows at a fixed ratio, output is CO2captured in t/h.
+    CAPEX/OPEX come from the absorber's catalogue technology, priced per kW of
+    the host plant.
+    """
+    units = {u["id"]: u for u in process["units"]}
+    by_type = {units[uid]["equipment_type"]: res for uid, res in result["units"].items() if uid in units}
+    absorber, source = by_type.get("co2_absorber_amine"), by_type.get("flue_gas_source")
+    if not absorber or not source or not absorber.get("co2_captured_kg_h"):
+        raise ValueError("process result has no captured CO2 (needs flue_gas_source and co2_absorber_amine)")
+
+    captured_t_h = absorber["co2_captured_kg_h"] / 1000
+    heat = absorber["reboiler_duty_kw"] / 1000 / captured_t_h                        # MWh/t
+    power = sum(r.get("power_kw", 0) for r in result["units"].values()) / 1000 / captured_t_h  # MWh/t
+    cf = source.get("capacity_factor") or 1.0
+    design_t_h = captured_t_h / cf
+    host_mwh_per_t = source["capacity_kw"] * cf / 1000 / captured_t_h
+
+    defaults: list[str] = []
+    inst = _resolve_instance(tech, 0) if tech else None
+    capex_kw = _val(inst.capex_per_kw) if inst else None
+    economics = _economics(
+        inst, defaults,
+        unit_capex=capex_kw * source["capacity_kw"] / (design_t_h * heat) if capex_kw is not None else None,
+        capex_comment="CAPEX in USD/MW heat input, OPEX_variable in USD/MWh heat (main input), OPEX_fixed in % of up-front CAPEX",
+    )
+    # catalogue OPEX_variable is per MWh of host output → per t CO2 → per MWh heat
+    economics["OPEX_variable"] = round(economics["OPEX_variable"] * host_mwh_per_t / heat, 6)
+
+    return {
+        "tec_type": "CONV3",
+        "size_min": 0,
+        "size_max": round(design_t_h * heat, 3),
+        "size_is_int": 0,
+        "decommission": "impossible",
+        "Economics": economics,
+        "Performance": {
+            "performance_function_type": 1,
+            "input_carrier": ["heat", "electricity"],
+            "main_input_carrier": "heat",
+            "output_carrier": ["CO2captured"],
+            "emission_factor": 0,
+            "min_part_load": 0,
+            "performance": {"in": [0, 1], "out": {"CO2captured": [0, round(1 / heat, 6)]}},
+            "input_ratios": {"heat": 1, "electricity": round(power / heat, 6)},
+            "ramping_time": -1, "ref_size": -1, "ramping_const_int": -1, "standby_power": -1,
+            "min_uptime": -1, "min_downtime": -1, "SU_time": -1, "SD_time": -1,
+            "SU_load": -1, "SD_load": -1, "max_startups": -1,
+        },
+        "Units": {
+            "size": "MW heat",
+            "input_carrier": {"heat": "MW", "electricity": "MW"},
+            "output_carrier": {"CO2captured": "t/h"},
+        },
+        "OpenTechDB": {
+            "comment": "Exported by OpenTech-DB from a Process simulation; ignored by AdOpT-NET0.",
+            "process": process.get("slug"),
+            "engine": result.get("engine"),
+            "captured_t_h": round(captured_t_h, 3),
+            "design_capture_t_h": round(design_t_h, 3),
+            "heat_mwh_per_t": round(heat, 4),
+            "electricity_mwh_per_t": round(power, 4),
+            "technology_name": tech.name if tech else None,
+            "currency": "USD",
+            "defaults_applied": defaults,
+        },
+    }

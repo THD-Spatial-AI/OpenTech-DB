@@ -321,3 +321,32 @@ def test_full_catalogue_exports_without_errors():
         out = to_adoptnet0(tech, instance_index=0 if tech.instances else None)
         json.dumps(out)
         assert ("tec_type" in out) or ("network_type" in out)
+
+
+def test_capture_from_ccs_process():
+    """Steady-state result of data/processes/ccs_amine.json → per-tonne CONV3."""
+    from api._loader import _load_from_json
+    from adapters.adoptnet0_adapter import capture_from_process
+
+    process = json.load(open("data/processes/ccs_amine.json"))
+    result = {"engine": "steady_state", "units": {
+        "flue_source": {"co2_generated_kg_h": 119000.0, "capacity_kw": 400000.0, "capacity_factor": 0.85},
+        "absorber": {"co2_captured_kg_h": 107100.0, "capture_rate_pct": 90.0, "reboiler_duty_kw": 110075.0},
+        "stripper": {"co2_kg_h": 107100.0},
+        "compressor": {"power_kw": 10068.4, "co2_kg_h": 107100.0},
+        "storage": {"injected_kg_h": 107100.0},
+    }}
+    ccs = next(t for t in _load_from_json().values() if t.name == "Carbon Capture Systems")
+
+    out = capture_from_process(process, result, ccs)
+    perf, eco = out["Performance"], out["Economics"]
+    heat_mw = 110.075 / 0.85                                   # design reboiler duty
+    assert out["tec_type"] == "CONV3"                          # fixed input ratios
+    assert perf["output_carrier"] == ["CO2captured"]
+    assert perf["performance"]["out"]["CO2captured"][1] == pytest.approx(107.1 / 110.075, rel=1e-5)  # t/MWh heat
+    assert perf["input_ratios"]["electricity"] == pytest.approx(10.0684 / 110.075, rel=1e-5)
+    assert out["size_max"] == pytest.approx(heat_mw, rel=1e-4)                        # MW heat
+    assert eco["unit_CAPEX"] == pytest.approx(1400 * 400000 / heat_mw, rel=1e-4)     # USD/MW heat
+
+    with pytest.raises(ValueError, match="no captured CO2"):
+        capture_from_process(process, {"units": {}}, ccs)

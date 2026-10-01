@@ -428,6 +428,28 @@ def simulation_status(request: Request, job_id: str):
     return r.json()
 
 
+@router.get("/{id_or_slug}/adoptnet0", summary="Simulated CCS Process as an AdOpT-NET0 capture technology")
+def process_adoptnet0(request: Request, id_or_slug: str, job_id: Annotated[str, Query()]) -> dict:
+    """Map a finished simulation job of this Process to an AdOpT-NET0 capture
+    technology (tCO2 based); CAPEX/OPEX come from the absorber's catalogue tech."""
+    from adapters.adoptnet0_adapter import capture_from_process
+    from api.routes import _resolve_tech
+
+    proc = _resolve(id_or_slug)
+    if not proc:
+        raise HTTPException(status_code=404, detail=f"Process '{id_or_slug}' not found.")
+    job = simulation_status(request, job_id)
+    if job.get("status") != "done" or not job.get("result"):
+        raise HTTPException(status_code=409, detail=f"Simulation job is '{job.get('status')}', not done.")
+    graph = proc.model_dump(mode="json")
+    ref = next((u.get("technology_ref") for u in graph["units"]
+                if u.get("equipment_type") == "co2_absorber_amine"), None)
+    try:
+        return capture_from_process(graph, job["result"], _resolve_tech(ref) if ref else None)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.get("/sim-queue", summary="Inspect the simulation queue (admin)")
 def simulation_queue(request: Request):
     _require_admin(request)

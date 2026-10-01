@@ -45,6 +45,7 @@ from api.personal_tokens import (
     validate_personal_token,
 )
 from api.timeseries import router as timeseries_router, admin_ts_router
+from api.processes import router as processes_router
 from api.scraper_routes import router as scraper_router
 from adapters.pypsa_adapter import to_pypsa
 from adapters.calliope_adapter import to_calliope
@@ -282,6 +283,7 @@ app.include_router(submissions_router, prefix="/api/v1")
 app.include_router(personal_tokens_router, prefix="/api/v1")
 app.include_router(timeseries_router,  prefix="/api/v1")
 app.include_router(admin_ts_router,    prefix="/api/v1")
+app.include_router(processes_router,   prefix="/api/v1")
 app.include_router(scraper_router,     prefix="/api/v1")
 
 # ---------------------------------------------------------------------------

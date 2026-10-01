@@ -15,34 +15,62 @@ Interactive documentation is available at `http://localhost:8000/docs` (Swagger 
 | `GET` | `/technologies/category/{cat}` | Filter by category |
 | `GET` | `/technologies/{id}/instances` | All equipment instances for a technology |
 | `GET` | `/technologies/{id}/instances/{iid}` | One specific equipment instance |
+| `GET` | `/technologies/{id}/profiles` | Generation profiles linked to a technology |
 
 **Valid category values:** `generation` · `storage` · `transmission` · `conversion`
+
+### Technology identifier (`{id}`)
+
+All single-technology endpoints accept any of the following in place of `{id}`, resolved in this order:
+
+| Form | Example | Notes |
+|---|---|---|
+| UUID | `3f4a9c12-1234-5678-abcd-ef0123456789` | Stable across renames; use in persistent integrations |
+| Slug | `ccgt`, `onshore_wind`, `li_ion_bess`, `hvdc_line` | The catalogue `technology_id` — most human-readable |
+| Display name | `Combined Cycle Gas Turbine`, `onshore wind` | Case-insensitive; useful for ad-hoc querying |
+
+UUIDs are the long-term stable key. Slugs are the recommended form for scripts and config files.
 
 **Query parameters (list / category endpoints):**
 
 | Parameter | Type | Description | Default |
 |---|---|---|---|
 | `skip` | int | Pagination offset | `0` |
-| `limit` | int | Max results (max `200`) | `50` |
+| `limit` | int | Max results (max `100`) | `50` |
 | `tag` | string | Filter by tag string | — |
-| `lifecycle` | string | Filter by stage: `commercial`, `projection`, `demonstration`, `retired` | — |
+| `category` | string | Filter by category | — |
+| `input_carrier` | string | Filter by input energy carrier | — |
+| `output_carrier` | string | Filter by output energy carrier | — |
+| `renewable` | bool | `true` = renewables only, `false` = non-renewables only | — |
 
 ---
 
 ## Framework Adapters
 
+All single-technology adapter endpoints accept UUID, slug, or display name (see [Technology identifier](#technology-identifier-id) above).
+
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/adapt/pypsa/{id}` | PyPSA-ready parameter dict (capital_cost annualised via CRF) |
-| `GET` | `/adapt/calliope/{id}` | Calliope-ready config dict (essentials + constraints + costs) |
+| `GET` | `/technologies/pypsa` | All technologies as PyPSA component dicts |
+| `GET` | `/technologies/{id}/pypsa` | Single technology, PyPSA format |
 | `GET` | `/technologies/calliope` | All technologies as a Calliope `techs:` block |
-| `GET` | `/technologies/calliope?category=generation` | Filtered Calliope block |
 | `GET` | `/technologies/{id}/calliope` | Single technology in Calliope format |
 | `POST` | `/technologies/{id}/calliope` | Single technology + constraint/cost overrides |
+| `GET` | `/technologies/osemosys` | All technologies as OSeMOSYS parameter dicts |
+| `GET` | `/technologies/{id}/osemosys` | Single technology, OSeMOSYS format |
+| `GET` | `/technologies/adoptnet0` | All technologies as AdOpT-NET0 input JSON |
+| `GET` | `/technologies/{id}/adoptnet0` | Single technology, AdOpT-NET0 format |
 
-**PyPSA query parameters:** `instance_index` (int, default `0`), `discount_rate` (float, default `0.07`)
+**Common query parameters (all adapter endpoints):**
 
-**Calliope query parameters:** `instance_index` (int, default `0`), `cost_class` (str, default `"monetary"`)
+| Parameter | Type | Description | Default |
+|---|---|---|---|
+| `instance_index` | int | Which equipment instance to use (0-based) | `0` |
+| `category` | string | Filter bulk exports by category | — |
+
+**PyPSA extras:** `discount_rate` (float 0–1, default `0.07`) — used for CAPEX annualization via CRF.
+
+**Calliope extras:** `cost_class` (str, default `"monetary"`), `version` (`0.6` or `0.7`, default `0.6`).
 
 ---
 
@@ -129,77 +157,80 @@ receive administrator access. Invalid, expired, and revoked tokens all return
 
 ## Response examples
 
+All three of these are equivalent — they resolve to the same technology:
+
+```
+GET /technologies/ccgt
+GET /technologies/Combined%20Cycle%20Gas%20Turbine
+GET /technologies/3f4a9c12-1234-5678-abcd-ef0123456789
+```
+
 ### `GET /technologies/ccgt`
 
 ```json
 {
-  "technology_id": "ccgt",
-  "technology_name": "Combined Cycle Gas Turbine (CCGT)",
-  "domain": "generation",
-  "carrier": "natural_gas",
-  "oeo_class": "OEO_00000044",
-  "oeo_uri": "http://openenergy-platform.org/ontology/oeo/OEO_00000044",
-  "description": "High-efficiency gas-fired power plant combining gas and steam turbines.",
+  "id": "3f4a9c12-1234-5678-abcd-ef0123456789",
+  "name": "Combined Cycle Gas Turbine",
+  "category": "generation",
+  "technology_type": "ccgt",
+  "primary_fuel": "natural_gas",
+  "is_dispatchable": true,
+  "input_carriers": ["natural_gas"],
+  "output_carriers": ["electricity"],
+  "fleet_capex_per_kw": null,
+  "fleet_opex_fixed_per_kw_yr": null,
+  "fleet_electrical_efficiency": null,
+  "fleet_co2_emission_factor": null,
   "instances": [
     {
-      "instance_id": "ccgt_800mw_current",
-      "instance_name": "CCGT – 800 MW (Current, 2024)",
-      "typical_capacity_mw": 800,
-      "capex_usd_per_kw": 900,
-      "opex_fixed_usd_per_kw_yr": 20.0,
-      "opex_var_usd_per_mwh": 3.5,
-      "efficiency_percent": 58.0,
-      "lifetime_years": 30,
-      "co2_emission_factor_operational_g_per_kwh": 202,
-      "ramping_rate_percent_per_min": 8.0,
-      "reference_source": "NREL ATB 2023"
+      "label": "CCGT – 800 MW (Current, 2024)",
+      "capex_per_kw": { "value": 900, "unit": "USD/kW", "source": "NREL ATB 2023" },
+      "opex_fixed_per_kw_yr": { "value": 20.0, "unit": "USD/kW/yr", "source": "NREL ATB 2023" },
+      "electrical_efficiency": { "value": 0.58, "unit": "fraction", "source": "NREL ATB 2023" },
+      "co2_emission_factor": { "value": 0.202, "unit": "tCO2/MWh_fuel", "source": "NREL ATB 2023" },
+      "economic_lifetime_yr": { "value": 30, "unit": "years", "source": "NREL ATB 2023" }
     }
   ]
 }
 ```
 
-### `GET /adapt/pypsa/ccgt?discount_rate=0.07`
+> **`fleet_*` fields** are optional technology-level aggregate defaults (e.g. a single representative value for the whole fleet). Most entries leave them `null` — actual data is in `instances`. Set them in the catalogue JSON when a single fallback value is needed without picking a specific instance.
+
+### `GET /technologies/ccgt/pypsa?discount_rate=0.07`
 
 ```json
 {
-  "technology_id": "ccgt",
-  "instance_index": 0,
   "component_type": "Generator",
-  "parameters": {
-    "carrier": "natural_gas",
-    "efficiency": 0.58,
-    "capital_cost": 12500.4,
-    "marginal_cost": 3.5,
-    "co2_emissions": 0.202,
-    "lifetime": 30
-  }
+  "carrier": "natural_gas",
+  "efficiency": 0.58,
+  "capital_cost": 12500.4,
+  "marginal_cost": 3.5,
+  "co2_emissions": 0.202,
+  "lifetime": 30
 }
 ```
 
-### `GET /adapt/calliope/ccgt`
+### `GET /technologies/ccgt/calliope`
 
 ```json
 {
-  "ccgt": {
-    "essentials": {
-      "name": "Combined Cycle Gas Turbine (CCGT)",
-      "color": "#999",
-      "carrier_in": "natural_gas",
-      "carrier_out": "electricity",
-      "parent": "supply"
-    },
-    "constraints": {
-      "energy_eff": 0.58,
-      "energy_cap_max": 800000,
-      "energy_ramping": 0.08
-    },
-    "costs": {
-      "monetary": {
-        "interest_rate": 0.07,
-        "energy_cap": 900,
-        "om_annual": 20.0,
-        "om_prod": 0.0035
-      }
+  "essentials": {
+    "name": "Combined Cycle Gas Turbine",
+    "carrier_in": "natural_gas",
+    "carrier_out": "electricity",
+    "parent": "supply"
+  },
+  "constraints": {
+    "energy_eff": 0.58,
+    "energy_cap_max": 800000,
+    "energy_ramping": 0.08
+  },
+  "costs": {
+    "monetary": {
+      "interest_rate": 0.07,
+      "energy_cap": 900,
+      "om_annual": 20.0,
+      "om_prod": 0.0035
     }
   }
 }

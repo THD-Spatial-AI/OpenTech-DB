@@ -14,14 +14,31 @@ Catalogue-merge and GitHub PR helpers live in api/_catalogue_ops.py.
 Endpoints
 ---------
 GET  /technologies                                 → list all technologies (summary; ETag)
+                                                     filters: ?category= ?tag= ?input_carrier=
+                                                     ?output_carrier= ?renewable=
+GET  /technologies/carriers                         → energy carriers in use (input/output counts)
+                                                     + unmapped raw carriers (data-quality scan)
 GET  /technologies/{tech_id}                       → full OEO technology detail (ETag;
                                                      ?include_profile_values=false strips
                                                      inline profile value arrays)
 GET  /technologies/{tech_id}/profiles              → embedded generation profiles +
                                                      linked /timeseries catalogue entries
 GET  /technologies/category/{cat}                  → technologies by category
+                                                     (also accepts input_carrier/output_carrier/renewable)
 GET  /technologies/{tech_id}/instances             → all equipment instances
 GET  /technologies/{tech_id}/instances/{iid}       → a specific instance
+
+{tech_id} resolution order (all single-technology endpoints)
+------------------------------------------------------------
+1. UUID string   — e.g. "3f4a9c12-..."
+2. Slug          — the catalogue technology_id (e.g. "ccgt", "onshore_wind",
+                   "li_ion_bess", "hvdc_line") stored in technology_type /
+                   storage_type / conversion_type / transmission_type
+3. Display name  — case-insensitive match on the technology name field
+                   (e.g. "Combined Cycle Gas Turbine", "Onshore Wind")
+
+All three forms are interchangeable. UUIDs are the stable long-term key; slugs
+are the most human-readable.  Name lookup is provided for ad-hoc querying.
 
 Bulk framework exports are keyed by the stable catalogue ``technology_id``
 slug (falling back to a sanitised display name) and support ETag /
@@ -106,6 +123,7 @@ from api._loader import (
     _load_all_technologies,
     _get_all,
     _build_ontology_schema,
+    _scan_raw_carriers,
 )
 from api._auth_helpers import (
     _get_sb,
@@ -620,6 +638,40 @@ def _export_key(tech: Technology) -> str:
     return slug or re.sub(r"[^a-z0-9_]", "_", tech.name.lower()).strip("_")
 
 
+def _resolve_tech(tech_id: str) -> Technology | None:
+    """
+    Resolve a technology by UUID, slug, or display name (case-insensitive).
+
+    Resolution order:
+    1. Direct UUID string match (fastest path).
+    2. Slug match — the catalogue technology_id stored in technology_type /
+       storage_type / conversion_type / transmission_type.
+    3. Case-insensitive display name match.
+    """
+    all_techs = _get_all()
+
+    # 1. UUID
+    if tech := all_techs.get(tech_id):
+        return tech
+
+    # 2. Slug / 3. Name — single pass
+    tech_lower = tech_id.lower()
+    name_match: Technology | None = None
+    for t in all_techs.values():
+        slug = (
+            getattr(t, "technology_type", None)
+            or getattr(t, "storage_type", None)
+            or getattr(t, "conversion_type", None)
+            or getattr(t, "transmission_type", None)
+        )
+        if slug and slug.lower() == tech_lower:
+            return t  # slug match is unambiguous — return immediately
+        if name_match is None and t.name.lower() == tech_lower:
+            name_match = t
+
+    return name_match
+
+
 # ETag for the technology catalogue: cached against the identity of the
 # loaded dict, so any cache_clear()+reload (debug/reload, admin edits,
 # scraper approvals) automatically yields a fresh tag.
@@ -652,6 +704,48 @@ def _etag_precheck(request: Request, response: Response, etag: str) -> Response 
 
 
 # ---------------------------------------------------------------------------
+# Shared summary + filter helpers
+# ---------------------------------------------------------------------------
+
+def _to_summary(t: Technology) -> TechnologySummary:
+    """Build the lightweight list-view summary for a technology."""
+    return TechnologySummary(
+        id=t.id,
+        slug=(
+            getattr(t, "technology_type", None)
+            or getattr(t, "storage_type", None)
+            or getattr(t, "conversion_type", None)
+            or getattr(t, "transmission_type", None)
+        ),
+        name=t.name,
+        category=t.category,
+        oeo_class=t.oeo_class,
+        oeo_uri=t.oeo_uri,
+        n_instances=len(t.instances),
+        input_carriers=t.input_carriers,
+        output_carriers=t.output_carriers,
+        is_renewable=getattr(t, "is_renewable", False),
+    )
+
+
+def _filter_technologies(
+    techs: list[Technology],
+    *,
+    input_carrier: EnergyCarrier | None = None,
+    output_carrier: EnergyCarrier | None = None,
+    renewable: bool | None = None,
+) -> list[Technology]:
+    """Apply the carrier-in / carrier-out / renewable filters (all ANDed)."""
+    if input_carrier is not None:
+        techs = [t for t in techs if input_carrier in t.input_carriers]
+    if output_carrier is not None:
+        techs = [t for t in techs if output_carrier in t.output_carriers]
+    if renewable is not None:
+        techs = [t for t in techs if getattr(t, "is_renewable", False) == renewable]
+    return techs
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -671,6 +765,18 @@ def list_technologies(
         TechnologyCategory | None,
         Query(description="Filter by category (generation | storage | transmission | conversion)."),
     ] = None,
+    input_carrier: Annotated[
+        EnergyCarrier | None,
+        Query(description="Filter to technologies that consume this energy carrier."),
+    ] = None,
+    output_carrier: Annotated[
+        EnergyCarrier | None,
+        Query(description="Filter to technologies that produce this energy carrier."),
+    ] = None,
+    renewable: Annotated[
+        bool | None,
+        Query(description="Filter by renewable classification (true = renewable only, false = non-renewable only)."),
+    ] = None,
 ) -> TechnologyCatalogue | Response:
     if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
         return not_modified
@@ -680,29 +786,17 @@ def list_technologies(
         all_techs = [t for t in all_techs if tag.lower() in [x.lower() for x in t.tags]]
     if category:
         all_techs = [t for t in all_techs if t.category == category]
+    all_techs = _filter_technologies(
+        all_techs,
+        input_carrier=input_carrier,
+        output_carrier=output_carrier,
+        renewable=renewable,
+    )
 
     total = len(all_techs)
     page  = all_techs[skip : skip + limit]
 
-    summaries = [
-        TechnologySummary(
-            id=t.id,
-            slug=(
-                getattr(t, "technology_type", None)
-                or getattr(t, "storage_type", None)
-                or getattr(t, "conversion_type", None)
-                or getattr(t, "transmission_type", None)
-            ),
-            name=t.name,
-            category=t.category,
-            oeo_class=t.oeo_class,
-            oeo_uri=t.oeo_uri,
-            n_instances=len(t.instances),
-            input_carriers=t.input_carriers,
-            output_carriers=t.output_carriers,
-        )
-        for t in page
-    ]
+    summaries = [_to_summary(t) for t in page]
     return TechnologyCatalogue(total=total, technologies=summaries, has_more=skip + limit < total)
 
 
@@ -716,30 +810,91 @@ def list_by_category(
     category: TechnologyCategory,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    input_carrier: Annotated[
+        EnergyCarrier | None,
+        Query(description="Filter to technologies that consume this energy carrier."),
+    ] = None,
+    output_carrier: Annotated[
+        EnergyCarrier | None,
+        Query(description="Filter to technologies that produce this energy carrier."),
+    ] = None,
+    renewable: Annotated[
+        bool | None,
+        Query(description="Filter by renewable classification (true = renewable only, false = non-renewable only)."),
+    ] = None,
 ) -> TechnologyCatalogue:
     filtered = [t for t in _get_all().values() if t.category == category]
+    filtered = _filter_technologies(
+        filtered,
+        input_carrier=input_carrier,
+        output_carrier=output_carrier,
+        renewable=renewable,
+    )
     total    = len(filtered)
     page     = filtered[skip : skip + limit]
-    summaries = [
-        TechnologySummary(
-            id=t.id,
-            slug=(
-                getattr(t, "technology_type", None)
-                or getattr(t, "storage_type", None)
-                or getattr(t, "conversion_type", None)
-                or getattr(t, "transmission_type", None)
-            ),
-            name=t.name,
-            category=t.category,
-            oeo_class=t.oeo_class,
-            oeo_uri=t.oeo_uri,
-            n_instances=len(t.instances),
-            input_carriers=t.input_carriers,
-            output_carriers=t.output_carriers,
-        )
-        for t in page
-    ]
+    summaries = [_to_summary(t) for t in page]
     return TechnologyCatalogue(total=total, technologies=summaries, has_more=skip + limit < total)
+
+
+# ---------------------------------------------------------------------------
+# Carriers endpoint — available carriers + data-quality scan
+# ---------------------------------------------------------------------------
+
+class CarrierUsage(BaseModel):
+    carrier:   str = Field(..., description="Normalised EnergyCarrier value.")
+    as_input:  int = Field(0, description="Number of technologies consuming this carrier.")
+    as_output: int = Field(0, description="Number of technologies producing this carrier.")
+
+
+class CarriersResponse(BaseModel):
+    carriers: list[CarrierUsage] = Field(
+        default_factory=list,
+        description="Energy carriers actually in use across the loaded catalogue, with usage counts.",
+    )
+    unmapped_raw_carriers: list[str] = Field(
+        default_factory=list,
+        description="Raw carrier strings in the source JSON that are not recognised by the "
+                    "carrier map and silently fall back to 'electricity' — flags naming "
+                    "inconsistencies (e.g. 'heated_water' vs 'heat').",
+    )
+
+
+@router.get(
+    "/carriers",
+    response_model=CarriersResponse,
+    summary="List available energy carriers in the dataset",
+    response_description="In-use carriers with input/output usage counts, plus unmapped raw carrier strings.",
+)
+def list_carriers() -> CarriersResponse:
+    """
+    Report the energy carriers present in the loaded catalogue.
+
+    ``carriers`` counts how many technologies consume (``as_input``) or produce
+    (``as_output``) each normalised :class:`EnergyCarrier` value.
+    ``unmapped_raw_carriers`` re-scans the source ``data/`` JSON files for raw
+    carrier strings that the loader does not recognise (these are silently
+    coerced to ``electricity`` at load time), surfacing naming inconsistencies.
+    """
+    as_input:  dict[str, int] = {}
+    as_output: dict[str, int] = {}
+    for tech in _get_all().values():
+        for c in set(tech.input_carriers):
+            as_input[c.value] = as_input.get(c.value, 0) + 1
+        for c in set(tech.output_carriers):
+            as_output[c.value] = as_output.get(c.value, 0) + 1
+
+    carriers = [
+        CarrierUsage(
+            carrier=name,
+            as_input=as_input.get(name, 0),
+            as_output=as_output.get(name, 0),
+        )
+        for name in sorted(set(as_input) | set(as_output))
+    ]
+    return CarriersResponse(
+        carriers=carriers,
+        unmapped_raw_carriers=sorted(_scan_raw_carriers()),
+    )
 
 
 @router.get(
@@ -820,7 +975,7 @@ def get_all_calliope(
     summary="Single technology in Calliope format",
 )
 def get_calliope(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     instance_index: Annotated[
         int,
         Query(ge=0, description="Which equipment instance to use (0-based)."),
@@ -834,7 +989,7 @@ def get_calliope(
         Query(description="Target Calliope version: 0.6 (nested essentials/constraints/costs) or 0.7 (flat, base_tech, flow_* keys)."),
     ] = "0.6",
 ) -> dict[str, Any]:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
@@ -849,7 +1004,7 @@ def get_calliope(
     summary="Single technology in Calliope format with constraint overrides",
 )
 def post_calliope_with_overrides(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     overrides: CalliopeOverrides = Body(...),
 ) -> dict[str, Any]:
     """
@@ -881,7 +1036,7 @@ def post_calliope_with_overrides(
     All ``constraints`` keys are merged with ``dict.update()``; cost keys are
     nested by cost-class name before merging.
     """
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
@@ -967,7 +1122,7 @@ def get_all_pypsa(
     summary="Single technology in PyPSA format",
 )
 def get_pypsa(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     instance_index: Annotated[
         int,
         Query(ge=0, description="Which equipment instance to use (0-based)."),
@@ -977,7 +1132,7 @@ def get_pypsa(
         Query(ge=0.0, le=1.0, description="Annual discount rate used for CAPEX annualization."),
     ] = 0.07,
 ) -> dict[str, Any]:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
@@ -1058,13 +1213,13 @@ def get_all_osemosys(
     summary="Single technology in OSeMOSYS format",
 )
 def get_osemosys(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     instance_index: Annotated[
         int,
         Query(ge=0, description="Which equipment instance to use (0-based)."),
     ] = 0,
 ) -> dict[str, Any]:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
@@ -1145,13 +1300,13 @@ def get_all_adoptnet0(
     summary="Single technology in AdOpT-NET0 format",
 )
 def get_adoptnet0(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     instance_index: Annotated[
         int,
         Query(ge=0, description="Which equipment instance to use (0-based)."),
     ] = 0,
 ) -> dict[str, Any]:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     try:
@@ -1173,14 +1328,14 @@ def get_adoptnet0(
 def get_technology(
     request: Request,
     response: Response,
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     include_profile_values: Annotated[
         bool,
         Query(description="Include inline generation-profile value arrays (can be ~8760 floats). "
                           "Set false for a lightweight metadata-only response."),
     ] = True,
 ) -> Technology | Response:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
     if (not_modified := _etag_precheck(request, response, _catalogue_etag())) is not None:
@@ -1203,7 +1358,7 @@ def get_technology(
     response_description="Embedded generation-profile metadata plus matching /timeseries catalogue entries.",
 )
 def get_technology_profiles(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
 ) -> dict[str, Any]:
     """
     Return every profile associated with a technology, joined across the two
@@ -1218,7 +1373,7 @@ def get_technology_profiles(
       references (``generation_profile.profile_id`` / VRE ``profile_key``).
       Fetch the data via ``GET /timeseries/{profile_id}/data``.
     """
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
 
@@ -1276,13 +1431,13 @@ def get_technology_profiles(
     summary="List all equipment instances for a technology",
 )
 def list_instances(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     lifecycle: Annotated[
         str | None,
         Query(description="Filter by life-cycle stage (e.g. 'commercial', 'projection')."),
     ] = None,
 ) -> list[EquipmentInstance]:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
 
@@ -1298,10 +1453,10 @@ def list_instances(
     summary="Get a specific equipment instance",
 )
 def get_instance(
-    tech_id: Annotated[str, FPath(description="UUID of the technology.")],
+    tech_id: Annotated[str, FPath(description="UUID, slug, or display name of the technology.")],
     instance_id: Annotated[str, FPath(description="UUID of the instance.")],
 ) -> EquipmentInstance:
-    tech = _get_all().get(tech_id)
+    tech = _resolve_tech(tech_id)
     if not tech:
         raise HTTPException(status_code=404, detail=f"Technology '{tech_id}' not found.")
 

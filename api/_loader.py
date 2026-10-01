@@ -74,7 +74,6 @@ _CARRIER_MAP: dict[str, str] = {
     "liquid_fuel":           "liquid_fuel",
     "nitrogen":              "nitrogen",
     "flue_gas":              "flue_gas",
-    "marine":                "electricity",
     "electricity":           "electricity",
     "hydrogen":              "hydrogen",
     "heat":                  "heat",
@@ -86,13 +85,28 @@ _CARRIER_MAP: dict[str, str] = {
     "ammonia":               "ammonia",
     "geothermal":            "geothermal_energy",
     "geothermal_energy":     "geothermal_energy",
+    "marine":                "marine",
+    "tidal":                 "marine",
+    "wave":                  "marine",
+    "ambient_heat":          "ambient_heat",
+    "aerothermal":           "ambient_heat",
+    "waste":                 "waste",
+    "municipal_solid_waste": "waste",
     # Legacy compound values — kept as fallback; proper JSON should use arrays instead
     "electricity_heat":      "electricity",
     "hydrogen_co2":          "hydrogen",
     "hydrogen_co":           "syngas",
     "hydrogen_nitrogen":     "hydrogen",
     "flue_gas_electricity":  "electricity",
-    "municipal_solid_waste": "biomass",
+}
+
+# Input carriers whose primary resource is renewable. A technology is renewable
+# when it GENERATES or CONVERTS energy from one of these (see _load_catalogue_file).
+# Deliberately excludes `electricity` and `hydrogen` (renewability depends on how
+# they were produced) and `waste` (municipal solid waste is only partly biogenic).
+_RENEWABLE_INPUT_CARRIERS = {
+    "solar_irradiance", "wind", "water", "biomass", "biogas",
+    "geothermal_energy", "marine", "ambient_heat",
 }
 
 _CATEGORY_MODEL_MAP: dict[TechnologyCategory, type[Technology]] = {
@@ -335,6 +349,47 @@ def _extract_carriers(
 
 
 # ---------------------------------------------------------------------------
+# Raw-carrier data-quality scan
+# ---------------------------------------------------------------------------
+
+def _scan_raw_carriers() -> set[str]:
+    """Scan the source catalogue JSON files for raw carrier strings that are
+    NOT recognised by ``_CARRIER_MAP`` (and therefore silently fall back to
+    ``electricity`` at load time).
+
+    Returns the set of unmapped raw values, letting the /carriers endpoint
+    surface naming inconsistencies (e.g. ``heated_water`` vs ``heat``) that are
+    otherwise invisible once the catalogue is normalised.
+    """
+    unmapped: set[str] = set()
+    if not DATA_DIR.exists():
+        return unmapped
+
+    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries", "scraped", "processes"}
+    for json_file in DATA_DIR.rglob("*.json"):
+        if any(part in _EXCLUDED_DIRS for part in json_file.parts):
+            continue
+        try:
+            raw = _load_json_file(json_file)
+        except Exception:  # noqa: BLE001 — malformed files are ignored here
+            continue
+        if not _is_catalogue(raw):
+            continue
+        for tech_raw in raw.get("technologies", []):
+            values: list[Any] = []
+            for key in ("carrier", "input_carrier", "output_carrier"):
+                values.append(tech_raw.get(key))
+            for key in ("input_carriers", "output_carriers"):
+                arr = tech_raw.get(key)
+                if isinstance(arr, list):
+                    values.extend(arr)
+            for val in values:
+                if isinstance(val, str) and val and val.lower() not in _CARRIER_MAP:
+                    unmapped.add(val)
+    return unmapped
+
+
+# ---------------------------------------------------------------------------
 # Catalogue-format file loader
 # ---------------------------------------------------------------------------
 
@@ -409,6 +464,21 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 for inst in tech_raw.get("instances", [])
             ]
 
+            # Renewable classification: an explicit JSON flag always wins.
+            # Otherwise a generation/conversion technology is renewable when at
+            # least one of its (mapped) input carriers is a renewable resource.
+            # Transmission/storage are carrier-neutral infrastructure (a pipeline
+            # moving biogas is not a renewable source), and electricity/hydrogen/
+            # waste inputs are excluded because their renewability depends on how
+            # they were produced upstream.
+            explicit_renewable = tech_raw.get("is_renewable")
+            if explicit_renewable is not None:
+                is_renewable = bool(explicit_renewable)
+            elif cat in (TechnologyCategory.GENERATION, TechnologyCategory.CONVERSION):
+                is_renewable = any(c in _RENEWABLE_INPUT_CARRIERS for c in in_carriers)
+            else:
+                is_renewable = False
+
             tech_dict: dict = {
                 "id":              str(uuid.uuid5(_UUID_NS, tech_id_str)),
                 "name":            tech_name,
@@ -419,6 +489,7 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 "oeo_uri":         oeo_uri_full,
                 "input_carriers":  in_carriers,
                 "output_carriers": out_carriers,
+                "is_renewable":    is_renewable,
                 "instances":       instances,
             }
 
@@ -426,9 +497,6 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 tech_dict["technology_type"] = tech_id_str
                 tech_dict["primary_fuel"]    = in_carrier_val
                 tech_dict["is_dispatchable"] = not is_vre
-                tech_dict["is_renewable"]    = (raw_carrier or "").lower() in {
-                    "solar", "wind", "hydro", "marine", "geothermal", "biomass", "biogas"
-                }
                 tech_dict["generation_profile"] = _load_generation_profile(
                     tech_raw.get("generation_profile"), path.parent, tech_name,
                 )
@@ -509,7 +577,7 @@ def _load_from_json() -> dict[str, Technology]:
     """Load all technologies from the local JSON catalogue files (fallback path)."""
     logger.info("DATA_DIR resolved to: %s (exists=%s)", DATA_DIR, DATA_DIR.exists())
     techs: dict[str, Technology] = {}
-    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries", "scraped"}
+    _EXCLUDED_DIRS = {"pending_submissions", "profiles", "timeseries", "scraped", "processes"}
     json_files = [
         p for p in DATA_DIR.rglob("*.json")
         if not any(part in _EXCLUDED_DIRS for part in p.parts)

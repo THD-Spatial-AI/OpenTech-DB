@@ -15,6 +15,7 @@ function makeTech(overrides: Partial<TechnologySummary> = {}): TechnologySummary
     n_instances: 3,
     input_carriers: [],
     output_carriers: [],
+    is_renewable: false,
     ...overrides,
   }
 }

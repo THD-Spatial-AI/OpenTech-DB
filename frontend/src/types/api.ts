@@ -30,7 +30,11 @@ export type EnergyCarrier =
   | "ammonia"
   | "wind"
   | "solar_irradiance"
-  | "nuclear_fuel";
+  | "nuclear_fuel"
+  | "geothermal_energy"
+  | "marine"
+  | "ambient_heat"
+  | "waste";
 
 export type LifeCycleStage =
   | "commercial"
@@ -123,6 +127,7 @@ export interface TechnologySummary {
   n_instances: number;
   input_carriers: EnergyCarrier[];
   output_carriers: EnergyCarrier[];
+  is_renewable: boolean;
 }
 
 // ── API list/catalogue response ───────────────────────────────────────────────

@@ -10,7 +10,7 @@
  */
 
 import { use, useMemo } from "react";
-import type { TechnologySummary, TechnologyCategory } from "../types/api";
+import type { TechnologySummary, TechnologyCategory, EnergyCarrier } from "../types/api";
 import type { FilterState } from "./SideNavBar";
 import { fetchCategoryTechnologies } from "../services/api";
 import TechCard from "./TechCard";
@@ -49,8 +49,29 @@ function applyFilters(
       if (!filters.instanceScale.has(bucket)) return false;
     }
 
+    // Carrier-in / carrier-out filters
+    if (filters.carrierIn && !tech.input_carriers.includes(filters.carrierIn as EnergyCarrier)) {
+      return false;
+    }
+    if (filters.carrierOut && !tech.output_carriers.includes(filters.carrierOut as EnergyCarrier)) {
+      return false;
+    }
+
+    // Renewable-only filter
+    if (filters.renewableOnly && !tech.is_renewable) return false;
+
     return true;
   });
+}
+
+/** Sorted union of the given carrier lists across all technologies. */
+function collectCarriers(
+  techs: TechnologySummary[],
+  pick: (t: TechnologySummary) => EnergyCarrier[],
+): EnergyCarrier[] {
+  const set = new Set<EnergyCarrier>();
+  for (const t of techs) for (const c of pick(t)) set.add(c);
+  return [...set].sort();
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -59,13 +80,19 @@ interface TechGridProps {
   category: TechnologyCategory;
   searchQuery: string;
   filters: FilterState;
+  onFiltersChange: (next: FilterState) => void;
   onOpenTech: (tech: TechnologySummary) => void;
 }
+
+const CARRIER_SELECT_CLASS =
+  "bg-surface-container-highest text-on-surface-variant text-xs font-bold rounded-sm " +
+  "border border-outline-variant/30 px-2 py-1 focus:outline-none focus:border-primary";
 
 export default function TechGrid({
   category,
   searchQuery,
   filters,
+  onFiltersChange,
   onOpenTech,
 }: TechGridProps) {
   // React 19: `use()` suspends here until the Promise resolves.
@@ -75,6 +102,19 @@ export default function TechGrid({
     () => applyFilters(technologies, searchQuery, filters),
     [technologies, searchQuery, filters],
   );
+
+  // Carrier dropdown options are derived from what's actually in this category.
+  const inputCarrierOptions = useMemo(
+    () => collectCarriers(technologies, (t) => t.input_carriers),
+    [technologies],
+  );
+  const outputCarrierOptions = useMemo(
+    () => collectCarriers(technologies, (t) => t.output_carriers),
+    [technologies],
+  );
+
+  const hasActiveFilters =
+    Boolean(filters.carrierIn) || Boolean(filters.carrierOut) || filters.renewableOnly;
 
   return (
     <section>
@@ -90,6 +130,64 @@ export default function TechGrid({
                            text-xs font-bold rounded-sm uppercase tracking-tighter">
             {filtered.length} / {total} Technologies
           </span>
+        </div>
+
+        {/* Carrier / renewable filter controls */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-tighter
+                            text-on-surface-variant">
+            Carrier in
+            <select
+              aria-label="Filter by input carrier"
+              className={CARRIER_SELECT_CLASS}
+              value={filters.carrierIn}
+              onChange={(e) => onFiltersChange({ ...filters, carrierIn: e.target.value })}
+            >
+              <option value="">Any</option>
+              {inputCarrierOptions.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-tighter
+                            text-on-surface-variant">
+            out
+            <select
+              aria-label="Filter by output carrier"
+              className={CARRIER_SELECT_CLASS}
+              value={filters.carrierOut}
+              onChange={(e) => onFiltersChange({ ...filters, carrierOut: e.target.value })}
+            >
+              <option value="">Any</option>
+              {outputCarrierOptions.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-tighter
+                            text-on-surface-variant cursor-pointer">
+            <input
+              type="checkbox"
+              className="accent-primary"
+              checked={filters.renewableOnly}
+              onChange={(e) => onFiltersChange({ ...filters, renewableOnly: e.target.checked })}
+            />
+            Renewable only
+          </label>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={() =>
+                onFiltersChange({ ...filters, carrierIn: "", carrierOut: "", renewableOnly: false })
+              }
+              className="text-xs font-bold uppercase tracking-tighter text-primary hover:underline"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 

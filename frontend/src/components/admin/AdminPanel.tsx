@@ -2811,7 +2811,123 @@ function ProfileSubmissionCard({
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 type StatusTab = "all" | "pending_review" | "approved" | "rejected";
-type PanelTab  = "submissions" | "catalogue" | "profiles" | "scraper";
+type PanelTab  = "submissions" | "catalogue" | "profiles" | "scraper" | "simqueue";
+
+// ── Simulation queue (ADR-0005): live view of the processsim job queue ───────
+const _SIM_API = (import.meta.env.VITE_API_BASE_URL as string) || "/api/v1";
+
+interface SimJob {
+  job_id: string; status: string; tier: number; position: number | null;
+  engine: string | null; wait_s: number; run_s: number | null;
+}
+interface SimQueueData {
+  jobs: SimJob[];
+  stats: { counts: Record<string, number>; running: string | null; free_mb: number };
+}
+const TIER_LABEL: Record<number, string> = { 0: "admin", 1: "contributor", 2: "anonymous" };
+const SIM_STATUS_COLOR: Record<string, string> = {
+  queued: "bg-amber-100 text-amber-700", running: "bg-indigo-100 text-indigo-700",
+  done: "bg-emerald-100 text-emerald-700", error: "bg-red-100 text-red-700",
+  timeout: "bg-orange-100 text-orange-700", cancelled: "bg-slate-100 text-slate-500",
+};
+
+function SimQueueTab() {
+  const [data, setData] = useState<SimQueueData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch(`${_SIM_API}/processes/sim-queue`);
+      if (!r.ok) throw new Error(`Queue unavailable (HTTP ${r.status})`);
+      setData(await r.json());
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load the simulation queue.");
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 3000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const cancel = useCallback(async (jobId: string) => {
+    try { await fetch(`${_SIM_API}/processes/sim-queue/${jobId}`, { method: "DELETE" }); load(); }
+    catch { /* refresh will reflect state */ }
+  }, [load]);
+
+  const counts = data?.stats.counts ?? {};
+  const jobs = data?.jobs ?? [];
+
+  return (
+    <div className="space-y-5">
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <span className="material-symbols-outlined text-red-500">error</span>
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3">
+        {(["queued", "running", "done", "error", "timeout", "cancelled"]).map((k) => (
+          <div key={k} className="rounded-lg border border-slate-200 bg-white px-3 py-2 min-w-[92px]">
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">{k}</p>
+            <p className="text-lg font-bold text-slate-800 tabular-nums">{counts[k] ?? 0}</p>
+          </div>
+        ))}
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wide text-slate-400">Free memory</p>
+          <p className="text-lg font-bold text-slate-800 tabular-nums">
+            {((data?.stats.free_mb ?? 0) / 1024).toFixed(1)} GB
+          </p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wide">
+            <tr>
+              <th className="text-left px-4 py-2.5">Job</th>
+              <th className="text-left px-3 py-2.5">Status</th>
+              <th className="text-left px-3 py-2.5">Requester</th>
+              <th className="text-left px-3 py-2.5">Engine</th>
+              <th className="text-right px-3 py-2.5">Wait</th>
+              <th className="text-right px-3 py-2.5">Run</th>
+              <th className="px-3 py-2.5" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {jobs.length === 0 && (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No simulation jobs.</td></tr>
+            )}
+            {jobs.map((j) => (
+              <tr key={j.job_id} className="hover:bg-slate-50/60">
+                <td className="px-4 py-2 font-mono text-xs text-slate-500">{j.job_id.slice(0, 8)}</td>
+                <td className="px-3 py-2">
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${SIM_STATUS_COLOR[j.status] ?? "bg-slate-100 text-slate-600"}`}>
+                    {j.status}{j.position ? ` #${j.position}` : ""}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-slate-600">{TIER_LABEL[j.tier] ?? j.tier}</td>
+                <td className="px-3 py-2 text-slate-500">{j.engine ?? "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-slate-500">{j.wait_s}s</td>
+                <td className="px-3 py-2 text-right tabular-nums text-slate-500">{j.run_s != null ? `${j.run_s}s` : "—"}</td>
+                <td className="px-3 py-2 text-right">
+                  {(j.status === "queued" || j.status === "running") && (
+                    <button onClick={() => cancel(j.job_id)}
+                      className="text-xs font-semibold text-red-500 hover:text-red-700">Cancel</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-slate-400">Auto-refreshes every 3s · one serialized worker, priority by role tier (ADR-0005).</p>
+    </div>
+  );
+}
 
 export default function AdminPanel() {
   const { user, isAdmin } = useAuth();
@@ -3039,6 +3155,7 @@ export default function AdminPanel() {
             { id: "profiles"   as PanelTab, label: "Profile Submissions",  icon: "ssid_chart"     },
             { id: "catalogue"  as PanelTab, label: "Catalogue",            icon: "database"       },
             { id: "scraper"    as PanelTab, label: "Scraper Pipeline",     icon: "travel_explore" },
+            { id: "simqueue"   as PanelTab, label: "Simulation Queue",     icon: "schedule"       },
           ]).map(({ id, label, icon }) => (
             <button
               key={id}
@@ -3069,6 +3186,11 @@ export default function AdminPanel() {
       {/* ── Scraper pipeline panel ── */}
       {panelTab === "scraper" && (
         <ScraperPanel />
+      )}
+
+      {/* ── Simulation queue panel ── */}
+      {panelTab === "simqueue" && (
+        <SimQueueTab />
       )}
 
       {/* ── Profile submissions panel ── */}

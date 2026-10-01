@@ -1,0 +1,43 @@
+{
+  "schema_version": "2.0",
+  "simulation": { "t_end_s": 300, "dt_s": 60 },
+  "source": {
+    "tech_type": "solar",
+    "capacity_kw": 100,
+    "profile": [
+      { "time_s": 0,   "power_kw": 0  },
+      { "time_s": 150, "power_kw": 80 },
+      { "time_s": 300, "power_kw": 60 }
+    ]
+  },
+  "electrolyzer": {
+    "tech_type": "pem",
+    "capacity_kw": 80,
+    "nominal_efficiency_pct_hhv": 70,
+    "min_load_pct": 5,
+    "operating_temperature_c": 80,
+    "water_flow_rate_lpm": 7.2
+  },
+  "compressor": {
+    "tech_type": "reciprocating",
+    "isentropic_efficiency_frac": 0.78,
+    "inlet_pressure_bar": 30,
+    "target_pressure_bar": 350
+  },
+  "storage": {
+    "tech_type": "compressed_h2",
+    "max_pressure_bar": 350,
+    "min_pressure_bar": 20,
+    "initial_soc_pct": 20,
+    "round_trip_efficiency_pct": 99
+  },
+  "fuel_cell": {
+    "tech_type": "pem",
+    "rated_power_kw": 50,
+    "nominal_efficiency_pct": 58,
+    "min_load_pct": 10,
+    "h2_flow_rate_nm3h": 4.0,
+    "operating_pressure_bar": 2.5,
+    "cooling_capacity_kw": 4.0
+  }
+}

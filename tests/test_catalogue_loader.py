@@ -8,7 +8,13 @@ The highest-risk conversions are:
 """
 from pathlib import Path
 import pytest
-from api._loader import _is_catalogue, _map_catalogue_instance, _detect_lifecycle
+from api._loader import (
+    _is_catalogue,
+    _map_catalogue_instance,
+    _detect_lifecycle,
+    _load_catalogue_file,
+    _scan_raw_carriers,
+)
 
 
 BASE_DIR = Path(__file__).parent  # no real profile files needed in these tests
@@ -158,3 +164,118 @@ def test_lifecycle_demo_keyword():
 
 def test_lifecycle_demonstrator_keyword():
     assert _detect_lifecycle("Demonstration CCGT") == "demonstration"
+
+
+# ---------------------------------------------------------------------------
+# is_renewable classification (via _load_catalogue_file)
+# ---------------------------------------------------------------------------
+
+def _catalogue(domain: str, tech: dict) -> dict:
+    return {"metadata": {"domain": domain}, "technologies": [tech]}
+
+
+def _load_one(domain: str, tech: dict):
+    techs = _load_catalogue_file(BASE_DIR / "fake.json", _catalogue(domain, tech))
+    assert len(techs) == 1, "expected exactly one technology to load"
+    return techs[0]
+
+
+def test_is_renewable_generation_solar_true():
+    tech = _load_one("generation", {"technology_id": "solar_pv_utility", "carrier": "solar"})
+    assert tech.is_renewable is True
+
+
+def test_is_renewable_generation_fossil_false():
+    tech = _load_one("generation", {"technology_id": "ccgt", "carrier": "natural_gas"})
+    assert tech.is_renewable is False
+
+
+def test_is_renewable_storage_defaults_false():
+    tech = _load_one("storage", {"technology_id": "lithium_ion_bess", "carrier": "electricity"})
+    assert tech.is_renewable is False
+
+
+def test_is_renewable_explicit_flag_honored_for_non_generation():
+    # A conversion tech (green hydrogen) can be flagged renewable via explicit JSON.
+    tech = _load_one("conversion", {
+        "technology_id":  "pem_electrolyzer_green",
+        "input_carrier":  "electricity",
+        "output_carrier": "hydrogen",
+        "is_renewable":   True,
+    })
+    assert tech.is_renewable is True
+
+
+def test_is_renewable_explicit_flag_overrides_carrier():
+    # Explicit False wins even when the carrier would imply renewable.
+    tech = _load_one("generation", {
+        "technology_id": "solar_pv_utility",
+        "carrier":       "solar",
+        "is_renewable":  False,
+    })
+    assert tech.is_renewable is False
+
+
+# --- feedstock rule: renewable input carrier across generation + conversion ---
+
+def test_is_renewable_conversion_biomass_feedstock():
+    # Biomass CHP / boiler: conversion tech consuming a renewable feedstock.
+    tech = _load_one("conversion", {
+        "technology_id": "biomass_boiler_x",
+        "input_carrier": "biomass",
+        "output_carrier": "heat",
+    })
+    assert tech.is_renewable is True
+
+
+def test_is_renewable_heat_pump_ambient_heat_is_renewable():
+    tech = _load_one("conversion", {
+        "technology_id": "ashp_x",
+        "input_carriers": ["electricity", "ambient_heat"],
+        "output_carrier": "heat",
+    })
+    assert [c.value for c in tech.input_carriers] == ["electricity", "ambient_heat"]
+    assert tech.is_renewable is True
+
+
+def test_is_renewable_electricity_input_conversion_not_renewable():
+    # Electric boiler / electrolyzer: electricity in -> renewability depends on grid.
+    tech = _load_one("conversion", {
+        "technology_id": "electric_boiler_x",
+        "input_carrier": "electricity",
+        "output_carrier": "heat",
+    })
+    assert tech.is_renewable is False
+
+
+def test_is_renewable_transmission_excluded_even_with_renewable_carrier():
+    # A pipeline moving biogas is infrastructure, not a renewable source.
+    tech = _load_one("transmission", {"technology_id": "biogas_pipe_x", "carrier": "biogas"})
+    assert tech.is_renewable is False
+
+
+def test_marine_carrier_maps_to_marine_and_is_renewable():
+    tech = _load_one("generation", {"technology_id": "marine_x", "carrier": "marine"})
+    assert [c.value for c in tech.input_carriers] == ["marine"]
+    assert tech.is_renewable is True
+
+
+def test_waste_carrier_not_renewable():
+    # Municipal solid waste now maps to its own `waste` carrier (partly fossil).
+    tech = _load_one("generation", {"technology_id": "wte_x", "carrier": "municipal_solid_waste"})
+    assert [c.value for c in tech.input_carriers] == ["waste"]
+    assert tech.is_renewable is False
+
+
+# ---------------------------------------------------------------------------
+# _scan_raw_carriers — data-quality scan of the real catalogue files
+# ---------------------------------------------------------------------------
+
+def test_scan_raw_carriers_returns_set():
+    unmapped = _scan_raw_carriers()
+    assert isinstance(unmapped, set)
+
+
+def test_scan_raw_carriers_current_catalogue_is_clean():
+    # The shipped catalogue should use only mappable carrier vocabulary.
+    assert _scan_raw_carriers() == set()

@@ -1,11 +1,28 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: "class",
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  // NOTE: include js/jsx — the dropped-in Tech Simulator (src/components/simulator)
+  // is written in JSX; without this, its Tailwind classes are never generated.
+  content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
   theme: {
     extend: {
       // ── "Kinetic Monolith" material palette ──────────────────────────────
       colors: {
+        // "electric" accent ramp — used by the Tech Simulator. Aligned to the
+        // app's indigo primary (#4d4b9e) so the simulator matches the catalogue
+        // aesthetic instead of the undefined/blue it referenced before.
+        electric: {
+          50:  "#eef0fb",
+          100: "#dce0f7",
+          200: "#bcc3ef",
+          300: "#97a2e4",
+          400: "#6f7dd6",
+          500: "#5654a8",
+          600: "#4d4b9e",
+          700: "#3e3c8f",
+          800: "#302e73",
+          900: "#232156",
+        },
         // Surface hierarchy (no-line rule: depth via tonal shifts)
         "surface":                   "#f7f9fb",
         "surface-container-low":     "#f2f4f6",

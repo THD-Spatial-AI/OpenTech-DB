@@ -18,8 +18,10 @@ const ContributorWorkspace = lazy(() => import("./components/contributor/Contrib
 const AdminPanel           = lazy(() => import("./components/admin/AdminPanel"));
 const TimeSeriesCatalogue  = lazy(() => import("./components/timeseries/TimeSeriesCatalogue"));
 const WorldMapView         = lazy(() => import("./components/worldmap/WorldMapView"));
+const SimulatorView        = lazy(() => import("./components/studio/ProcessStudio"));
 import { useAuth } from "./context/AuthContext";
-import ConsentBanner, { getStoredConsent } from "./components/ConsentBanner";
+import ConsentBanner from "./components/ConsentBanner";
+import { getStoredConsent } from "./lib/consent";
 
 // ── Grid loading skeleton ─────────────────────────────────────────────────────
 
@@ -57,11 +59,13 @@ function CategoryContent({
   category,
   searchQuery,
   filters,
+  onFiltersChange,
   onOpenTech,
 }: {
   category: TechnologyCategory;
   searchQuery: string;
   filters: FilterState;
+  onFiltersChange: (next: FilterState) => void;
   onOpenTech: (tech: TechnologySummary) => void;
 }) {
   const { technologies } = use(fetchCategoryTechnologies(category));
@@ -72,6 +76,7 @@ function CategoryContent({
         category={category}
         searchQuery={searchQuery}
         filters={filters}
+        onFiltersChange={onFiltersChange}
         onOpenTech={onOpenTech}
       />
       <MetadataTable technologies={technologies} />
@@ -84,6 +89,9 @@ function CategoryContent({
 const DEFAULT_FILTERS: FilterState = {
   oeoCoverage:   new Set(),
   instanceScale: new Set(),
+  carrierIn:     "",
+  carrierOut:    "",
+  renewableOnly: false,
 };
 
 export default function App() {
@@ -96,9 +104,8 @@ export default function App() {
   const [showAuth, setShowAuth]             = useState(false);
   const [showConsent, setShowConsent]       = useState(() => getStoredConsent() === null);
 
-  // Filters are always empty — the filter UI was removed from the sidebar.
-  // Kept as a stable constant so TechGrid's prop type is satisfied.
-  const filters = DEFAULT_FILTERS;
+  // Carrier / renewable filters, driven by the filter bar inside TechGrid.
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
   const { user, authError } = useAuth();
   const authVisible = !user && (showAuth || Boolean(authError));
@@ -128,6 +135,8 @@ export default function App() {
           ? "OpenTech DB | Time Series & Profiles"
           : activeView === "worldmap"
           ? "OpenTech DB | Technology World Map"
+          : activeView === "simulator"
+          ? "OpenTech DB | Process Studio"
           : "OpenTech DB | Technology Catalogue"}
       </title>
       <meta
@@ -179,6 +188,8 @@ export default function App() {
             <TimeSeriesCatalogue />
           ) : activeView === "worldmap" ? (
             <WorldMapView />
+          ) : activeView === "simulator" ? (
+            <SimulatorView />
           ) : (
             <main className="max-w-[1440px] mx-auto px-8 py-12 w-full flex-1">
 
@@ -226,6 +237,7 @@ export default function App() {
                     category={activeCategory}
                     searchQuery={deferredSearch}
                     filters={filters}
+                    onFiltersChange={setFilters}
                     onOpenTech={setSelectedTech}
                   />
                 </Suspense>

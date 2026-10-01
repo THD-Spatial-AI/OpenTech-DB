@@ -122,6 +122,24 @@ Copy `.env.example` to `.env` and run `make configure` to generate matching secr
 
 See `keycloak/README.md` for all authentication-stack variables and `docs/deployment.md` for production values.
 
+## API at a glance
+
+Technologies can be fetched by UUID, slug, or display name — all three are interchangeable on every single-technology endpoint:
+
+```bash
+# Any of these returns the same technology
+GET /api/v1/technologies/ccgt
+GET /api/v1/technologies/Combined%20Cycle%20Gas%20Turbine
+GET /api/v1/technologies/3f4a9c12-...
+
+# Works on all sub-resources and adapter exports too
+GET /api/v1/technologies/onshore_wind/pypsa
+GET /api/v1/technologies/li_ion_bess/calliope?version=0.7
+GET /api/v1/technologies/offshore_wind/instances
+```
+
+The **slug** (the catalogue `technology_id`, e.g. `ccgt`, `onshore_wind`, `li_ion_bess`) is the recommended form for scripts and config files. UUIDs are the stable long-term key. Display-name lookup is case-insensitive and useful for ad-hoc querying.
+
 ## Documentation
 
 | Document | Description |
@@ -133,6 +151,7 @@ See `keycloak/README.md` for all authentication-stack variables and `docs/deploy
 | [`docs/data-formats.md`](docs/data-formats.md) | JSON catalogue and legacy format specs |
 | [`docs/adapters.md`](docs/adapters.md) | Framework export adapter guide |
 | [`docs/api-reference.md`](docs/api-reference.md) | FastAPI endpoint reference |
+| [`docs/integration.md`](docs/integration.md) | Integration guide with Python examples |
 | [`docs/scrapers.md`](docs/scrapers.md) | Scraper pipeline and source configuration |
 | [`docs/deployment.md`](docs/deployment.md) | Production deployment guide |
 | [`keycloak/README.md`](keycloak/README.md) | Auth stack operational reference |

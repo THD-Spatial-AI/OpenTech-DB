@@ -10,11 +10,11 @@ The data model is defined in `schemas/models.py` using Pydantic v2. All classes 
 Technology  ← oeo:EnergyConversionDevice
 │  id (UUID)  name  category  description  tags
 │  oeo_class  oeo_uri             ← OEO linkage
-│  input_carriers  output_carriers
+│  input_carriers  output_carriers  is_renewable
 │  instances: list[EquipmentInstance]
 │
 ├── PowerPlant    ← oeo:PowerGeneratingUnit
-│     technology_type  primary_fuel  is_dispatchable  is_renewable
+│     technology_type  primary_fuel  is_dispatchable
 │     fleet_capex_per_kw  fleet_opex_fixed_per_kw_yr
 │     fleet_electrical_efficiency  fleet_co2_emission_factor
 │

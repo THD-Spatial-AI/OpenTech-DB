@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { LegalDialog } from "./LegalDialogs";
+import { setStoredConsent } from "../lib/consent";
 import logoWithTitle from "../assets/icon_title.png";
-
-const STORAGE_KEY = "opentech-consent-v1";
-
-export type ConsentState = "accepted" | "declined" | null;
-
-export function getStoredConsent(): ConsentState {
-  return (localStorage.getItem(STORAGE_KEY) as ConsentState) ?? null;
-}
 
 function DataRow({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
@@ -32,7 +25,7 @@ export default function ConsentBanner({ onDecide }: ConsentBannerProps) {
   const [leaving, setLeaving] = useState(false);
 
   const decide = (choice: "accepted" | "declined") => {
-    localStorage.setItem(STORAGE_KEY, choice);
+    setStoredConsent(choice);
     setLeaving(true);
     setTimeout(() => onDecide(choice), 280);
   };

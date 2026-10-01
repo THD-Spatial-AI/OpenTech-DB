@@ -22,6 +22,9 @@ const mockFetch = vi.mocked(fetchCategoryTechnologies)
 const emptyFilters: FilterState = {
   oeoCoverage: new Set(),
   instanceScale: new Set(),
+  carrierIn: '',
+  carrierOut: '',
+  renewableOnly: false,
 }
 
 function makeTech(overrides: Partial<TechnologySummary> = {}): TechnologySummary {
@@ -35,6 +38,7 @@ function makeTech(overrides: Partial<TechnologySummary> = {}): TechnologySummary
     n_instances: 3,
     input_carriers: [],
     output_carriers: [],
+    is_renewable: false,
     ...overrides,
   }
 }
@@ -53,7 +57,7 @@ describe('TechGrid', () => {
     await act(async () => {
       render(
         <Suspense fallback={<div>loading</div>}>
-          <TechGrid category="generation" searchQuery="" filters={emptyFilters} onOpenTech={vi.fn()} />
+          <TechGrid category="generation" searchQuery="" filters={emptyFilters} onFiltersChange={vi.fn()} onOpenTech={vi.fn()} />
         </Suspense>
       )
       await promise
@@ -70,7 +74,7 @@ describe('TechGrid', () => {
     await act(async () => {
       render(
         <Suspense fallback={<div>loading</div>}>
-          <TechGrid category="generation" searchQuery="" filters={emptyFilters} onOpenTech={vi.fn()} />
+          <TechGrid category="generation" searchQuery="" filters={emptyFilters} onFiltersChange={vi.fn()} onOpenTech={vi.fn()} />
         </Suspense>
       )
       await promise
@@ -90,7 +94,7 @@ describe('TechGrid', () => {
     await act(async () => {
       render(
         <Suspense fallback={<div>loading</div>}>
-          <TechGrid category="generation" searchQuery="solar" filters={emptyFilters} onOpenTech={vi.fn()} />
+          <TechGrid category="generation" searchQuery="solar" filters={emptyFilters} onFiltersChange={vi.fn()} onOpenTech={vi.fn()} />
         </Suspense>
       )
       await promise
@@ -109,7 +113,7 @@ describe('TechGrid', () => {
     await act(async () => {
       render(
         <Suspense fallback={<div>loading</div>}>
-          <TechGrid category="generation" searchQuery="xyz-no-match" filters={emptyFilters} onOpenTech={vi.fn()} />
+          <TechGrid category="generation" searchQuery="xyz-no-match" filters={emptyFilters} onFiltersChange={vi.fn()} onOpenTech={vi.fn()} />
         </Suspense>
       )
       await promise
@@ -133,7 +137,8 @@ describe('TechGrid', () => {
           <TechGrid
             category="generation"
             searchQuery=""
-            filters={{ oeoCoverage: new Set(['full']), instanceScale: new Set() }}
+            filters={{ ...emptyFilters, oeoCoverage: new Set(['full']) }}
+            onFiltersChange={vi.fn()}
             onOpenTech={vi.fn()}
           />
         </Suspense>
@@ -160,7 +165,8 @@ describe('TechGrid', () => {
           <TechGrid
             category="generation"
             searchQuery=""
-            filters={{ oeoCoverage: new Set(['none']), instanceScale: new Set() }}
+            filters={{ ...emptyFilters, oeoCoverage: new Set(['none']) }}
+            onFiltersChange={vi.fn()}
             onOpenTech={vi.fn()}
           />
         </Suspense>
@@ -188,7 +194,8 @@ describe('TechGrid', () => {
           <TechGrid
             category="generation"
             searchQuery=""
-            filters={{ oeoCoverage: new Set(), instanceScale: new Set(['single']) }}
+            filters={{ ...emptyFilters, instanceScale: new Set(['single']) }}
+            onFiltersChange={vi.fn()}
             onOpenTech={vi.fn()}
           />
         </Suspense>
@@ -216,7 +223,8 @@ describe('TechGrid', () => {
           <TechGrid
             category="generation"
             searchQuery=""
-            filters={{ oeoCoverage: new Set(), instanceScale: new Set(['many']) }}
+            filters={{ ...emptyFilters, instanceScale: new Set(['many']) }}
+            onFiltersChange={vi.fn()}
             onOpenTech={vi.fn()}
           />
         </Suspense>
@@ -226,5 +234,61 @@ describe('TechGrid', () => {
     const cards = screen.getAllByTestId('tech-card')
     expect(cards).toHaveLength(1)
     expect(cards[0]).toHaveTextContent('Many')
+  })
+
+  it('output carrier filter shows only techs producing that carrier', async () => {
+    const promise = Promise.resolve({
+      technologies: [
+        makeTech({ id: '1', name: 'Electrolyzer', output_carriers: ['hydrogen'] }),
+        makeTech({ id: '2', name: 'Solar PV', output_carriers: ['electricity'] }),
+      ],
+      total: 2,
+    })
+    mockFetch.mockReturnValue(promise)
+    await act(async () => {
+      render(
+        <Suspense fallback={<div>loading</div>}>
+          <TechGrid
+            category="generation"
+            searchQuery=""
+            filters={{ ...emptyFilters, carrierOut: 'hydrogen' }}
+            onFiltersChange={vi.fn()}
+            onOpenTech={vi.fn()}
+          />
+        </Suspense>
+      )
+      await promise
+    })
+    const cards = screen.getAllByTestId('tech-card')
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toHaveTextContent('Electrolyzer')
+  })
+
+  it('renewable-only filter shows only renewable techs', async () => {
+    const promise = Promise.resolve({
+      technologies: [
+        makeTech({ id: '1', name: 'Solar PV', is_renewable: true }),
+        makeTech({ id: '2', name: 'CCGT', is_renewable: false }),
+      ],
+      total: 2,
+    })
+    mockFetch.mockReturnValue(promise)
+    await act(async () => {
+      render(
+        <Suspense fallback={<div>loading</div>}>
+          <TechGrid
+            category="generation"
+            searchQuery=""
+            filters={{ ...emptyFilters, renewableOnly: true }}
+            onFiltersChange={vi.fn()}
+            onOpenTech={vi.fn()}
+          />
+        </Suspense>
+      )
+      await promise
+    })
+    const cards = screen.getAllByTestId('tech-card')
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toHaveTextContent('Solar PV')
   })
 })

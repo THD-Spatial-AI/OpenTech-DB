@@ -27,6 +27,8 @@ services:
       - /var/www/opentech-db:/usr/share/nginx/html:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
+      - /opt/nginx-sites:/etc/nginx/sites:ro 
+      - /var/www/tempo:/var/www/tempo:ro
     networks:
       - default
 

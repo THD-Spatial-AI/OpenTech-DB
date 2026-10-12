@@ -1,0 +1,44 @@
+name: Renew TLS Certificate
+
+on:
+  schedule:
+    - cron: "47 3 * * 1"   # Weekly (Mon), 30 min after TEMPO's renewal to avoid certbot lock clashes
+  workflow_dispatch:
+
+concurrency:
+  group: otdb-cert-renew
+  cancel-in-progress: false
+
+jobs:
+  renew:
+    name: Renew otdb.th-deg.de certificate
+    runs-on: [self-hosted, opentechdb-runner]
+    steps:
+      # Webroot auth through the running nginx (deploy/nginx.conf serves
+      # /.well-known/acme-challenge/ from /var/www/certbot). certonly also rewrites
+      # the renewal config, so a cert first issued with --standalone is migrated.
+      - name: Renew if due (< 30 days left)
+        env:
+          LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
+        run: |
+          account_args=(--register-unsafely-without-email)
+          [[ -n "${LETSENCRYPT_EMAIL:-}" ]] && account_args=(--email "$LETSENCRYPT_EMAIL")
+
+          docker run --rm \
+            -v /etc/letsencrypt:/etc/letsencrypt \
+            -v /var/lib/letsencrypt:/var/lib/letsencrypt \
+            -v /var/www/certbot:/var/www/certbot \
+            certbot/certbot certonly \
+              --webroot -w /var/www/certbot \
+              --cert-name otdb.th-deg.de -d otdb.th-deg.de \
+              --keep-until-expiring --non-interactive --agree-tos \
+              "${account_args[@]}"
+
+      - name: Reload nginx
+        run: docker exec opentech-nginx nginx -t && docker exec opentech-nginx nginx -s reload
+
+      - name: Verify certificate
+        run: |
+          curl -fsS --retry 3 --retry-delay 3 -o /dev/null https://otdb.th-deg.de/health
+          echo | openssl s_client -connect otdb.th-deg.de:443 -servername otdb.th-deg.de 2>/dev/null \
+            | openssl x509 -noout -enddate

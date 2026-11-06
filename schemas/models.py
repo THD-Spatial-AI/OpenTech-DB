@@ -20,8 +20,10 @@ Key OEO concepts mapped here:
 
 from __future__ import annotations
 
+import calendar
+import re
 from enum import Enum
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, HttpUrl, model_validator
@@ -102,6 +104,13 @@ class ParameterValue(BaseModel):
                 raise ValueError("`min` must be ≤ `max`.")
         return self
 
+class ProfileCitation(BaseModel):
+    """One literature/data reference backing a profile parameter."""
+    title: str
+    url: str | None = None
+    parameter: str | None = Field(None, description="Which profile parameter this reference supports.")
+
+
 class GenerationProfile(BaseModel):
     """
     Example or site-specific generation profile time series.
@@ -118,8 +127,38 @@ class GenerationProfile(BaseModel):
     year: int | None = Field(None, description="Reference weather or operating year.")
     timezone: str | None = Field(None, description="Timezone used for the series.")
     notes: str | None = Field(None, description="Free-form notes about assumptions or representativeness.")
+    profile_role: Literal["availability", "capacity_factor"] | None = Field(
+        None,
+        description="availability = upper bound on output (dispatch may go below); "
+                    "capacity_factor = output follows the series (must-take resource).",
+    )
+    method: Literal["measured", "parameterised_from_statistics", "synthetic"] | None = Field(
+        None, description="How the series was produced.",
+    )
+    citations: list[ProfileCitation] = Field(default_factory=list, description="References for the profile parameters.")
+    country: str | None = Field(None, description="ISO-2 country the series represents; null = location-independent.")
 
     model_config = {"extra": "allow"}
+
+    @model_validator(mode="after")
+    def _check_length(self) -> "GenerationProfile":
+        """An annual series must hold exactly one value per time step of its year."""
+        if self.kind != "annual_series":
+            return self
+        m = re.fullmatch(r"(\d+)\s*(min|h)", self.time_resolution.strip())
+        if not m:
+            raise ValueError(f"unsupported time_resolution '{self.time_resolution}' (use e.g. 1h, 30min)")
+        step_min = int(m.group(1)) * (60 if m.group(2) == "h" else 1)
+        if self.year is None:
+            allowed = {365 * 1440 // step_min, 366 * 1440 // step_min}
+        else:
+            allowed = {(366 if calendar.isleap(self.year) else 365) * 1440 // step_min}
+        if len(self.values) not in allowed:
+            raise ValueError(
+                f"annual_series at {self.time_resolution} for year {self.year} needs "
+                f"{' or '.join(map(str, sorted(allowed)))} values, got {len(self.values)}"
+            )
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -374,6 +413,10 @@ class ConversionTechnology(Technology):
     conversion_type: str | None = Field(None, description="e.g. 'electrolyzer_PEM', 'fuel_cell_SOFC', 'heat_pump_ASHP'.")
     fleet_conversion_efficiency: ParameterValue | None = Field(
         None, description="Primary conversion efficiency [fraction]."
+    )
+    generation_profile: GenerationProfile | None = Field(
+        None,
+        description="Optional technology-level profile, e.g. an hourly availability series for CHP.",
     )
 
 

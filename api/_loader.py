@@ -314,6 +314,7 @@ def _map_catalogue_instance(
         "co2_emission_factor":   _pv(co2_t_mwh,                                     "tCO2/MWh_fuel", ref),
         "ramp_up_rate":          _pv(ramp,  "%capacity/min", ref),
         "ramp_down_rate":        _pv(ramp,  "%capacity/min", ref),
+        "min_stable_generation": _pv(_value_from_inst("min_load_fraction"), "fraction", ref),
         "generation_profile":    _load_generation_profile(inst.get("generation_profile"), base_dir, ref),
         "extra": {**explicit_extra, **passthrough_extra},
     }
@@ -507,6 +508,9 @@ def _load_catalogue_file(path: Path, raw: dict) -> list[Technology]:
                 tech_dict["transmission_type"] = tech_id_str
             elif cat == TechnologyCategory.CONVERSION:
                 tech_dict["conversion_type"] = tech_id_str
+                tech_dict["generation_profile"] = _load_generation_profile(
+                    tech_raw.get("generation_profile"), path.parent, tech_name,
+                )
 
             tech = model_cls.model_validate(tech_dict)
             results.append(tech)

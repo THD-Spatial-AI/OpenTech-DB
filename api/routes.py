@@ -1391,6 +1391,10 @@ def get_technology_profiles(
             "n_values":        len(profile.values),
             "source":          profile.source,
             "year":            profile.year,
+            "profile_role":    profile.profile_role,
+            "method":          profile.method,
+            "citations":       [c.model_dump() for c in profile.citations],
+            "country":         profile.country,
         }
 
     embedded: list[dict[str, Any]] = []

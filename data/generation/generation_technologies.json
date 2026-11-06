@@ -40,7 +40,9 @@
       "generation_profile": {
         "profile_id": "solar_pv_utility_example_annual",
         "source_file": "profiles/solar_pv_utility_example_annual.json",
-        "notes": "Example hourly capacity-factor profile for a temperate utility PV fleet. Not site-specific."
+        "notes": "Example hourly capacity-factor profile for a temperate utility PV fleet. Not site-specific.",
+        "profile_role": "capacity_factor",
+        "method": "synthetic"
       },
       "instances": [
         {
@@ -1926,11 +1928,6 @@
       "carrier": "wind",
       "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000311",
       "description": "Land-based wind turbines from single-turbine community installations (2–3 MW) to large utility farms (600+ MW). Covers six turbine classes: micro/community (2–3 MW, hub height 80–100 m), small commercial (3–5 MW), mid-size (5–7 MW, modern German standard), large modern (7–10 MW), next-generation (>10 MW). Capacity factors range from ~25% in low-wind interior sites to ~55% on US Great Plains. Includes German Bürgerwindpark, EEG auction, and repowering contexts.",
-      "generation_profile": {
-        "profile_id": "onshore_wind_example_annual",
-        "source_file": "profiles/onshore_wind_example_annual.json",
-        "notes": "Example hourly capacity-factor profile for an onshore wind fleet with moderate winter seasonality. Not site-specific."
-      },
       "instances": [
         {
           "instance_id": "onshore_wind_single_3mw_community",
@@ -3737,7 +3734,11 @@
           "country": "United Kingdom",
           "country_inference_source": "instance_text"
         }
-      ]
+      ],
+      "generation_profile": {
+        "profile_id": "hydro_run_of_river_cf_de_2019",
+        "source_file": "profiles/hydro_run_of_river_cf_de_2019.json"
+      }
     },
     {
       "technology_id": "hydro_reservoir",
@@ -3746,11 +3747,6 @@
       "carrier": "hydro",
       "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00010094",
       "description": "Hydropower plants with a large upstream reservoir for water storage, enabling dispatchable generation independent of instantaneous river flow. Provides peaking, balancing, and long-duration storage services.",
-      "generation_profile": {
-        "profile_id": "hydro_reservoir_example_annual",
-        "source_file": "profiles/hydro_reservoir_example_annual.json",
-        "notes": "Example hourly capacity-factor profile for reservoir hydro with seasonal inflow and dispatch shaping. Not plant-specific."
-      },
       "instances": [
         {
           "instance_id": "hydro_reservoir_200mw_medium",
@@ -4197,9 +4193,8 @@
       "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000184",
       "description": "Combined-cycle power plants burning natural gas in a gas turbine and recovering exhaust heat in a heat recovery steam generator (HRSG) to drive a steam turbine. Highest thermal efficiency among gas-fired plants.",
       "generation_profile": {
-        "profile_id": "ccgt_example_annual",
-        "source_file": "profiles/ccgt_example_annual.json",
-        "notes": "Example hourly capacity-factor profile for a mid-merit combined-cycle fleet. Not market-specific."
+        "profile_id": "ccgt_availability_2025",
+        "source_file": "profiles/ccgt_availability_2025.json"
       },
       "instances": [
         {
@@ -5502,7 +5497,11 @@
           "reference_source": "Crossref, 2023, doi:10.3390/en16155589",
           "efficiency_percent": 31.27
         }
-      ]
+      ],
+      "generation_profile": {
+        "profile_id": "ocgt_availability_2025",
+        "source_file": "profiles/ocgt_availability_2025.json"
+      }
     },
     {
       "technology_id": "internal_combustion_engine",
@@ -5952,7 +5951,11 @@
           "water_withdrawal_m3_per_mwh": 0.1,
           "land_use_m2_per_kw": 2.0
         }
-      ]
+      ],
+      "generation_profile": {
+        "profile_id": "internal_combustion_engine_availability_2025",
+        "source_file": "profiles/internal_combustion_engine_availability_2025.json"
+      }
     },
     {
       "technology_id": "coal_power_plant",
@@ -6447,7 +6450,11 @@
           "water_withdrawal_m3_per_mwh": 1.4,
           "land_use_m2_per_kw": 5.0
         }
-      ]
+      ],
+      "generation_profile": {
+        "profile_id": "coal_power_plant_availability_2025",
+        "source_file": "profiles/coal_power_plant_availability_2025.json"
+      }
     },
     {
       "technology_id": "nuclear_conventional",
@@ -6457,9 +6464,8 @@
       "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00000303",
       "description": "Large-scale nuclear fission power plants producing baseload electricity. Includes Generation II (PWR, BWR) and Generation III/III+ reactors (AP1000, EPR). Very low operational CO2 emissions.",
       "generation_profile": {
-        "profile_id": "nuclear_conventional_example_annual",
-        "source_file": "profiles/nuclear_conventional_example_annual.json",
-        "notes": "Example hourly capacity-factor profile for baseload nuclear generation with planned maintenance outages. Not unit-specific."
+        "profile_id": "nuclear_conventional_availability_2025",
+        "source_file": "profiles/nuclear_conventional_availability_2025.json"
       },
       "instances": [
         {
@@ -7555,7 +7561,11 @@
           "country": "Russia",
           "country_inference_source": "instance_text"
         }
-      ]
+      ],
+      "generation_profile": {
+        "profile_id": "smr_availability_2025",
+        "source_file": "profiles/smr_availability_2025.json"
+      }
     },
     {
       "technology_id": "geothermal_power",
@@ -8029,7 +8039,11 @@
           "water_withdrawal_m3_per_mwh": 14.2,
           "land_use_m2_per_kw": 3.7
         }
-      ]
+      ],
+      "generation_profile": {
+        "profile_id": "geothermal_power_availability_2025",
+        "source_file": "profiles/geothermal_power_availability_2025.json"
+      }
     },
     {
       "technology_id": "biomass_power_plant",
@@ -8497,7 +8511,11 @@
           "water_withdrawal_m3_per_mwh": 1.2,
           "land_use_m2_per_kw": 1.3
         }
-      ]
+      ],
+      "generation_profile": {
+        "profile_id": "biomass_power_plant_availability_2025",
+        "source_file": "profiles/biomass_power_plant_availability_2025.json"
+      }
     },
     {
       "technology_id": "biogas_power_plant",
@@ -8974,7 +8992,11 @@
           "country": "Spain",
           "country_inference_source": "instance_text"
         }
-      ]
+      ],
+      "generation_profile": {
+        "profile_id": "biogas_power_plant_availability_2025",
+        "source_file": "profiles/biogas_power_plant_availability_2025.json"
+      }
     },
     {
       "technology_id": "waste_to_energy",
@@ -9459,7 +9481,11 @@
           "water_withdrawal_m3_per_mwh": 1.0,
           "land_use_m2_per_kw": 1.0
         }
-      ]
+      ],
+      "generation_profile": {
+        "profile_id": "waste_to_energy_availability_2025",
+        "source_file": "profiles/waste_to_energy_availability_2025.json"
+      }
     },
     {
       "technology_id": "marine_energy",
@@ -9490,7 +9516,11 @@
           "turbine_diameter_m": 17.9,
           "country_iso2": "EU",
           "country": "Europe",
-          "country_inference_source": "instance_text"
+          "country_inference_source": "instance_text",
+          "generation_profile": {
+            "profile_id": "tidal_stream_cf_2025",
+            "source_file": "profiles/tidal_stream_cf_2025.json"
+          }
         },
         {
           "instance_id": "marine_wave_5mw",
@@ -9528,7 +9558,11 @@
           "min_load_fraction": 0.1,
           "land_use_m2_per_kw": 14.1,
           "tidal_current_speed_ms": 4.0,
-          "turbine_diameter_m": 15.0
+          "turbine_diameter_m": 15.0,
+          "generation_profile": {
+            "profile_id": "tidal_stream_cf_2025",
+            "source_file": "profiles/tidal_stream_cf_2025.json"
+          }
         },
         {
           "instance_id": "mar_500kw_tidal_stream",
@@ -9548,7 +9582,11 @@
           "min_load_fraction": 0.1,
           "land_use_m2_per_kw": 6.2,
           "tidal_current_speed_ms": 2.0,
-          "turbine_diameter_m": 18.0
+          "turbine_diameter_m": 18.0,
+          "generation_profile": {
+            "profile_id": "tidal_stream_cf_2025",
+            "source_file": "profiles/tidal_stream_cf_2025.json"
+          }
         },
         {
           "instance_id": "mar_1mw_tidal",
@@ -9568,7 +9606,11 @@
           "min_load_fraction": 0.1,
           "land_use_m2_per_kw": 7.1,
           "tidal_current_speed_ms": 2.1,
-          "turbine_diameter_m": 17.9
+          "turbine_diameter_m": 17.9,
+          "generation_profile": {
+            "profile_id": "tidal_stream_cf_2025",
+            "source_file": "profiles/tidal_stream_cf_2025.json"
+          }
         },
         {
           "instance_id": "mar_10mw_tidal_array",
@@ -9588,7 +9630,11 @@
           "min_load_fraction": 0.1,
           "land_use_m2_per_kw": 12.2,
           "tidal_current_speed_ms": 3.0,
-          "turbine_diameter_m": 15.0
+          "turbine_diameter_m": 15.0,
+          "generation_profile": {
+            "profile_id": "tidal_stream_cf_2025",
+            "source_file": "profiles/tidal_stream_cf_2025.json"
+          }
         },
         {
           "instance_id": "mar_100mw_tidal_util",
@@ -9608,7 +9654,11 @@
           "min_load_fraction": 0.1,
           "land_use_m2_per_kw": 18.8,
           "tidal_current_speed_ms": 4.5,
-          "turbine_diameter_m": 15.0
+          "turbine_diameter_m": 15.0,
+          "generation_profile": {
+            "profile_id": "tidal_stream_cf_2025",
+            "source_file": "profiles/tidal_stream_cf_2025.json"
+          }
         },
         {
           "instance_id": "mar_240mw_barrage",
@@ -9818,7 +9868,11 @@
           "min_load_fraction": 0.1,
           "land_use_m2_per_kw": 14.1,
           "tidal_current_speed_ms": 4.0,
-          "turbine_diameter_m": 15.0
+          "turbine_diameter_m": 15.0,
+          "generation_profile": {
+            "profile_id": "tidal_stream_cf_2025",
+            "source_file": "profiles/tidal_stream_cf_2025.json"
+          }
         },
         {
           "instance_id": "mar_5mw_river_turbine",

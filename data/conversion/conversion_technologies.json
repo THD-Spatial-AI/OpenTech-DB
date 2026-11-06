@@ -3686,6 +3686,10 @@
       "output_carriers": ["electricity", "heat"],
       "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00240011",
       "description": "Also known as cogeneration. Gas-fired plants simultaneously producing electricity and useful heat, achieving total fuel utilisation efficiencies of 75–90%. Includes gas engine CHP (< 10 MW) and gas turbine CHP (> 10 MW). efficiency_percent = total efficiency (electrical + thermal, LHV basis).",
+      "generation_profile": {
+        "profile_id": "chp_gas_availability_2025",
+        "source_file": "profiles/chp_gas_availability_2025.json"
+      },
       "instances": [
         {
           "instance_id": "chp_gas_engine_1mw",
@@ -4120,6 +4124,10 @@
       "output_carriers": ["electricity", "heat"],
       "oeo_class": "http://openenergy-platform.org/ontology/oeo/OEO_00240011",
       "description": "Combined heat and power from solid biomass (wood chips, pellets, agricultural residues) or biogas combustion. Contributes to renewable heating and power with biogenic (net-zero) CO2 accounting. efficiency_percent = total efficiency (electrical + thermal, LHV).",
+      "generation_profile": {
+        "profile_id": "biomass_chp_availability_2025",
+        "source_file": "profiles/biomass_chp_availability_2025.json"
+      },
       "instances": [
         {
           "instance_id": "biomass_chp_1mw_small",

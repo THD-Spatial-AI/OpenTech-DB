@@ -227,6 +227,9 @@
     },
     {
       "profile_id": "de_hydro_ror_cf_2019",
+      "technology_id": "hydro_run_of_river",
+      "profile_role": "capacity_factor",
+      "method": "synthetic",
       "name": "DE Hydro Run-of-River Capacity Factor 2019",
       "type": "capacity_factor",
       "resolution": "hourly",

@@ -63,6 +63,7 @@ data/timeseries/pending/
 data/timeseries/*.json
 !data/timeseries/timeseries_catalogue.json
 !data/timeseries/ci_test_fixture.json
+!data/timeseries/de_hydro_ror_cf_2019.json
 
 # Node / frontend (already covered by frontend/.gitignore too)
 frontend/node_modules/

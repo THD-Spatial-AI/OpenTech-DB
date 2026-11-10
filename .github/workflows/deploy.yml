@@ -63,4 +63,5 @@ jobs:
       - name: Sync technology catalogue to Supabase
         run: |
           docker exec opentech-db python scripts/seed_supabase_catalogue.py
+          docker exec opentech-db python scripts/import_timeseries_to_supabase.py --skip-pending
           docker restart opentech-db

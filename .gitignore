@@ -82,6 +82,8 @@ scripts/*
 !scripts/migrate_catalogue_to_supabase.py
 !scripts/backfill_instance_countries_supabase.py
 !scripts/export_all.py
+!scripts/import_timeseries_to_supabase.py
+!scripts/build_reference_profiles.py
 
 # Local data files not part of the catalogue
 data/wind_turbine_library.csv

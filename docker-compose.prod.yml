@@ -12,6 +12,7 @@ services:
 
   nginx:
     image: nginx:alpine
+    pull_policy: always
     container_name: opentech-nginx
     restart: unless-stopped
     depends_on:

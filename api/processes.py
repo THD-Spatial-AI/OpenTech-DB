@@ -295,6 +295,9 @@ def review_process_submission(request: Request, sid: str, action: ReviewAction) 
         payload = raw.get("payload", {})
         slug = payload.get("slug") or _slugify(payload.get("name", ""))
         seed = {k: v for k, v in payload.items() if k != "id"}
+        # Published seeds land in the public Git history, which cannot be erased
+        # (GDPR Art. 17). Authorship stays only in the deletable submission record.
+        seed["author"] = None
         seed["status"] = ProcessStatus.APPROVED.value
         content = json.dumps(seed, indent=2, ensure_ascii=False)
 

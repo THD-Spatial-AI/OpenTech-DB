@@ -101,8 +101,13 @@ if _log_dir := os.getenv("OPENTECHDB_LOG_DIR"):
         logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s")
     )
     # uvicorn's loggers don't propagate to root, so attach to them explicitly.
+    # Console handlers drop to WARNING: Docker keeps stdout by size, not by age,
+    # so access lines (client IPs) must only live in the 7-day files.
     for _name in ("", "uvicorn.error", "uvicorn.access"):
-        logging.getLogger(_name).addHandler(_file_handler)
+        _logger = logging.getLogger(_name)
+        for _handler in _logger.handlers:
+            _handler.setLevel(logging.WARNING)
+        _logger.addHandler(_file_handler)
 
 # ---------------------------------------------------------------------------
 # Version

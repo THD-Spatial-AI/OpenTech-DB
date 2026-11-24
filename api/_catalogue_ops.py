@@ -143,9 +143,10 @@ def _notify_submitter(
             srv.starttls(context=ctx)
             srv.login(smtp_user, smtp_pass)
             srv.sendmail(from_addr, [email], msg.as_string())
-        logger.info("Notified %s: submission '%s' → %s", email, tech_name, status)
+        logger.info("Notified submitter: submission '%s' → %s", tech_name, status)
     except Exception as exc:
-        logger.warning("Failed to notify %s (submission '%s'): %s", email, tech_name, exc)
+        # Only the exception type: SMTPRecipientsRefused would echo the address.
+        logger.warning("Failed to notify submitter (submission '%s'): %s", tech_name, type(exc).__name__)
 
 
 def _build_updated_catalogue(catalogue: dict, record: dict) -> dict:

@@ -1548,7 +1548,7 @@ def submit_technology(
                 "status":          "pending_review",
             }).execute()
             submission_id = result.data[0]["id"]
-            logger.info("DB submission: %s by %s (%s)", tech_name, user_email, submission_id)
+            logger.info("DB submission: %s (%s)", tech_name, submission_id)
             return SubmissionResponse(
                 id=submission_id,
                 technology_name=tech_name,

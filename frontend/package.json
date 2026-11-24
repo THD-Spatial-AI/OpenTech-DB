@@ -12,6 +12,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
     "@radix-ui/react-dialog": "^1.1.23",
     "@types/leaflet": "^1.9.21",
     "@xyflow/react": "^12.10.2",
@@ -21,6 +23,7 @@
     "echarts-for-react": "^3.0.2",
     "globe.gl": "^2.46.1",
     "leaflet": "^1.9.4",
+    "material-symbols": "^0.49.0",
     "postcss": "^8.5.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

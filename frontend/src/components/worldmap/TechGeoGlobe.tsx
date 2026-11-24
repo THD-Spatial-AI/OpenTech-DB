@@ -45,8 +45,8 @@ interface GeoFeature {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const GEOJSON_URL =
-  "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json";
+// Served from frontend/public so the browser never contacts GitHub.
+const GEOJSON_URL = "/geo/countries.geo.json";
 
 const RESUME_DELAY_MS = 3000;
 

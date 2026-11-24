@@ -32,8 +32,8 @@ interface TechGeoMapProps {
 
 // ── GeoJSON source ─────────────────────────────────────────────────────────────
 // johan/world.geo.json — feature.id = ISO Alpha-3  |  properties.name = country name
-const GEOJSON_URL =
-  "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json";
+// Served from frontend/public so the browser never contacts GitHub.
+const GEOJSON_URL = "/geo/countries.geo.json";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

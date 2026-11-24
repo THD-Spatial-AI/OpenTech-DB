@@ -12,7 +12,6 @@ vi.mock("../../../context/AuthContext", () => ({
 const mockUseAuth = vi.mocked(useAuth);
 const login = vi.fn(async () => {});
 const register = vi.fn(async () => {});
-const loginWithProvider = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -23,7 +22,6 @@ beforeEach(() => {
     authError: null,
     login,
     register,
-    loginWithProvider,
     signOut: vi.fn(async () => {}),
     manageAccount: vi.fn(),
     refreshSession: vi.fn(async () => false),
@@ -31,16 +29,13 @@ beforeEach(() => {
 });
 
 describe("AuthPage", () => {
-  it("keeps the original split-page controls and provider buttons", async () => {
+  it("keeps the split-page controls without GitHub/ORCID sign-in", () => {
     render(<AuthPage onSuccess={vi.fn()} />);
 
     expect(screen.getByText("OEO-Aligned")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continue with GitHub" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continue with ORCID" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue with GitHub" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue with ORCID" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Sign In" })).toHaveAttribute("aria-selected", "true");
-
-    await userEvent.click(screen.getByRole("button", { name: "Continue with GitHub" }));
-    expect(loginWithProvider).toHaveBeenCalledWith("github");
   });
 
   it("signs in with either a username or an email", async () => {

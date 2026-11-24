@@ -273,14 +273,6 @@ export async function registerWithKeycloak(
   });
 }
 
-export function getKeycloakProviderLoginUrl(
-  provider: "github" | "orcid",
-  returnTo = "/",
-): string {
-  const query = new URLSearchParams({ return_to: returnTo });
-  return `${AUTH_BASE_URL}/auth/provider/${provider}?${query.toString()}`;
-}
-
 export async function logoutFromKeycloak(): Promise<void> {
   await authPost<{ success?: boolean }>("/logout");
 }

@@ -165,96 +165,6 @@ function Field({
   );
 }
 
-// ── OAuth provider buttons ────────────────────────────────────────────────────
-
-function GitHubButton({ onLogin }: { onLogin: () => void }) {
-  const [providerError, setProviderError] = useState<string | null>(null);
-
-  const handleGitHub = () => {
-    setProviderError(null);
-    try {
-      onLogin();
-    } catch {
-      setProviderError("Could not start GitHub sign-in. Please try again.");
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <button
-        type="button"
-        onClick={handleGitHub}
-        className="
-          flex items-center justify-center gap-3 w-full rounded-xl
-          border border-outline-variant/40 bg-[#24292f] text-white
-          px-6 py-3 text-sm font-bold
-          hover:bg-[#2d333b] active:scale-[0.98]
-          transition-all duration-150 shadow-sm hover:shadow-md
-          focus:outline-none focus:ring-2 focus:ring-primary/40
-        "
-      >
-        {/* GitHub mark */}
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.483 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.004.07 1.532 1.032 1.532 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.349-1.088.635-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.03-2.682-.103-.253-.447-1.27.098-2.646 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844a9.59 9.59 0 012.504.337c1.909-1.294 2.747-1.025 2.747-1.025.547 1.376.202 2.394.1 2.646.64.698 1.026 1.591 1.026 2.682 0 3.841-2.337 4.687-4.565 4.935.359.309.678.919.678 1.852 0 1.337-.012 2.415-.012 2.744 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" />
-        </svg>
-        Continue with GitHub
-      </button>
-      {providerError && (
-        <p className="text-xs text-tertiary font-medium pl-1">{providerError}</p>
-      )}
-    </div>
-  );
-}
-
-function OrcidButton({ onLogin }: { onLogin: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onLogin}
-      className="
-        flex items-center justify-center gap-3 w-full rounded-xl
-        border border-outline-variant/40 bg-[#a6ce39] text-[#2d4b0e]
-        px-6 py-3 text-sm font-bold
-        hover:bg-[#94ba2e] active:scale-[0.98]
-        transition-all duration-150 shadow-sm hover:shadow-md
-        focus:outline-none focus:ring-2 focus:ring-[#a6ce39]/40
-      "
-    >
-      {/* ORCID iD logo */}
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 256 256"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path d="M128 0C57.3 0 0 57.3 0 128s57.3 128 128 128 128-57.3 128-128S198.7 0 128 0zM86.3 186.2H70.9V105.2h15.4v81zM78.6 90.3c-5.2 0-8.6-3.6-8.6-8s3.4-8 8.6-8c5.3 0 8.6 3.6 8.6 8s-3.4 8-8.6 8zm113.8 95.9h-15.4v-40.6c0-10.1-3.6-17-12.5-17-6.8 0-10.9 4.6-12.7 9.1-.6 1.6-.8 3.8-.8 6.1v42.4h-15.4V135c0-6.2-.2-11.4-.4-15.9h13.4l.7 6.9h.3c2-3.4 7-8 15.1-8 10 0 17.5 6.5 17.5 20.5v47.7z" />
-      </svg>
-      Continue with ORCID
-    </button>
-  );
-}
-
-// ── Divider ───────────────────────────────────────────────────────────────────
-
-function OrDivider() {
-  return (
-    <div className="flex items-center gap-3 my-1" aria-hidden="true">
-      <div className="flex-1 h-px bg-outline-variant/30" />
-      <span className="text-xs font-medium text-on-surface-variant/50 uppercase tracking-widest">
-        or
-      </span>
-      <div className="flex-1 h-px bg-outline-variant/30" />
-    </div>
-  );
-}
-
 // ── Login form ────────────────────────────────────────────────────────────────
 
 function LoginForm({
@@ -588,7 +498,7 @@ type Tab = "login" | "register";
 
 export default function AuthPage({ onSuccess, initialError }: { onSuccess: () => void; initialError?: string }) {
   const [tab, setTab] = useState<Tab>("login");
-  const { login, register, loginWithProvider } = useAuth();
+  const { login, register } = useAuth();
 
   return (
     <>
@@ -623,7 +533,7 @@ export default function AuthPage({ onSuccess, initialError }: { onSuccess: () =>
               </p>
             </div>
 
-            {/* Error banner from OAuth redirects (e.g. ORCID not configured) */}
+            {/* Error banner from auth redirects (?auth_error=…) */}
             {initialError && (
               <div
                 role="alert"
@@ -636,23 +546,6 @@ export default function AuthPage({ onSuccess, initialError }: { onSuccess: () =>
                 <p className="text-tertiary font-medium">{initialError}</p>
               </div>
             )}
-
-            {/* OAuth providers — always shown */}
-            <div className="flex flex-col gap-2.5">
-              <GitHubButton onLogin={() => loginWithProvider("github")} />
-              <OrcidButton onLogin={() => loginWithProvider("orcid")} />
-            </div>
-            <p className="text-[11px] text-on-surface-variant/70 leading-relaxed mt-2.5">
-              Signing in with GitHub or ORCID sends you to that provider, which then shares
-              your user ID, username, and email address with us. By continuing you consent to
-              this and to the storage of these data for your contributor account (
-              <a href="/privacy" target="_blank" rel="noopener" className="underline hover:text-primary">
-                privacy notice
-              </a>
-              ).
-            </p>
-
-            <OrDivider />
 
             {/* Tab switcher */}
             <div

@@ -54,7 +54,6 @@ beforeEach(() => {
     authError: null,
     login: vi.fn(async () => {}),
     register: vi.fn(async () => {}),
-    loginWithProvider: vi.fn(),
     signOut: vi.fn(async () => {}),
     manageAccount: vi.fn(),
     refreshSession: vi.fn(async () => true),

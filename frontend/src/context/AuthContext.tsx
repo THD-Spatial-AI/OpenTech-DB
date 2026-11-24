@@ -14,7 +14,6 @@ import {
 import type { AuthUser } from "../types/api";
 import {
   getKeycloakAccountUrl,
-  getKeycloakProviderLoginUrl,
   keepKeycloakSessionAlive,
   loginWithKeycloak,
   logoutFromKeycloak,
@@ -42,7 +41,6 @@ export interface AuthContextValue {
     password: string,
     passwordConfirmation: string,
   ) => Promise<void>;
-  loginWithProvider: (provider: "github" | "orcid") => void;
   signOut: () => Promise<void>;
   manageAccount: () => void;
   refreshSession: () => Promise<boolean>;
@@ -55,7 +53,6 @@ const AuthContext = createContext<AuthContextValue>({
   authError: null,
   login: async () => {},
   register: async () => {},
-  loginWithProvider: () => {},
   signOut: async () => {},
   manageAccount: () => {},
   refreshSession: async () => false,
@@ -68,10 +65,6 @@ function consumeAuthError(): string | null {
   url.searchParams.delete("auth_error");
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   return AUTH_ERROR_MESSAGES[code] ?? "Authentication failed. Please try again.";
-}
-
-function currentReturnPath(): string {
-  return `${window.location.pathname}${window.location.search}${window.location.hash}` || "/";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -141,10 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const loginWithProvider = useCallback((provider: "github" | "orcid") => {
-    window.location.assign(getKeycloakProviderLoginUrl(provider, currentReturnPath()));
-  }, []);
-
   const signOut = useCallback(async () => {
     try {
       await logoutFromKeycloak();
@@ -167,7 +156,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authError,
         login,
         register,
-        loginWithProvider,
         signOut,
         manageAccount,
         refreshSession,

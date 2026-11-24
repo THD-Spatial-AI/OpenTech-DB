@@ -55,7 +55,6 @@ const adminAuth = {
   authError: null,
   login: vi.fn(),
   register: vi.fn(),
-  loginWithProvider: vi.fn(),
   signOut: vi.fn(),
   manageAccount: vi.fn(),
   refreshSession: vi.fn(async () => true),

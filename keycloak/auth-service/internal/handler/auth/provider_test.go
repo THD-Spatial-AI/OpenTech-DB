@@ -69,3 +69,24 @@ func TestProviderStateMustMatchSingleBrowserCookie(t *testing.T) {
 		})
 	}
 }
+
+func TestProviderLoginRejectsDisabledProviders(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, provider := range []string{"github", "orcid"} {
+		t.Run(provider, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(recorder)
+			context.Request = httptest.NewRequest(http.MethodGet, "http://localhost/api/auth/provider/"+provider, nil)
+			context.Params = gin.Params{{Key: "provider", Value: provider}}
+
+			(&AuthHandler{}).ProviderLogin(context)
+
+			if recorder.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d", recorder.Code, http.StatusBadRequest)
+			}
+			if cookies := recorder.Result().Cookies(); len(cookies) != 0 {
+				t.Fatalf("unexpected cookies set: %v", cookies)
+			}
+		})
+	}
+}

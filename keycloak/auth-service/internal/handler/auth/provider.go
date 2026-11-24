@@ -23,10 +23,9 @@ const (
 	providerStateCookieMaxAge = 5 * 60
 )
 
-var allowedIdentityProviders = map[string]struct{}{
-	"github": {},
-	"orcid":  {},
-}
+// GitHub and ORCID sign-in are disabled until they are covered by the THD
+// data-protection record (DPM 729). Re-add "github" and "orcid" here to enable.
+var allowedIdentityProviders = map[string]struct{}{}
 
 func randomURLSafe(byteCount int) (string, error) {
 	value := make([]byte, byteCount)

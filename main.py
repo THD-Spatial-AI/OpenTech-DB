@@ -65,6 +65,45 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+class _DailyFileHandler(logging.Handler):
+    """Append records to <dir>/backend-YYYY-MM-DD.log, switching files at midnight.
+
+    Safe with several uvicorn workers: every process only appends whole lines and
+    never renames files. Old files are deleted by the log-janitor container (7 days).
+    """
+
+    def __init__(self, directory: str) -> None:
+        super().__init__()
+        self._dir = Path(directory)
+        self._dir.mkdir(parents=True, exist_ok=True)
+        self._date = ""
+        self._stream = None
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            from datetime import date
+            today = date.today().isoformat()
+            if today != self._date or self._stream is None:
+                if self._stream is not None:
+                    self._stream.close()
+                self._stream = open(self._dir / f"backend-{today}.log", "a", encoding="utf-8")
+                self._date = today
+            self._stream.write(self.format(record) + "\n")
+            self._stream.flush()
+        except Exception:
+            self.handleError(record)
+
+
+if _log_dir := os.getenv("OPENTECHDB_LOG_DIR"):
+    _file_handler = _DailyFileHandler(_log_dir)
+    _file_handler.setFormatter(
+        logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s")
+    )
+    # uvicorn's loggers don't propagate to root, so attach to them explicitly.
+    for _name in ("", "uvicorn.error", "uvicorn.access"):
+        logging.getLogger(_name).addHandler(_file_handler)
+
 # ---------------------------------------------------------------------------
 # Version
 # ---------------------------------------------------------------------------

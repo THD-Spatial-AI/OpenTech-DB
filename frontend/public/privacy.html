@@ -110,11 +110,6 @@
       <p>Storage Period: 60 minutes</p>
       <p>Purpose: Protects sign-in and account requests against cross-site request forgery.</p>
     </div>
-    <div class="storage-box">
-      <p><strong>oauth_state</strong> (HttpOnly)</p>
-      <p>Storage Period: 5 minutes</p>
-      <p>Purpose: Secures the redirect when you sign in with GitHub or ORCID.</p>
-    </div>
     <p class="sub-heading">Local Storage (stays in your browser)</p>
     <div class="storage-box">
       <p><strong>opentech-consent-v1</strong></p>
@@ -134,16 +129,6 @@
       own server. Loading OpenTech-DB does not contact Google, GitHub, or any other content
       delivery network.
     </p>
-    <p class="sub-heading">GitHub Inc. and ORCID Inc. – Optional Sign-In</p>
-    <p>
-      If you choose "Sign in with GitHub" or "Sign in with ORCID", you are redirected to that
-      provider, which processes your login under its own responsibility. The provider then sends
-      us your user ID, username, and email address. Both providers are located in the USA.
-      GitHub Inc. is certified under the EU–US Data Privacy Framework.
-      See: <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>,
-      <a href="https://info.orcid.org/privacy-policy/" target="_blank" rel="noopener">ORCID Privacy Policy</a>.
-      Signing in with a username and password does not involve either provider.
-    </p>
     <p class="sub-heading">OpenStreetMap Foundation – Location Picker</p>
     <p>
       Only when you open the map to pick a location while uploading a time-series profile, map
@@ -160,7 +145,7 @@
     </p>
     <p class="sub-heading">Keycloak, PostgreSQL, Redis &amp; Supabase (Self-Hosted)</p>
     <p>
-      User accounts (username, email address, linked GitHub/ORCID ID), sign-in sessions, and
+      User accounts (username and email address), sign-in sessions, and
       submission review records are stored on servers operated by the Deggendorf Institute of
       Technology. No data is transmitted to Supabase Inc.
     </p>
@@ -175,7 +160,7 @@
     </p>
     <p>
       You can request deletion of your contributor account at any time by email to the project
-      contact. Your account data (username, email address, linked GitHub/ORCID ID) are then
+      contact. Your account data (username and email address) are then
       deleted, and your name, email address, and user ID are removed from the review records of
       your submissions. Approved contributions remain in the scientific catalogue, which does not
       contain personal data.
@@ -198,8 +183,8 @@
       BayDSG; Article 11(1) BayEGovG.
     </p>
     <p>
-      Contributor account registration, parameter submissions, sign-in via GitHub or ORCID, and
-      the OpenStreetMap location picker are based on your freely given consent in accordance
+      Contributor account registration, parameter submissions, and the OpenStreetMap location
+      picker are based on your freely given consent in accordance
       with Article 6(1)(a) GDPR. You may withdraw your consent at any time via the Privacy link
       in the sidebar or by email to the project contact; this does not affect the lawfulness of
       processing carried out before withdrawal.

@@ -113,11 +113,6 @@ function PrivacyContent() {
             <p>Storage Period: 60 minutes</p>
             <p>Purpose: Protects sign-in and account requests against cross-site request forgery.</p>
           </div>
-          <div>
-            <p><strong>oauth_state</strong> (HttpOnly)</p>
-            <p>Storage Period: 5 minutes</p>
-            <p>Purpose: Secures the redirect when you sign in with GitHub or ORCID.</p>
-          </div>
         </div>
 
         <p className="font-semibold text-on-surface">Local Storage (stays in your browser)</p>
@@ -147,23 +142,6 @@ function PrivacyContent() {
           All web fonts, icons, and the country boundaries of the World Map are delivered
           from our own server. Loading OpenTech-DB does not contact Google, GitHub, or any
           other content delivery network.
-        </p>
-
-        <p className="font-semibold text-on-surface">GitHub Inc. and ORCID Inc. — Optional Sign-In</p>
-        <p>
-          If you choose "Sign in with GitHub" or "Sign in with ORCID", you are redirected to
-          that provider, which processes your login under its own responsibility. The
-          provider then sends us your user ID, username, and email address. Both providers
-          are located in the USA. GitHub Inc. is certified under the EU–US Data Privacy
-          Framework. See the{" "}
-          <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
-             target="_blank" rel="noopener" className="text-primary hover:underline">
-            GitHub Privacy Statement
-          </a>{" "}and the{" "}
-          <a href="https://info.orcid.org/privacy-policy/" target="_blank" rel="noopener"
-             className="text-primary hover:underline">
-            ORCID Privacy Policy
-          </a>. Signing in with a username and password does not involve either provider.
         </p>
 
         <p className="font-semibold text-on-surface">OpenStreetMap Foundation — Location Picker</p>
@@ -211,8 +189,7 @@ function PrivacyContent() {
         </p>
         <p>
           You can request deletion of your contributor account at any time by email to the
-          project contact. Your account data (username, email address, linked GitHub/ORCID
-          ID) are then deleted, and your name, email address, and user ID are removed from
+          project contact. Your account data (username and email address) are then deleted, and your name, email address, and user ID are removed from
           the review records of your submissions. Approved contributions remain in the
           scientific catalogue, which does not contain personal data.
         </p>
@@ -235,8 +212,8 @@ function PrivacyContent() {
           Article 6(1) BayDSG; Article 11(1) BayEGovG.
         </p>
         <p>
-          Contributor account registration, parameter submissions, sign-in via GitHub or
-          ORCID, and the OpenStreetMap location picker are based on your freely given consent
+          Contributor account registration, parameter submissions, and the OpenStreetMap
+          location picker are based on your freely given consent
           in accordance with Article 6(1)(a) GDPR. You may withdraw your consent at any time
           via the Privacy link in the sidebar or by email to the project contact; this does
           not affect the lawfulness of processing carried out before withdrawal.

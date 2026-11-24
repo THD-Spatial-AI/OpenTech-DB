@@ -79,12 +79,12 @@ export default function ConsentBanner({ onDecide }: ConsentBannerProps) {
               <DataRow
                 icon="public"
                 label="Third parties"
-                value="None when browsing — fonts and map data are served from THD. GitHub/ORCID only if you sign in with them; OpenStreetMap only if you open the location picker. Legal basis: consent."
+                value="None when browsing — fonts and map data are served from THD. OpenStreetMap only if you open the location picker. Legal basis: consent."
               />
               <DataRow
                 icon="manage_accounts"
                 label="Account data (optional)"
-                value="Username and email (plus GitHub/ORCID ID if used) — only if you register as a Contributor. Legal basis: consent."
+                value="Username and email — only if you register as a Contributor. Legal basis: consent."
               />
               <DataRow
                 icon="monitoring"

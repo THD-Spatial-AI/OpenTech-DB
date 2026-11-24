@@ -69,6 +69,7 @@ describe("AuthPage", () => {
     );
     await userEvent.type(screen.getByLabelText("Password"), "Strong1!password");
     await userEvent.type(screen.getByLabelText("Confirm Password"), "Strong1!password");
+    await userEvent.click(screen.getByLabelText(/I consent to OpenTech-DB storing/));
     await userEvent.click(screen.getByRole("button", { name: "Create Account" }));
 
     await waitFor(() => {
@@ -80,5 +81,24 @@ describe("AuthPage", () => {
       );
       expect(onSuccess).toHaveBeenCalledOnce();
     });
+  });
+
+  it("does not register without privacy consent", async () => {
+    render(<AuthPage onSuccess={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Register" }));
+    await userEvent.type(screen.getByLabelText("Username"), "researcher");
+    await userEvent.type(
+      screen.getByLabelText("Work / Institutional Email"),
+      "researcher@example.org",
+    );
+    await userEvent.type(screen.getByLabelText("Password"), "Strong1!password");
+    await userEvent.type(screen.getByLabelText("Confirm Password"), "Strong1!password");
+    await userEvent.click(screen.getByRole("button", { name: "Create Account" }));
+
+    expect(
+      await screen.findByText("Please give your consent to create an account"),
+    ).toBeInTheDocument();
+    expect(register).not.toHaveBeenCalled();
   });
 });

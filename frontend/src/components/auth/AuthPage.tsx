@@ -50,6 +50,8 @@ const RegisterSchema = z.object({
     .regex(/[0-9]/, "Must include at least one number")
     .regex(/[^A-Za-z0-9]/, "Must include at least one special character"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
+  // Unchecked checkboxes are absent from FormData (null) → fails the literal.
+  privacyConsent: z.literal("on", { message: "Please give your consent to create an account" }),
 }).refine((d) => d.password === d.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -361,6 +363,7 @@ function RegisterForm({
   const emailId = useId();
   const passwordId = useId();
   const confirmId = useId();
+  const consentId = useId();
 
   const [state, formAction] = useActionState<FormState, FormData>(
     async (_prev, formData) => {
@@ -369,6 +372,7 @@ function RegisterForm({
         email: formData.get("email") as string,
         password: formData.get("password") as string,
         confirmPassword: formData.get("confirmPassword") as string,
+        privacyConsent: formData.get("privacyConsent"),
       };
 
       const result = RegisterSchema.safeParse(raw);
@@ -454,6 +458,33 @@ function RegisterForm({
         placeholder="Repeat your password"
         error={fieldError(issues, "confirmPassword")}
       />
+
+      <div className="pt-1">
+        <label htmlFor={consentId} className="flex items-start gap-2.5 text-xs text-on-surface-variant leading-relaxed">
+          <input
+            id={consentId}
+            name="privacyConsent"
+            type="checkbox"
+            aria-invalid={!!fieldError(issues, "privacyConsent")}
+            aria-describedby={fieldError(issues, "privacyConsent") ? `${consentId}-error` : undefined}
+            className="mt-0.5 h-4 w-4 flex-shrink-0 accent-primary"
+          />
+          <span>
+            I consent to OpenTech-DB storing my username and email address to provide my
+            contributor account and to attribute my submissions for review, as described in the{" "}
+            <a href="/privacy" target="_blank" rel="noopener" className="underline hover:text-primary">
+              privacy notice
+            </a>
+            . I can withdraw my consent at any time by requesting deletion of my account.
+          </span>
+        </label>
+        {fieldError(issues, "privacyConsent") && (
+          <p id={`${consentId}-error`} role="alert" className="flex items-center gap-1 text-xs text-tertiary mt-1.5 ml-6">
+            <span className="material-symbols-outlined text-[14px]">error</span>
+            {fieldError(issues, "privacyConsent")}
+          </p>
+        )}
+      </div>
 
       <p className="text-[11px] text-on-surface-variant/60 leading-relaxed pt-1">
         By creating an account you agree to the{" "}
@@ -611,6 +642,15 @@ export default function AuthPage({ onSuccess, initialError }: { onSuccess: () =>
               <GitHubButton onLogin={() => loginWithProvider("github")} />
               <OrcidButton onLogin={() => loginWithProvider("orcid")} />
             </div>
+            <p className="text-[11px] text-on-surface-variant/70 leading-relaxed mt-2.5">
+              Signing in with GitHub or ORCID sends you to that provider, which then shares
+              your user ID, username, and email address with us. By continuing you consent to
+              this and to the storage of these data for your contributor account (
+              <a href="/privacy" target="_blank" rel="noopener" className="underline hover:text-primary">
+                privacy notice
+              </a>
+              ).
+            </p>
 
             <OrDivider />
 

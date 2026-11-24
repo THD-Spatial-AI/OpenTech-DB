@@ -90,66 +90,101 @@ function PrivacyContent() {
         <p>Log data is retained for a maximum of 7 days and then automatically deleted.</p>
       </Section>
 
-      <Section title="Local Storage &amp; Session Storage">
+      <Section title="Cookies &amp; Local Storage">
         <p>
-          OpenTech-DB uses browser local storage and session storage for consent management
-          and authentication. We do not use cookies or storage for social tracking, analytics,
-          or any non-essential purpose.
+          OpenTech-DB only uses cookies and browser storage that are strictly necessary to
+          provide the service you request (§ 25 (2) no. 2 TDDDG). We do not use cookies or
+          storage for tracking, analytics, or advertising.
         </p>
 
-        <p className="font-semibold text-on-surface">Local Storage</p>
-        <div className="bg-surface-container border border-outline-variant/15 px-3 py-2 text-sm">
-          <p><strong>opentech-consent-v1</strong></p>
-          <p>Storage Period: Until manually cleared (max. 365 days)</p>
-          <p>
-            Purpose: Records whether the user has accepted or declined this privacy notice,
-            so the notice is not displayed on every visit.
-          </p>
+        <p className="font-semibold text-on-surface">Cookies (only after you sign in)</p>
+        <div className="bg-surface-container border border-outline-variant/15 px-3 py-2 text-sm space-y-2">
+          <div>
+            <p><strong>session_id</strong> (HttpOnly)</p>
+            <p>Storage Period: 60 minutes, renewed while you are active; deleted on sign-out</p>
+            <p>
+              Purpose: Random identifier that links your browser to your sign-in session.
+              Keycloak access and refresh tokens never reach the browser; they stay
+              server-side.
+            </p>
+          </div>
+          <div>
+            <p><strong>csrf_token</strong></p>
+            <p>Storage Period: 60 minutes</p>
+            <p>Purpose: Protects sign-in and account requests against cross-site request forgery.</p>
+          </div>
+          <div>
+            <p><strong>oauth_state</strong> (HttpOnly)</p>
+            <p>Storage Period: 5 minutes</p>
+            <p>Purpose: Secures the redirect when you sign in with GitHub or ORCID.</p>
+          </div>
         </div>
 
-        <p className="font-semibold text-on-surface">Session Storage (cleared on tab close)</p>
-        <div className="bg-surface-container border border-outline-variant/15 px-3 py-2 text-sm">
-          <p><strong>Session token / Keycloak JWT</strong></p>
-          <p>Storage Period: Duration of the browser session (max. 8 hours)</p>
-          <p>
-            Purpose: Authenticates the signed-in user with the OpenTech-DB API, granting
-            access to the Contributor Workspace. Cleared automatically when the browser tab
-            is closed. These entries are only created after a user actively logs in.
-          </p>
+        <p className="font-semibold text-on-surface">Local Storage (stays in your browser)</p>
+        <div className="bg-surface-container border border-outline-variant/15 px-3 py-2 text-sm space-y-2">
+          <div>
+            <p><strong>opentech-consent-v1</strong></p>
+            <p>Storage Period: Until manually cleared</p>
+            <p>
+              Purpose: Records whether you have accepted or declined this privacy notice, so
+              the notice is not displayed on every visit.
+            </p>
+          </div>
+          <div>
+            <p><strong>Process Studio drafts and simulator settings</strong></p>
+            <p>Storage Period: Until manually cleared</p>
+            <p>
+              Purpose: Keeps your unsaved process drafts and simulator parameters between
+              visits. These entries are never transmitted to our servers.
+            </p>
+          </div>
         </div>
       </Section>
 
       <Section title="Data Processing &amp; Third-Party Services">
-        <p className="font-semibold text-on-surface">Google LLC — Google Fonts CDN</p>
+        <p className="font-semibold text-on-surface">Fonts and Map Data (Self-Hosted)</p>
         <p>
-          By accepting this privacy notice, you enable OpenTech-DB to load web fonts via
-          Google's Content Delivery Network. Your IP address, browser type, and time of
-          request may be transmitted to Google LLC (USA). The transfer is covered by the
-          EU–US Data Privacy Framework (adequacy decision of 10 July 2023). For more
-          information, see the{" "}
-          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener"
-             className="text-primary hover:underline">
-            Google Privacy Policy
-          </a>.
+          All web fonts, icons, and the country boundaries of the World Map are delivered
+          from our own server. Loading OpenTech-DB does not contact Google, GitHub, or any
+          other content delivery network.
         </p>
 
-        <p className="font-semibold text-on-surface">GitHub Inc. — World Map Data</p>
+        <p className="font-semibold text-on-surface">GitHub Inc. and ORCID Inc. — Optional Sign-In</p>
         <p>
-          The Technology World Map view loads geographic boundary data from
-          raw.githubusercontent.com. Your IP address, browser type, and time of request
-          may be transmitted to GitHub Inc. (USA) when you access the map. The transfer is
-          covered by the EU–US Data Privacy Framework. For more information, see the{" "}
+          If you choose "Sign in with GitHub" or "Sign in with ORCID", you are redirected to
+          that provider, which processes your login under its own responsibility. The
+          provider then sends us your user ID, username, and email address. Both providers
+          are located in the USA. GitHub Inc. is certified under the EU–US Data Privacy
+          Framework. See the{" "}
           <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
              target="_blank" rel="noopener" className="text-primary hover:underline">
             GitHub Privacy Statement
+          </a>{" "}and the{" "}
+          <a href="https://info.orcid.org/privacy-policy/" target="_blank" rel="noopener"
+             className="text-primary hover:underline">
+            ORCID Privacy Policy
+          </a>. Signing in with a username and password does not involve either provider.
+        </p>
+
+        <p className="font-semibold text-on-surface">OpenStreetMap Foundation — Location Picker</p>
+        <p>
+          Only when you open the map to pick a location while uploading a time-series
+          profile, map tiles are loaded from tile.openstreetmap.org and the selected point is
+          looked up via nominatim.openstreetmap.org. Your IP address and the selected
+          coordinates are transmitted to the OpenStreetMap Foundation (United Kingdom; EU
+          adequacy decision). See the{" "}
+          <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener"
+             className="text-primary hover:underline">
+            OSMF Privacy Policy
           </a>.
         </p>
 
         <p className="font-semibold text-on-surface">GitHub Inc. — Version Control &amp; Pull Requests</p>
         <p>
-          Approved technology parameter submissions are committed to the project repository
-          on GitHub under a data processing agreement (Art. 28 GDPR). Contributor names
-          attached to submissions may appear in the repository commit history.
+          Approved parameter and process submissions are published as pull requests to the
+          public project repository on GitHub. These commits contain only the technical
+          data and an anonymous submission number — no name, email address, or user ID of
+          the contributor.
         </p>
 
         <p className="font-semibold text-on-surface">Supabase (Self-Hosted)</p>
@@ -175,15 +210,16 @@ function PrivacyContent() {
           data handling ceases to apply (e.g. as a result of withdrawal of consent).
         </p>
         <p>
-          When a contributor account is deleted, all account data (email, ORCID iD,
-          institution) are removed. Approved parameter contributions attributed to that
-          account will be pseudonymised — the contribution remains in the scientific catalogue
-          but is no longer linked to the individual.
+          You can request deletion of your contributor account at any time by email to the
+          project contact. Your account data (username, email address, linked GitHub/ORCID
+          ID) are then deleted, and your name, email address, and user ID are removed from
+          the review records of your submissions. Approved contributions remain in the
+          scientific catalogue, which does not contain personal data.
         </p>
         <p>
-          Recorded data shall not be forwarded to third parties beyond the service providers
-          listed above. All servers on which personal data are processed or recorded for
-          OpenTech-DB users are located within the Federal Republic of Germany.
+          Recorded data shall not be forwarded to third parties beyond the services listed
+          above. All servers operated for OpenTech-DB are located at the Deggendorf Institute
+          of Technology in Germany.
         </p>
       </Section>
 
@@ -196,14 +232,14 @@ function PrivacyContent() {
         <p>
           We use protocol files and logs to carry out maintenance of our web service and
           guarantee network and information security in accordance with Article 6(1)(e) GDPR;
-          Article 6(1) BayDSG; Section 13(7) TMG; Article 11(1) BayEGovG.
+          Article 6(1) BayDSG; Article 11(1) BayEGovG.
         </p>
         <p>
-          Contributor account registration, parameter submissions, and third-party service
-          integrations (Google Fonts, GitHub GeoJSON) are activated only upon your freely
-          given consent in accordance with Article 6(1)(a) GDPR. You may withdraw your
-          consent at any time via the Privacy link in the sidebar; this does not affect the
-          lawfulness of processing carried out before withdrawal.
+          Contributor account registration, parameter submissions, sign-in via GitHub or
+          ORCID, and the OpenStreetMap location picker are based on your freely given consent
+          in accordance with Article 6(1)(a) GDPR. You may withdraw your consent at any time
+          via the Privacy link in the sidebar or by email to the project contact; this does
+          not affect the lawfulness of processing carried out before withdrawal.
         </p>
       </Section>
 
@@ -222,13 +258,13 @@ function PrivacyContent() {
           <a href="mailto:datenschutz@th-deg.de" className="text-primary hover:underline">
             datenschutz@th-deg.de
           </a>.
-          You also have the right to lodge a complaint with the Bavarian State Data Protection
-          Officer (BayLDA), Promenade 18, 91522 Ansbach.
+          You also have the right to lodge a complaint with the Bavarian State Commissioner for
+          Data Protection (BayLfD), Wagmüllerstraße 18, 80538 München.
         </p>
       </Section>
 
       <p className="text-[11px] text-on-surface-variant/50 border-t border-outline-variant/15 pt-3 mt-2">
-        Amended: August 2026 · Full policy:{" "}
+        Amended: November 2026 · Full policy:{" "}
         <a href="/privacy" target="_blank" rel="noopener" className="text-primary hover:underline">
           otdb.th-deg.de/privacy
         </a>

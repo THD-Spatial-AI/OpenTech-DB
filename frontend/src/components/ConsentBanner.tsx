@@ -78,13 +78,13 @@ export default function ConsentBanner({ onDecide }: ConsentBannerProps) {
             <div className="bg-surface-container border border-outline-variant/15 px-4 py-1">
               <DataRow
                 icon="public"
-                label="IP address"
-                value="Transmitted to Google (web fonts) and GitHub (world map data) when you load the site. Legal basis: consent."
+                label="Third parties"
+                value="None when browsing — fonts and map data are served from THD. GitHub/ORCID only if you sign in with them; OpenStreetMap only if you open the location picker. Legal basis: consent."
               />
               <DataRow
                 icon="manage_accounts"
                 label="Account data (optional)"
-                value="Email, ORCID iD, institution — only if you register as a Contributor. Legal basis: consent."
+                value="Username and email (plus GitHub/ORCID ID if used) — only if you register as a Contributor. Legal basis: consent."
               />
               <DataRow
                 icon="monitoring"
@@ -93,8 +93,8 @@ export default function ConsentBanner({ onDecide }: ConsentBannerProps) {
               />
               <DataRow
                 icon="storage"
-                label="Session tokens"
-                value="Stored in sessionStorage only — cleared when you close the tab. No tracking cookies."
+                label="Cookies"
+                value="Only a session cookie after you sign in (expires after 60 min of inactivity). No tracking cookies."
               />
             </div>
           </div>

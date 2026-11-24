@@ -86,6 +86,7 @@ function PrivacyContent() {
           "Web browser and operating system used",
           "Complete IP address of the requesting computer",
           "Data volume transferred",
+          "For some actions (e.g. creating or revoking an API token), your user ID",
         ]} />
         <p>Log data is retained for a maximum of 7 days and then automatically deleted.</p>
       </Section>

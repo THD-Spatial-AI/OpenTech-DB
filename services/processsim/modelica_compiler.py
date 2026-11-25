@@ -338,7 +338,7 @@ def _omc_pids() -> set[int]:
     try:
         import psutil
         return {p.pid for p in psutil.process_iter(["name"])
-                if (p.info.get("name") or "").lower() == "omc.exe"}
+                if (p.info.get("name") or "").lower() in ("omc", "omc.exe")}
     except Exception:  # noqa: BLE001
         return set()
 
@@ -347,10 +347,12 @@ def _kill_tree(pid: int) -> None:
     try:
         import psutil
         proc = psutil.Process(pid)
-        for child in proc.children(recursive=True):
+        children = proc.children(recursive=True)
+        for child in children:
             try: child.kill()
             except Exception: pass  # noqa: BLE001,E701
         proc.kill()
+        psutil.wait_procs([proc, *children], timeout=5)   # reap, or omc stays a zombie
     except Exception:  # noqa: BLE001
         pass
 

@@ -117,6 +117,7 @@ nav:
   - Getting Started: getting-started.md
   - API Reference: api-reference.md
   - Integration Guide: integration.md
+  - Simulations via the API: simulation-api.md
   - Data Model: data-model.md
   - Data Formats: data-formats.md
   - Framework Adapters: adapters.md

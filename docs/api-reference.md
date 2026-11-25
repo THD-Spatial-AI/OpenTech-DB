@@ -115,7 +115,7 @@ by the profile page. A personal API token cannot call these management routes.
 | `POST` | `/profile/api-tokens` | Generate a token; the full secret is returned once |
 | `DELETE` | `/profile/api-tokens/{id}` | Revoke one of my tokens |
 
-Generate request fields are `name`, `scope` (`read` or `full`), and
+Generate request fields are `name`, `scope` (`read`, `simulate` or `full`), and
 `expires_in_days` (`0` through `365`; `0` means no automatic expiry). Send the
 generated token to any FastAPI endpoint with:
 
@@ -123,7 +123,8 @@ generated token to any FastAPI endpoint with:
 Authorization: Bearer otdb_<complete-secret>
 ```
 
-Read tokens accept only `GET`/`HEAD`. Full tokens can call contributor writes
+Read tokens accept only `GET`/`HEAD`. Simulate tokens additionally accept
+`POST /processes/simulate` (see [Simulations via the API](simulation-api.md)). Full tokens can call contributor writes
 when contributor access was present at generation time. Personal tokens never
 receive administrator access. Invalid, expired, and revoked tokens all return
 `401`; token secrets are not accepted in query parameters.

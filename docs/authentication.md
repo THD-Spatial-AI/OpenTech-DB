@@ -128,8 +128,11 @@ The implementation follows the Storcito-Wildfire design:
 - tokens default to 90 days, may be configured for 30/365 days or no expiry,
   and can be revoked from the profile;
 - each user may have at most 10 active tokens;
-- `read` scope permits only `GET` and `HEAD`; `full` permits writes allowed by
-  the token's non-admin role;
+- `read` scope permits only `GET` and `HEAD`; `simulate` also permits
+  `POST /api/v1/processes/simulate` (migration 014); `full` permits writes
+  allowed by the token's non-admin role;
+- Process simulations require a browser session or a token; there is no
+  anonymous access (see [Simulations via the API](simulation-api.md));
 - a personal token can never carry `admin`, including when created by an
   administrator, and cannot generate or revoke other tokens;
 - cookie and bearer credentials cannot be combined on one request.

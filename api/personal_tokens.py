@@ -38,6 +38,9 @@ TOKEN_HISTORY_LIMIT = 90
 _TOKEN_TABLE = "api_tokens"
 _TOKEN_PATTERN = re.compile(r"^otdb_[A-Za-z0-9_-]{43}$")
 _SAFE_METHODS = frozenset({"GET", "HEAD"})
+SIMULATE_PATH = "/api/v1/processes/simulate"
+
+TokenScope = Literal["read", "simulate", "full"]
 
 _PUBLIC_COLUMNS = (
     "id,name,token_prefix,scope,expires_at,last_used_at,revoked_at,created_at"
@@ -71,12 +74,12 @@ class ValidatedPersonalToken:
 
     token_id: int
     user: RealmUser
-    scope: Literal["read", "full"]
+    scope: TokenScope
 
 
 class CreatePersonalTokenRequest(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    scope: Literal["read", "full"] = "read"
+    scope: TokenScope = "read"
     expires_in_days: int = Field(
         default=TOKEN_DEFAULT_EXPIRY_DAYS,
         ge=0,
@@ -97,7 +100,7 @@ class PersonalTokenSummary(BaseModel):
     id: int
     name: str
     token_prefix: str
-    scope: Literal["read", "full"]
+    scope: TokenScope
     expires_at: datetime | None = None
     last_used_at: datetime | None = None
     revoked_at: datetime | None = None
@@ -111,7 +114,7 @@ class CreatedPersonalToken(BaseModel):
     name: str
     token: str
     token_prefix: str
-    scope: Literal["read", "full"]
+    scope: TokenScope
     expires_at: datetime | None = None
     created_at: datetime
 
@@ -148,9 +151,12 @@ def bearer_token_from_request(request: Request) -> str | None:
     return candidate
 
 
-def scope_allows_method(scope: str, method: str) -> bool:
-    """Read tokens are limited to GET/HEAD; full tokens may use any method."""
-    return scope == "full" or method.upper() in _SAFE_METHODS
+def scope_allows_method(scope: str, method: str, path: str) -> bool:
+    """Read tokens are limited to GET/HEAD; simulate tokens may also submit a
+    Process simulation; full tokens may use any method."""
+    if scope == "full" or method.upper() in _SAFE_METHODS:
+        return True
+    return scope == "simulate" and method.upper() == "POST" and path.rstrip("/") == SIMULATE_PATH
 
 
 def _parse_datetime(value: Any) -> datetime | None:
@@ -229,7 +235,7 @@ def validate_personal_token(plaintext: str) -> ValidatedPersonalToken | None:
             or not username
             or not email
             or realm != AUTH_REALM
-            or scope not in {"read", "full"}
+            or scope not in {"read", "simulate", "full"}
             or not isinstance(raw_roles, list)
             or not _token_is_active(row, now)
         ):

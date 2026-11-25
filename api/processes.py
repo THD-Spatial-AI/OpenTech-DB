@@ -379,16 +379,13 @@ _SIM_SECRET = os.getenv("PROCESS_SIM_SECRET", "")
 
 
 def _requester(request) -> tuple[str, int]:
-    """Return (user_id, tier). Tier: admin=0, contributor=1, else anonymous=2.
-    Simulation is open to all (lowest priority) so it works before/without login."""
-    anon = "anon:" + (request.client.host if request.client else "unknown")
-    try:
-        ident = _request_identity(request)
-    except HTTPException:
-        return anon, 2
+    """Return (user_id, tier). Tier: admin=0, contributor=1, other users=2.
+    Simulation requires a browser session or a personal API token; anonymous
+    requests get 401 from ``_request_identity``."""
+    ident = _request_identity(request)
     roles = set(ident.get("roles", []))
     tier = 0 if "admin" in roles else (1 if "contributor" in roles else 2)
-    return (str(ident.get("sub") or "") or anon), tier
+    return str(ident["sub"]), tier
 
 
 def _sim_headers(user_id: str, tier: int) -> dict:

@@ -153,11 +153,24 @@ def test_authorization_header_is_strict_and_duplicate_safe():
 
 
 def test_read_scope_allows_only_safe_methods():
-    assert personal_tokens.scope_allows_method("read", "GET")
-    assert personal_tokens.scope_allows_method("read", "HEAD")
-    assert not personal_tokens.scope_allows_method("read", "POST")
-    assert not personal_tokens.scope_allows_method("read", "DELETE")
-    assert personal_tokens.scope_allows_method("full", "POST")
+    path = "/api/v1/technologies"
+    assert personal_tokens.scope_allows_method("read", "GET", path)
+    assert personal_tokens.scope_allows_method("read", "HEAD", path)
+    assert not personal_tokens.scope_allows_method("read", "POST", path)
+    assert not personal_tokens.scope_allows_method("read", "DELETE", path)
+    assert not personal_tokens.scope_allows_method("read", "POST", personal_tokens.SIMULATE_PATH)
+    assert personal_tokens.scope_allows_method("full", "POST", path)
+
+
+def test_simulate_scope_adds_only_simulation_submission():
+    sim = personal_tokens.SIMULATE_PATH
+    assert personal_tokens.scope_allows_method("simulate", "GET", "/api/v1/technologies")
+    assert personal_tokens.scope_allows_method("simulate", "POST", sim)
+    assert personal_tokens.scope_allows_method("simulate", "POST", sim + "/")
+    assert not personal_tokens.scope_allows_method("simulate", "POST", "/api/v1/processes/submit")
+    assert not personal_tokens.scope_allows_method("simulate", "POST", sim + "/job-1")
+    assert not personal_tokens.scope_allows_method("simulate", "DELETE", "/api/v1/processes/sim-queue/job-1")
+    assert not personal_tokens.scope_allows_method("simulate", "PUT", sim)
 
 
 def test_validation_queries_by_hash_and_never_grants_admin(monkeypatch):

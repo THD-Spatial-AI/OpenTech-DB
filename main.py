@@ -259,9 +259,10 @@ async def authenticate_request(request: Request, call_next):
                 status_code=401,
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        if not scope_allows_method(token.scope, request.method):
+        if not scope_allows_method(token.scope, request.method, request.url.path):
             return JSONResponse(
-                {"detail": "This API token is read-only."},
+                {"detail": "This API token can only read data and run simulations."
+                           if token.scope == "simulate" else "This API token is read-only."},
                 status_code=403,
             )
         request.state.auth_user = token.user

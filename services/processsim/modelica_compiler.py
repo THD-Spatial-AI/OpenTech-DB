@@ -23,6 +23,9 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
+from components import H2_HHV_KWH_PER_KG as HHV_KWH_PER_KG
+from solver import finish
+
 log = logging.getLogger("processsim.modelica")
 
 MODELICA_DIR = Path(__file__).parent / "modelica"
@@ -58,8 +61,15 @@ MODELICA_MAP: dict[str, tuple[str, Callable[[dict, dict], dict]]] = {
         "capacity_factor": _pick(oc, tech, "capacity_factor", None, 1)}),
     "water_source": ("WaterSource", lambda oc, tech: {}),
     "flue_gas_source": ("FlueGasSource", lambda oc, tech: {
-        "capacity_kw": _pick(oc, tech, "capacity_kw", "capacity_kw", 400000),
+        "capacity_kw": _pick(oc, tech, "capacity_kw", None, 400000),
+        "capacity_factor": _pick(oc, tech, "capacity_factor", None, 1),
         "co2_emission_kg_kwh": _pick(oc, tech, "co2_emission_kg_kwh", None, 0.35)}),
+    "biomass_source": ("BiomassSource", lambda oc, tech: {
+        "fuel_input_kw": _pick(oc, tech, "fuel_input_kw", "capacity_kw", 20000),
+        "capacity_factor": _pick(oc, tech, "capacity_factor", None, 1)}),
+    "co2_source": ("CO2Source", lambda oc, tech: {
+        "co2_supply_kg_h": _pick(oc, tech, "co2_supply_kg_h", None, 1000),
+        "pressure_bar": _pick(oc, tech, "pressure_bar", None, 1.5)}),
     "electrolyzer_pem": ("ElectrolyzerPEM", lambda oc, tech: {
         "efficiency": _pick(oc, tech, "nominal_efficiency_pct_hhv", "efficiency_pct", 70) / 100.0}),
     "compressor": ("Compressor", lambda oc, tech: {
@@ -68,7 +78,8 @@ MODELICA_MAP: dict[str, tuple[str, Callable[[dict, dict], dict]]] = {
     "fuel_cell_pem": ("FuelCellPEM", lambda oc, tech: {
         "efficiency": _pick(oc, tech, "nominal_efficiency_pct", "efficiency_pct", 58) / 100.0}),
     "co2_absorber_amine": ("CO2AbsorberAmine", lambda oc, tech: {
-        "capture_rate": _pick(oc, tech, "capture_rate_pct", None, 90) / 100.0}),
+        "capture_rate": _pick(oc, tech, "capture_rate_pct", None, 90) / 100.0,
+        "energy_requirement_gj_tco2": _pick(oc, tech, "energy_requirement_gj_tco2", None, 3.7)}),
     "solvent_stripper": ("SolventStripper", lambda oc, tech: {
         "reboiler_temp_c": _pick(oc, tech, "reboiler_temp_c", None, 120)}),
     "co2_compressor": ("CO2Compressor", lambda oc, tech: {
@@ -78,20 +89,82 @@ MODELICA_MAP: dict[str, tuple[str, Callable[[dict, dict], dict]]] = {
         "round_trip_efficiency": _pick(oc, tech, "round_trip_efficiency_pct", None, 99) / 100.0}),
     "co2_geological_storage": ("CO2GeologicalStorage", lambda oc, tech: {}),
     "grid_sink": ("GridSink", lambda oc, tech: {}),
+    "biomass_chp": ("BiomassCHP", lambda oc, tech: {
+        "electrical_efficiency": _pick(oc, tech, "electrical_efficiency_pct", "efficiency_pct", 30) / 100.0,
+        "thermal_efficiency": _pick(oc, tech, "thermal_efficiency_pct", None, 55) / 100.0}),
+    "anaerobic_digester": ("AnaerobicDigester", lambda oc, tech: {
+        "biogas_yield": _pick(oc, tech, "biogas_yield_pct", None, 60) / 100.0,
+        "methane_content": _pick(oc, tech, "methane_content_pct", None, 60) / 100.0}),
+    "biogas_upgrader": ("BiogasUpgrader", lambda oc, tech: {
+        "methane_recovery": _pick(oc, tech, "methane_recovery_pct", None, 98) / 100.0,
+        "delivery_pressure_bar": _pick(oc, tech, "delivery_pressure_bar", None, 8)}),
+    "methanation_reactor": ("MethanationReactor", lambda oc, tech: {
+        "conversion": _pick(oc, tech, "conversion_efficiency_pct", None, 80) / 100.0,
+        "delivery_pressure_bar": _pick(oc, tech, "delivery_pressure_bar", None, 8)}),
+    "heat_sink": ("HeatSink", lambda oc, tech: {}),
+    "gas_grid_sink": ("GasGridSink", lambda oc, tech: {}),
 }
 
-# Unit-result variables to read back per Modelica class (Modelica var → result key).
-RESULT_VARS: dict[str, dict[str, str]] = {
-    "PowerSource":      {"power_out": "power_kw"},
-    "ElectrolyzerPEM":  {"h2_out": "h2_kg_h", "water_kg_h": "water_kg_h"},
-    "Compressor":       {"power_kw": "power_kw", "h2_out": "h2_kg_h"},
-    "FuelCellPEM":      {"power_out": "power_kw"},
-    "CO2AbsorberAmine": {"co2_rich_out": "co2_captured_kg_h"},
-    "SolventStripper":  {"co2_pure_out": "co2_kg_h"},
-    "CO2Compressor":    {"power_kw": "power_kw", "co2_out": "co2_kg_h"},
-    "H2Tank":           {"h2_out": "h2_kg_h", "level_kg": "level_kg"},
-    "CO2GeologicalStorage": {"injected_kg_h": "injected_kg_h"},
-    "GridSink":         {"power_kw": "power_kw"},
+# Unit results read back per Modelica class: (Modelica var, result key, rounding).
+# Keys and rounding mirror components.py so both engines return the same shape;
+# rounding may instead be a callable mapping the raw value.
+RESULT_VARS: dict[str, list[tuple[str, str, Any]]] = {
+    "PowerSource":      [("power_out", "power_kw", 1)],
+    "WaterSource":      [],
+    "FlueGasSource":    [("flue_out", "co2_generated_kg_h", 1), ("capacity_kw", "capacity_kw", 1),
+                         ("capacity_factor", "capacity_factor", 2)],
+    "BiomassSource":    [("biomass_out", "fuel_input_kw", 1), ("biomass_out_biomass_kg_h", "biomass_kg_h", 1),
+                         ("capacity_factor", "capacity_factor", 2)],
+    "CO2Source":        [("co2_out", "co2_kg_h", 1)],
+    "ElectrolyzerPEM":  [("power_in", "power_in_kw", 1), ("h2_out", "h2_kg_h", 2),
+                         ("efficiency_pct", "efficiency_pct", 1), ("water_kg_h", "water_kg_h", 1)],
+    "Compressor":       [("power_kw", "power_kw", 1), ("target_pressure_bar", "outlet_pressure_bar", 1),
+                         ("h2_out", "h2_kg_h", 2)],
+    "FuelCellPEM":      [("power_out", "power_kw", 1), ("efficiency_pct", "efficiency_pct", 1),
+                         ("h2_in", "h2_kg_h", 2)],
+    "CO2AbsorberAmine": [("co2_rich_out", "co2_captured_kg_h", 1), ("capture_rate_pct", "capture_rate_pct", 1),
+                         ("reboiler_duty_kw", "reboiler_duty_kw", 1)],
+    "SolventStripper":  [("co2_pure_out", "co2_kg_h", 1), ("reboiler_temp_c", "reboiler_temp_c", 1)],
+    "CO2Compressor":    [("power_kw", "power_kw", 1), ("target_pressure_bar", "outlet_pressure_bar", 1),
+                         ("co2_out", "co2_kg_h", 1)],
+    "BiomassCHP":       [("power_out", "power_kw", 1), ("heat_out", "heat_kw", 1),
+                         ("electrical_efficiency_pct", "electrical_efficiency_pct", 1),
+                         ("total_efficiency_pct", "total_efficiency_pct", 1)],
+    "AnaerobicDigester": [("biogas_out", "biogas_kw", 1), ("methane_content_pct", "methane_content_pct", 1)],
+    "BiogasUpgrader":   [("gas_out", "biomethane_kw", 1), ("co2_out", "co2_removed_kg_h", 1),
+                         ("methane_recovery_pct", "methane_recovery_pct", 1)],
+    "MethanationReactor": [("gas_out_ch4_kg_h", "ch4_kg_h", 2), ("gas_out", "ch4_kw", 1),
+                           ("conversion_pct", "conversion_pct", 1),
+                           ("limited_by_h2", "limiting_reactant", lambda v: "H2" if v > 0.5 else "CO2")],
+    "H2Tank":           [("h2_in", "throughput_kg_h", 2),
+                         ("round_trip_efficiency_pct", "round_trip_efficiency_pct", 1),
+                         ("level_kg", "level_kg", 3)],
+    "CO2GeologicalStorage": [("injected_kg_h", "injected_kg_h", 1), ("injected_mtco2_yr", "injected_mtco2_yr", 4)],
+    "GridSink":         [("power_kw", "power_kw", 1)],
+    "HeatSink":         [("heat_kw", "heat_kw", 1)],
+    "GasGridSink":      [("methane_kw", "methane_kw", 1), ("ch4_kg_h", "ch4_kg_h", 2)],
+}
+
+# The quantity a port's connector carries, by carrier (the Stream state key).
+PRIMARY: dict[str, str] = {
+    "electricity": "power_kw", "hydrogen": "h2_kg_h", "co2": "co2_kg_h",
+    "flue_gas": "co2_kg_h", "biomass": "fuel_kw", "biogas": "biogas_kw",
+    "methane": "ch4_kw", "heat": "heat_kw", "steam": "heat_kw", "water": "water_kg_h",
+}
+
+# Extra Stream-state fields an out-port exposes as <port>_<field> variables.
+OUT_EXTRAS: dict[str, dict[str, list[str]]] = {
+    "FlueGasSource":      {"flue_out": ["flue_kw"]},
+    "BiomassSource":      {"biomass_out": ["biomass_kg_h"]},
+    "CO2Source":          {"co2_out": ["pressure_bar"]},
+    "ElectrolyzerPEM":    {"h2_out": ["pressure_bar"]},
+    "Compressor":         {"h2_out": ["pressure_bar"]},
+    "SolventStripper":    {"co2_pure_out": ["pressure_bar"]},
+    "CO2Compressor":      {"co2_out": ["pressure_bar"]},
+    "AnaerobicDigester":  {"biogas_out": ["methane_frac"]},
+    "BiogasUpgrader":     {"gas_out": ["ch4_kg_h", "pressure_bar"]},
+    "MethanationReactor": {"gas_out": ["ch4_kg_h", "pressure_bar"]},
+    "H2Tank":             {"h2_out": ["pressure_bar"]},
 }
 
 
@@ -116,12 +189,12 @@ def build_system_model(graph: dict, tech_resolver: Callable[[str | None], dict] 
     conns: list[str] = []
     meta: dict[str, dict] = {}
 
+    missing = sorted({u.get("equipment_type") for u in units} - MODELICA_MAP.keys(), key=str)
+    if missing:
+        raise ValueError("No Modelica model for equipment type(s): " + ", ".join(map(str, missing)))
+
     for u in units:
-        et = u.get("equipment_type")
-        entry = MODELICA_MAP.get(et)
-        if not entry:
-            continue   # unmodelled equipment is skipped (its streams are dropped)
-        cls, param_fn = entry
+        cls, param_fn = MODELICA_MAP[u.get("equipment_type")]
         name = "u_" + _mid(u["id"])
         oc = _unwrap_oc(u.get("operating_conditions"))
         tech = resolve(u.get("technology_ref"))
@@ -141,8 +214,6 @@ def build_system_model(graph: dict, tech_resolver: Callable[[str | None], dict] 
     # Tie any undriven input Port to a Zero source so the model is balanced.
     z = 0
     for u in units:
-        if u["id"] not in meta:
-            continue
         for p in u.get("ports", []):
             if p.get("direction") == "in" and (u["id"], p["id"]) not in driven:
                 zn = f"zero{z}"; z += 1
@@ -209,32 +280,33 @@ def simulate(graph: dict, tech_resolver=None, stop_time: float = 3600.0,
     if not rf:
         raise RuntimeError("Simulation failed: " + (res.get("messages", "") if isinstance(res, dict) else str(res)))
 
-    def _final(var: str):
-        v = omc.sendExpression(f'val({meta_inst}.{var}, {stop_time}, "{rf}")')
-        return round(float(v), 3) if isinstance(v, (int, float)) else None
+    def _final(inst: str, var: str) -> float:
+        v = omc.sendExpression(f'val({inst}.{var}, {stop_time}, "{rf}")')
+        if not isinstance(v, (int, float)):
+            raise RuntimeError(f"Could not read {inst}.{var}: {omc.sendExpression('getErrorString()')}")
+        return float(v)
 
     units_out: dict[str, dict] = {}
     for uid, m in meta.items():
-        meta_inst = m["inst"]
-        res_map = RESULT_VARS.get(m["class"], {})
-        units_out[uid] = {rk: _final(mv) for mv, rk in res_map.items()}
+        units_out[uid] = {rk: (nd(_final(m["inst"], mv)) if callable(nd) else round(_final(m["inst"], mv), nd))
+                          for mv, rk, nd in RESULT_VARS[m["class"]]}
 
-    # KPIs mirror the steady-state engine.
-    def _sum(cls_key, rk):
-        return round(sum((units_out[uid].get(rk) or 0)
-                         for uid, m in meta.items() if m["class"] == cls_key), 1)
-    power_in = _sum("PowerSource", "power_kw")
-    power_out = _sum("GridSink", "power_kw") or _sum("FuelCellPEM", "power_kw")
-    h2 = _sum("ElectrolyzerPEM", "h2_kg_h")
-    co2 = _sum("CO2AbsorberAmine", "co2_captured_kg_h")
-    kpi: dict[str, Any] = {}
-    if power_in: kpi["source_power_kw"] = power_in
-    if power_out: kpi["output_power_kw"] = power_out
-    if power_in and power_out: kpi["round_trip_efficiency_pct"] = round(power_out / power_in * 100, 1)
-    if h2: kpi["h2_production_kg_h"] = h2
-    if co2:
-        kpi["co2_captured_kg_h"] = co2
-        kpi["co2_captured_mtco2_yr"] = round(co2 * 8760 / 1e9, 4)
+    # Stream states from the source Port's final value, keyed like components.py.
+    ports = {(u["id"], p["id"]): p.get("carrier") for u in graph.get("units", []) for p in u.get("ports", [])}
+    stream_state: dict[str, dict] = {}
+    for s in graph.get("streams", []):
+        su, sp = s["source"]["unit_id"], s["source"]["port_id"]
+        carrier = ports.get((su, sp)) or s.get("carrier")
+        inst, cls = meta[su]["inst"], meta[su]["class"]
+        if carrier == "water":
+            stream_state[s["id"]] = {"carrier": carrier, "water_kg_h": None}
+            continue
+        st = {"carrier": carrier, PRIMARY.get(carrier, "value"): _final(inst, _mid(sp))}
+        for field in OUT_EXTRAS.get(cls, {}).get(sp, []):
+            st[field] = _final(inst, f"{_mid(sp)}_{field}")
+        if carrier == "hydrogen":
+            st["power_kw"] = st["h2_kg_h"] * HHV_KWH_PER_KG
+        stream_state[s["id"]] = st
 
     # Dynamic traces — the whole point of the Modelica engine over steady-state.
     # H2Tank carries a real state (level_kg); sample it over time with val()
@@ -255,8 +327,9 @@ def simulate(graph: dict, tech_resolver=None, stop_time: float = 3600.0,
         except Exception as exc:  # noqa: BLE001 — traces are a bonus, never fatal
             log.warning("Could not read dynamic traces: %s", exc)
 
-    return {"units": units_out, "streams": {}, "kpi": kpi,
-            "engine": "openmodelica", "time_series": time_series}
+    result = finish(graph, units_out, stream_state, engine="openmodelica")
+    result["time_series"] = time_series
+    return result
 
 
 # ── Warm, reusable engine + kill (for the job worker, ADR-0005) ──────────────

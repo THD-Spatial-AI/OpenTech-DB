@@ -122,6 +122,21 @@ def simulate(graph: dict) -> dict:
                 # copy so fanned-out branches (same port → many targets) stay independent
                 stream_state[s["id"]] = dict(outlets[pid])
 
+    return finish(graph, unit_result, stream_state, engine="steady_state")
+
+
+def finish(graph: dict, unit_result: dict[str, dict], stream_state: dict[str, dict],
+           engine: str) -> dict:
+    """Energy layer, flows and KPIs from solved unit results + stream states.
+    Shared by both engines so they return the same result shape."""
+    units = {u["id"]: u for u in graph.get("units", [])}
+    streams = graph.get("streams", [])
+    in_streams: dict[str, list] = defaultdict(list)
+    out_streams: dict[str, list] = defaultdict(list)
+    for s in streams:
+        in_streams[s["target"]["unit_id"]].append(s)
+        out_streams[s["source"]["unit_id"]].append(s)
+
     # ── Energy layer: canonical energy_kw per stream + per-unit balance ────────
     for s in streams:
         st = stream_state.get(s["id"])
@@ -147,7 +162,7 @@ def simulate(graph: dict) -> dict:
         "streams": stream_state,
         "flows": flows,
         "kpi": _kpi(units, streams, unit_result, stream_state),
-        "engine": "steady_state",
+        "engine": engine,
     }
 
 

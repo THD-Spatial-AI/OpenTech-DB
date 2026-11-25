@@ -158,9 +158,10 @@ async def enqueue_job(graph: ProcessGraph, request: Request):
 
 @app.get("/api/process/jobs/{job_id}")
 async def job_status(job_id: str, request: Request):
-    _internal_identity(request)
+    ident = _internal_identity(request)
     job, pos = JOBS.get(job_id)
-    if not job:
+    # Users see only their own jobs; admins (tier 0) see all.
+    if not job or (ident["tier"] != 0 and job.user_id != ident["user_id"]):
         raise HTTPException(status_code=404, detail="Job not found.")
     return job.public(pos)
 

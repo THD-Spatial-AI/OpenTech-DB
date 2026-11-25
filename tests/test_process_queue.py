@@ -81,3 +81,27 @@ def test_result_and_error_lifecycle():
     assert q.get(ok.id)[0].result["kpi"]["x"] == 1
     assert _wait_until(lambda: q.get(bad.id)[0].status == JobStatus.ERROR)
     assert "kaboom" in q.get(bad.id)[0].error
+
+
+def test_job_results_are_visible_only_to_their_owner_and_admins():
+    import importlib.util
+    from fastapi.testclient import TestClient
+
+    # Loaded under its own name: the backend app is also a module called "main".
+    path = Path(__file__).resolve().parent.parent / "services" / "processsim" / "main.py"
+    spec = importlib.util.spec_from_file_location("processsim_main", path)
+    sim = importlib.util.module_from_spec(spec)
+    sys.modules["processsim_main"] = sim   # pydantic resolves annotations via sys.modules
+    spec.loader.exec_module(sim)
+    client = TestClient(sim.app)
+
+    def as_user(user_id, tier):
+        return {"X-User-Id": user_id, "X-User-Tier": str(tier)}
+
+    job = client.post("/api/process/jobs", json={"units": [], "streams": []},
+                      headers=as_user("alice", 2)).json()
+    url = f"/api/process/jobs/{job['job_id']}"
+    assert client.get(url, headers=as_user("alice", 2)).status_code == 200
+    assert client.get(url, headers=as_user("bob", 2)).status_code == 404
+    assert client.get(url, headers=as_user("bob", 1)).status_code == 404
+    assert client.get(url, headers=as_user("admin", 0)).status_code == 200

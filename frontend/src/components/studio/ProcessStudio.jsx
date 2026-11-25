@@ -16,8 +16,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FiEdit3, FiPlus, FiSave, FiArrowLeft, FiCheckCircle, FiBox, FiLayers,
   FiPlay, FiLoader, FiX, FiAlertCircle, FiAlertTriangle, FiUploadCloud, FiGitBranch, FiCheck,
-  FiHelpCircle, FiBarChart2,
+  FiHelpCircle, FiBarChart2, FiLock,
 } from 'react-icons/fi';
+import { useAuth } from '../../context/AuthContext';
 import {
   listProcesses, getProcess, submitProcess, listSubmissions, reviewSubmission,
   validateProcess,
@@ -54,7 +55,8 @@ function saveDrafts(list) {
 
 const EMPTY_META = { slug: '', name: 'Untitled Process', description: '', domain: '', status: 'draft' };
 
-export default function ProcessStudio() {
+export default function ProcessStudio({ onLoginClick }) {
+  const { user } = useAuth();
   const [mode, setMode] = useState('browse');        // 'browse' | 'build'
   const [meta, setMeta] = useState(EMPTY_META);
   const [initialProcess, setInitialProcess] = useState({ units: [], streams: [] });
@@ -233,12 +235,13 @@ export default function ProcessStudio() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-on-surface border border-outline-variant/40 hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {publishing ? <FiLoader size={14} className="animate-spin" /> : <FiUploadCloud size={14} />} Publish
             </button>
-            <button data-tour="run" onClick={runSim}
-              disabled={sim.status === 'running' || (validation && !validation.valid)}
-              title={validation && !validation.valid ? 'Fix the validation errors before running.' : undefined}
+            <button data-tour="run" onClick={user ? runSim : onLoginClick}
+              disabled={user && (sim.status === 'running' || (validation && !validation.valid))}
+              title={!user ? 'Simulations require an account.'
+                : validation && !validation.valid ? 'Fix the validation errors before running.' : undefined}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold technical-gradient text-on-primary shadow-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-              {sim.status === 'running' ? <FiLoader size={14} className="animate-spin" /> : <FiPlay size={14} />}
-              {sim.status === 'running'
+              {!user ? <FiLock size={14} /> : sim.status === 'running' ? <FiLoader size={14} className="animate-spin" /> : <FiPlay size={14} />}
+              {!user ? 'Sign in to run' : sim.status === 'running'
                 ? (sim.phase === 'queued'
                     ? (sim.position ? `Queued #${sim.position}…` : 'Queued…')
                     : 'Running…')

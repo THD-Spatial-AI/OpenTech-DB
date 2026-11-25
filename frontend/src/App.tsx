@@ -189,7 +189,7 @@ export default function App() {
           ) : activeView === "worldmap" ? (
             <WorldMapView />
           ) : activeView === "simulator" ? (
-            <SimulatorView />
+            <SimulatorView onLoginClick={() => setShowAuth(true)} />
           ) : (
             <main className="max-w-[1440px] mx-auto px-8 py-12 w-full flex-1">
 

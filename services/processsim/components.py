@@ -194,7 +194,8 @@ def biogas_upgrader(unit, inlets, oc, tech):
     # CO₂ removed: crude mass estimate from the non-CH₄ balance of raw biogas
     co2 = biogas * 0.20 / CH4_LHV_KWH_PER_KG * (_M_CO2 / _M_CH4) * 10
     return (
-        {"gas_out": _st("methane", ch4_kw=ch4, pressure_bar=_num(oc, "delivery_pressure_bar", 8.0)),
+        {"gas_out": _st("methane", ch4_kw=ch4, ch4_kg_h=ch4 / CH4_LHV_KWH_PER_KG,
+                        pressure_bar=_num(oc, "delivery_pressure_bar", 8.0)),
          "co2_out": _st("co2", co2_kg_h=co2)},
         {"biomethane_kw": round(ch4, 1), "co2_removed_kg_h": round(co2, 1),
          "methane_recovery_pct": round(recovery * 100, 1)},

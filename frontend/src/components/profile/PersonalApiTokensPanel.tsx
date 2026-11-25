@@ -6,9 +6,16 @@ import {
   revokePersonalApiToken,
   type CreatedPersonalApiToken,
   type PersonalApiToken,
+  type PersonalApiTokenScope,
 } from "../../services/api";
 
 type TokenStatus = "active" | "expired" | "revoked";
+
+const SCOPE_LABELS: Record<PersonalApiTokenScope, string> = {
+  read: "Read-only",
+  simulate: "Read and run simulations",
+  full: "Read and write",
+};
 
 function formatDate(value: string | null): string {
   if (!value) return "Never";
@@ -36,7 +43,7 @@ export default function PersonalApiTokensPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [scope, setScope] = useState<"read" | "full">("read");
+  const [scope, setScope] = useState<PersonalApiTokenScope>("read");
   const [expiresInDays, setExpiresInDays] = useState(90);
   const [creating, setCreating] = useState(false);
   const [revokingId, setRevokingId] = useState<number | null>(null);
@@ -179,11 +186,12 @@ export default function PersonalApiTokensPanel() {
             <span className="block text-xs font-bold uppercase tracking-wide text-on-surface-variant mb-1.5">Permission</span>
             <select
               value={scope}
-              onChange={(event) => setScope(event.target.value as "read" | "full")}
+              onChange={(event) => setScope(event.target.value as PersonalApiTokenScope)}
               disabled={creating || Boolean(created)}
               className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
             >
               <option value="read">Read-only (recommended)</option>
+              <option value="simulate">Read and run simulations</option>
               <option value="full">Read and write</option>
             </select>
           </label>
@@ -249,7 +257,7 @@ export default function PersonalApiTokensPanel() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-on-surface-variant">
-                      {token.scope === "full" ? "Read and write" : "Read-only"}
+                      {SCOPE_LABELS[token.scope] ?? token.scope}
                       {" · Expires "}{formatDate(token.expires_at)}
                       {" · Last used "}{token.last_used_at ? formatDate(token.last_used_at) : "Never"}
                     </p>

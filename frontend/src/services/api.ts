@@ -288,11 +288,13 @@ export async function keepKeycloakSessionAlive(): Promise<void> {
 
 // ── Personal API tokens ─────────────────────────────────────────────────────
 
+export type PersonalApiTokenScope = "read" | "simulate" | "full";
+
 export interface PersonalApiToken {
   id: number;
   name: string;
   token_prefix: string;
-  scope: "read" | "full";
+  scope: PersonalApiTokenScope;
   expires_at: string | null;
   last_used_at: string | null;
   revoked_at: string | null;
@@ -305,14 +307,14 @@ export interface CreatedPersonalApiToken {
   /** Full plaintext secret. It is returned by the server only once. */
   token: string;
   token_prefix: string;
-  scope: "read" | "full";
+  scope: PersonalApiTokenScope;
   expires_at: string | null;
   created_at: string;
 }
 
 export interface CreatePersonalApiTokenPayload {
   name: string;
-  scope: "read" | "full";
+  scope: PersonalApiTokenScope;
   /** 0 means no automatic expiry; otherwise the backend caps this at 365. */
   expires_in_days: number;
 }

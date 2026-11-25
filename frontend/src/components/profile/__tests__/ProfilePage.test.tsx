@@ -96,6 +96,23 @@ describe("ProfilePage personal API tokens", () => {
     expect(screen.queryByText("otdb_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG")).not.toBeInTheDocument();
   });
 
+  it("offers a simulation-only scope", async () => {
+    render(<ProfilePage onViewChange={vi.fn()} />);
+    await screen.findByText("Existing integration");
+
+    await userEvent.type(screen.getByLabelText("Token name"), "Batch runs");
+    await userEvent.selectOptions(screen.getByLabelText("Permission"), "simulate");
+    await userEvent.click(screen.getByRole("button", { name: "Generate token" }));
+
+    await waitFor(() => {
+      expect(mockCreateToken).toHaveBeenCalledWith({
+        name: "Batch runs",
+        scope: "simulate",
+        expires_in_days: 90,
+      });
+    });
+  });
+
   it("confirms and revokes only the selected user's token", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<ProfilePage onViewChange={vi.fn()} />);

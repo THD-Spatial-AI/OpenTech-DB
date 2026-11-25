@@ -25,6 +25,25 @@ services:
       - default
       - opentech   # backend-only access to Supabase PostgREST/Kong
 
+  # Process simulator (ADR-0005). Internal only: the backend reaches it at
+  # http://processsim:8770 (PROCESS_SIM_URL) and both sides share PROCESS_SIM_SECRET.
+  processsim:
+    build: ./services/processsim
+    container_name: opentech-processsim
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      PROCESS_ENGINE: ${PROCESS_ENGINE:-steady_state}
+      PROCESS_SIM_SECRET: ${PROCESS_SIM_SECRET:?set PROCESS_SIM_SECRET in .env}
+      CATALOGUE_API_URL: http://backend:8000/api/v1
+    depends_on:
+      - backend
+    shm_size: 256m
+    expose:
+      - "8770"
+    networks:
+      - default
+
   nginx:
     image: nginx:alpine
     pull_policy: always
